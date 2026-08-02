@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  }
+
+  .digit {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-safe {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  }
+
+  .bg-gradient-warning {
+    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  }
+
+  .bg-gradient-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+}
