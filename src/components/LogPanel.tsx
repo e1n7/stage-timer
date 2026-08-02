@@ -21,7 +21,7 @@ const LogPanel: React.FC = () => {
       {log.length === 0 ? (
         <p className="text-center text-gray-500 py-8">
           No sessions recorded yet
-        </p> 
+        </p>
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -57,7 +57,6 @@ const LogPanel: React.FC = () => {
                     <td className="p-3 text-center space-x-2">
                       <button
                         onClick={() => {
-                          // Could add note editing functionality here
                           alert(`Notes: ${entry.notes || 'No notes'}`);
                         }}
                         className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
