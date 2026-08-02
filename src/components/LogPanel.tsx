@@ -85,4 +85,4 @@ const LogPanel: React.FC = () => {
   );
 };
 
-export default LogPanel;
+export default LogPanel; 
