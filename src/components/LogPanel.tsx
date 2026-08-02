@@ -16,7 +16,7 @@ const LogPanel: React.FC = () => {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-center text-gray-800">
         Session Log
-      </div>
+      </h2>
 
       {log.length === 0 ? (
         <p className="text-center text-gray-500 py-8">
