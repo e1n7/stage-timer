@@ -70,7 +70,7 @@ function App() {
           resetTimer={resetTimer}
           onTimeChange={setTime}
           mode={mode}
-          defaultTime={settings.defaultTime ?? 0}
+          defaultTime={(settings as any).duration ?? 0}
         />
       </section>
 
