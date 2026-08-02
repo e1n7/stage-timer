@@ -21,7 +21,7 @@ const LogPanel: React.FC = () => {
       {log.length === 0 ? (
         <p className="text-center text-gray-500 py-8">
           No sessions recorded yet
-        </p>
+        </p> 
       ) : (
         <>
           <div className="overflow-x-auto">
