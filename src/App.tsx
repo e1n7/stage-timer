@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTimer } from './hooks/useTimer';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
@@ -42,40 +43,49 @@ function App() {
       /* BroadcastChannel unavailable */
     }
     try {
-      localStorage.setItem('timerState', JSON.stringify({ seconds, isRunning }));
+      localStorage.setItem('timerState', JSON.stringify({ seconds, isRunning, totalTime: DEFAULT_TIME }));
     } catch {
       /* storage unavailable */
     }
   };
 
+  // Broadcast state changes every time seconds or isRunning updates
+  useEffect(() => {
+    syncOutput({ seconds, isRunning, totalTime: DEFAULT_TIME });
+  }, [seconds, isRunning, DEFAULT_TIME]);
+
+  // Listen for handshake from late-joining output windows
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel(CHANNEL_NAME);
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'handshake') {
+          channel?.postMessage({ seconds, isRunning, totalTime: DEFAULT_TIME });
+        }
+      };
+    } catch { /* ignore */ }
+    return () => channel?.close();
+  }, [seconds, isRunning, DEFAULT_TIME]);
+
   // Publish every state change so output windows stay mirrored.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const wrappedSetTime = (value: number) => {
     setTime(value);
-    syncOutput({ seconds: value, isRunning });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const wrappedStart = () => {
     startTimer();
-    syncOutput({ isRunning: true });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const wrappedPause = () => {
     pauseTimer();
-    syncOutput({ isRunning: false });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const wrappedReset = () => {
     resetTimer();
-    syncOutput({ seconds: mode === 'countdown' ? DEFAULT_TIME : 0, isRunning: false });
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const openOutput = () => {
-    syncOutput({ seconds, isRunning });
     window.open('/output', '_blank');
   };
 
