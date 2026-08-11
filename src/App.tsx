@@ -30,127 +30,215 @@ function App() {
   };
 
   return (
-    <div className="h-screen bg-[#f3f3f3] text-black antialiased">
-      <div className="flex h-full w-full overflow-hidden">
-        <aside className="w-[360px] border-r border-black/40 bg-[#f5f5f5] px-3 py-3">
-          <div className="mb-3 inline-flex items-center gap-2 border border-black/80 bg-[#efefef] px-2 py-1 text-[13px] font-medium leading-none text-black">
-            <span className="inline-block h-3 w-3 border border-black bg-white" />
-            Dashboard
+    <div className="h-screen bg-[#1a1a1a] text-white antialiased">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-3 py-2">
+        <div className="text-[20px] font-bold text-[#8a8a8a]">Unnamed</div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white"
+          >
+            Room
+            <span className="text-[10px]">▾</span>
+          </button>
+          <button
+            type="button"
+            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white"
+          >
+            🔒 Save
+          </button>
+        </div>
+      </div>
+
+      <div className="flex w-full overflow-hidden pb-12">
+        {/* Left: Dashboard panel */}
+        <aside className="flex h-[calc(100vh-84px)] w-[380px] flex-col px-3 py-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-2 text-[17px] font-bold text-white">
+              Dashboard
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-8 items-center gap-2 rounded-md bg-[#2d2d2d] px-3 text-[12px] text-white"
+              >
+                ▾
+              </button>
+              <button
+                type="button"
+                className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+              >
+                🖵 Output Links
+              </button>
+            </div>
           </div>
 
-          <div className="mt-5 text-[17px] font-bold tracking-[0.12em] text-black">STAGETIMER.IO</div>
-          <div className="mt-5 text-[17px] text-black">Timer 1</div>
-          <div className="digit mt-2 text-[64px] font-bold leading-none tracking-[-0.06em] text-black">{currentTime}</div>
+          <div className="rounded-md border border-[#333] bg-[#141414] p-3">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="font-bold text-[#22c55e]">⌂ stagetimer.io</span>
+              <span className="font-bold text-[#7eb8ff]">Timer 1</span>
+            </div>
+            <div className="digit mt-2 text-center text-[84px] font-bold leading-none tracking-[-0.02em] text-white">{currentTime}</div>
 
-          <div className="mt-4 flex items-center justify-between text-[13px] text-black">
-            <span>On Air</span>
-            <span>{currentTime}</span>
-          </div>
-          <div className="mt-2 h-3 w-full overflow-hidden border border-black/70 bg-[#d9d9d9]">
-            <div
-              className="h-full bg-[#38b548]"
-              style={{ width: `${Math.max(0, Math.min(100, 100 - progress))}%` }}
-            />
+            <div className="mt-3 h-4 w-full overflow-hidden rounded-sm border border-[#2a2a2a]">
+              <div
+                className="flex h-full"
+                style={{ width: '100%' }}
+              >
+                <div className="h-full flex-1 bg-[#40c057]" />
+                <div className="h-full w-[6%] bg-[#f08c00]" />
+                <div className="h-full w-[3%] bg-[#fa5252]" />
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between text-[12px]">
+              <span className="inline-block rounded-sm bg-[#333] px-2 py-[2px] text-[11px] font-bold tracking-wider text-white">ON AIR</span>
+              <span className="text-white">● {currentTime}.0</span>
+            </div>
+            <div className="h-1" />
+
+            <div className="mt-2 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px]">
+              <div className="bg-[#1c1c1c] p-1 text-[#fa5252]">0:00</div>
+              <div className="bg-[#1c1c1c] p-1 text-[#22c55e]">7:30</div>
+              <div className="bg-[#1c1c1c] p-1 text-[#22c55e]">5:00</div>
+              <div className="bg-[#1c1c1c] p-1 text-[#22c55e]">2:30</div>
+            </div>
+            <div className="mt-1 flex h-2 overflow-hidden rounded-sm">
+              <div className="w-[82%] bg-[#40c057]" />
+              <div className="w-[12%] bg-[#f08c00]" />
+              <div className="w-[6%] bg-[#fa5252]" />
+            </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between text-[10px] text-black/80">
-            <span>0:00</span>
-            <span>7:30</span>
-            <span>5:00</span>
-            <span>2:30</span>
-          </div>
-
-          <div className="mt-6 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="flex h-10 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
+            >
+              ▾
+            </button>
             <button
               type="button"
               onClick={() => adjustTime(-60)}
-              className="flex h-12 w-[92px] items-center justify-center border border-black/80 bg-[#efefef] text-[14px] font-medium text-black hover:bg-[#e9e9e9]"
+              className="flex h-10 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
             >
               -1m
             </button>
             <button
               type="button"
-              onClick={isRunning ? pauseTimer : startTimer}
-              className="flex h-12 w-[92px] items-center justify-center border border-black/80 bg-[#efefef] text-[18px] text-black hover:bg-[#e9e9e9]"
+              onClick={() => resetTimer()}
+              className="flex h-10 w-14 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] text-[14px] text-white hover:bg-[#383838]"
             >
-              {isRunning ? '❚❚' : '▶'}
+              ⏮
+            </button>
+            <button
+              type="button"
+              onClick={isRunning ? pauseTimer : startTimer}
+              className="flex h-10 w-14 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] text-[14px] text-white hover:bg-[#383838]"
+            >
+              {isRunning ? '⏸' : '▶'}
             </button>
             <button
               type="button"
               onClick={() => adjustTime(60)}
-              className="flex h-12 w-[92px] items-center justify-center border border-black/80 bg-[#efefef] text-[14px] font-medium text-black hover:bg-[#e9e9e9]"
+              className="flex h-10 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
             >
               +1m
             </button>
+            <button
+              type="button"
+              className="flex h-10 items-center justify-center rounded-md border border-[#333] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
+            >
+              ▾
+            </button>
           </div>
 
-          <div className="mt-8 flex items-center gap-2 text-[14px] text-black">
-            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-black text-[9px]">◉</span>
-            <span>08:50 AM Asia / Shanghai (CST)</span>
-          </div>
-
-          <div className="mt-4 text-[15px] text-black">Cue finish</div>
-          <div className="mt-1 text-[15px] text-black">Over/Under</div>
-          <div className="mt-6 text-[16px] font-medium text-black">Live Connections 1/3</div>
-
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <div className="h-2 flex-1 overflow-hidden border border-black/70 bg-[#dfdfdf]">
-              <div className="h-full w-1/3 bg-[#2b2b2b]" />
+          <div className="mt-4 flex flex-col items-center text-[13px] text-[#c9c9c9]">
+            <div className="flex items-center gap-2">
+              <span>◷ {currentTime}</span>
+              <span className="text-white">PM</span>
+              <span className="text-[#8a8a8a]">Asia / Shanghai (CST)</span>
             </div>
           </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 text-center text-[12px] text-[#8a8a8a]">
+            <div className="flex flex-col items-center">
+              <span>Cue finish</span>
+              <span className="digit mt-1 text-[13px] text-white">--:--</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span>Over/Under</span>
+              <span className="mt-1 text-[13px] text-white">-</span>
+            </div>
+          </div>
+
+
+
+          <button
+            type="button"
+            className="mt-2 flex items-center justify-between rounded-md border border-[#333] bg-[#2d2d2d] px-4 py-3 text-[14px] text-white"
+          >
+            <span>Live Connections 1/3</span>
+            <span>›</span>
+          </button>
         </aside>
 
-        <main className="flex flex-1 flex-col px-6 pt-4">
+        {/* Center: Timers panel */}
+        <main className="flex h-[calc(100vh-84px)] flex-1 flex-col px-6 pt-2">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex gap-2">
-              {['Timers', 'Select'].map(label => (
-                <button
-                  key={label}
-                  type="button"
-                  className="border border-black/70 bg-[#efefef] px-3 py-1 text-[13px] text-black hover:bg-[#e6e6e6]"
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex items-center gap-3">
+              <span className="text-[18px] font-bold text-white">Timers</span>
+              <span className="text-[14px] text-[#8a8a8a]">Select</span>
             </div>
 
-            <div className="flex gap-2">
-              {['Blackout', 'Flash', 'Messages', 'Select'].map(label => (
-                <button
-                  key={label}
-                  type="button"
-                  className="border border-black/70 bg-[#efefef] px-3 py-1 text-[13px] text-black hover:bg-[#e6e6e6]"
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+              >
+                ● Blackout
+              </button>
+              <button
+                type="button"
+                className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+              >
+                ⚡ Flash
+              </button>
+              <button
+                type="button"
+                className="flex h-8 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-2 text-[12px] text-white"
+              >
+                ⋯
+              </button>
             </div>
           </div>
 
           <div className="flex-1">
-            <div className="mb-4 flex items-center gap-3 border border-black/70 bg-[#0e72d8] px-3 py-3 text-white">
-              <div className="flex h-7 w-7 items-center justify-center border border-white/80 bg-white/10 text-[12px] font-medium">1</div>
+            <div className="flex items-center gap-3 rounded-md bg-[#2546c9] px-4 py-3 text-white">
+              <div className="text-[15px] font-bold">1</div>
               <button
                 type="button"
                 onClick={() => adjustTime(60)}
-                className="text-[13px] font-medium text-white hover:opacity-90"
+                className="text-[14px] font-medium text-[#9db8ff] hover:opacity-90"
               >
                 Add time
               </button>
-              <div className="mx-auto text-center text-[30px] font-bold tracking-[-0.06em]">{currentTime}</div>
-              <div className="text-[15px] font-medium">Timer 1</div>
-              <div className="ml-2 flex items-center gap-2">
-                <button type="button" onClick={() => setTime(0)} className="h-8 w-8 border border-white/70 bg-white/10 text-[12px] hover:bg-white/15">⏮</button>
-                <button type="button" onClick={() => setTime(Math.max(0, seconds - 5))} className="h-8 w-8 border border-white/70 bg-white/10 text-[12px] hover:bg-white/15">⏸</button>
-                <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="h-8 w-8 border border-white/70 bg-white/10 text-[12px] hover:bg-white/15">▶</button>
+              <div className="mx-auto text-center text-[24px] font-bold tracking-[-0.02em]">{currentTime}</div>
+              <div className="text-[15px] font-bold">Timer 1</div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => resetTimer()} className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4a64c9] bg-[#3253cc] text-[13px] hover:bg-[#3d5ed8]">⏮</button>
+                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4a64c9] bg-[#3253cc] text-[13px] hover:bg-[#3d5ed8]">⚙</button>
+                <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4a64c9] bg-[#228b3a] text-[13px] hover:bg-[#2aa346]">▶</button>
+                <button type="button" className="flex h-9 w-9 items-center justify-center rounded-md border border-[#4a64c9] bg-[#3253cc] text-[13px] hover:bg-[#3d5ed8]">⋯</button>
               </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="mt-4 flex justify-center">
               <button
                 type="button"
                 onClick={() => setTime(Math.max(0, seconds + 60))}
-                className="border border-black/70 bg-[#efefef] px-4 py-2 text-[14px] text-black hover:bg-[#e6e6e6]"
+                className="flex items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-5 py-2 text-[14px] text-white hover:bg-[#383838]"
               >
                 + Add Timer
               </button>
@@ -158,56 +246,86 @@ function App() {
           </div>
         </main>
 
-        <aside className="w-[320px] border-l border-black/40 bg-[#f5f5f5] px-3 py-3">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <button type="button" className="border border-black/70 bg-[#efefef] px-3 py-1 text-[13px] text-black">Room</button>
-            <button type="button" className="border border-black/70 bg-[#efefef] px-3 py-1 text-[13px] text-black">Save</button>
+        {/* Right: Messages panel */}
+        <aside className="flex h-[calc(100vh-84px)] w-[360px] flex-col px-3 py-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-[17px] font-bold text-white">Messages</span>
+              <span className="text-[14px] text-[#8a8a8a]">Select</span>
+            </div>
+            <button
+              type="button"
+              className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+            >
+              ⚡ Flash
+            </button>
           </div>
 
-          <div className="mt-1 flex items-center justify-between text-[13px] uppercase tracking-[0.08em] text-black">
-            <span>Messages</span>
-            <span>Flash</span>
-          </div>
-
-          <div className="mt-4 border border-black/70 bg-[#f0f0f0] p-2">
-            <div className="mb-3 h-28 border border-black/70 bg-white/80 p-2 text-[14px] text-black/50">
-              Enter message ...
+          <div className="rounded-md border border-[#333] bg-[#2d2d2d] p-3">
+            <div className="flex gap-2">
+              <span className="text-[13px] text-[#8a8a8a]">1</span>
+              <div className="flex-1 rounded-md border border-[#444] bg-[#1c1c1c] p-2 text-[13px] text-[#8a8a8a]">
+                Enter message ...
+              </div>
             </div>
 
-            <div className="mb-4 flex gap-2">
-              {['A', 'A', 'A', 'aA'].map((tag, index) => (
-                <button key={index} type="button" className="border border-black/70 bg-[#efefef] px-2 py-1 text-[12px] text-black hover:bg-[#e7e7e7]">
-                  {tag}
+            <div className="mt-3 flex gap-2">
+              {[
+                { tag: 'A', color: '#ffffff' },
+                { tag: 'A', color: '#22c55e' },
+                { tag: 'A', color: '#fa5252' },
+                { tag: 'B', color: '#ffffff' },
+                { tag: 'āA', color: '#ffffff' },
+              ].map((item, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="border-b-2 bg-transparent px-1 pb-1 text-[14px] font-bold"
+                  style={{ color: item.color, borderBottomColor: item.color }}
+                >
+                  {item.tag}
                 </button>
               ))}
             </div>
 
-            <div className="mt-6 flex justify-center">
-              <button type="button" className="border border-black/70 bg-[#efefef] px-4 py-2 text-[14px] text-black hover:bg-[#e7e7e7]">
-                + Add Message
+            <div className="mt-3 flex justify-end">
+              <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-4 py-1 text-[12px] text-white">
+                Show
+              </button>
+              <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1 text-[12px] text-white">
+                ⛶
               </button>
             </div>
-
-            <div className="mt-6 text-center text-[13px] text-black/70">Submit questions link</div>
           </div>
+
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-5 py-2 text-[14px] text-white hover:bg-[#383838]"
+            >
+              + Add Message
+            </button>
+          </div>
+
+          <div className="mt-4 text-center text-[13px] text-[#8a8a8a]">Submit questions link</div>
         </aside>
       </div>
 
-      <footer className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-black/50 bg-[#f2f2f2] px-3 py-1 text-[11px] text-black/70">
-        <div className="flex items-center gap-3">
-          <span>stagemtimer.io</span>
-          <span>v3.5.9</span>
-          <span>•</span>
-          <span>Docs</span>
-          <span>•</span>
-          <span>783 ms</span>
+      {/* Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-3 py-2 text-[11px] text-[#8a8a8a]">
+        <div className="flex items-center gap-2">
+          <span className="text-[#555]">stagemtimer.io · v3.5.9 · Docs · ■ 783 ms</span>
         </div>
 
         <div className="flex items-center gap-2">
           <span>0:00</span>
-          <div className="h-2 w-28 overflow-hidden border border-black/70 bg-[#ddd]">
-            <div className="h-full w-full bg-black/60" />
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            defaultValue="0"
+            className="h-1 w-[60vw] cursor-pointer appearance-none rounded-full bg-[#555] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#3b82f6]"
+          />
           <span>-10:00</span>
         </div>
       </footer>
