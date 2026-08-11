@@ -9,6 +9,8 @@ const formatClock = (seconds: number) => {
   return `${pad(minutes)}:${pad(secs)}`;
 };
 
+const CHANNEL_NAME = 'stage-timer-sync';
+
 function App() {
   const {
     seconds,
@@ -27,6 +29,58 @@ function App() {
 
   const adjustTime = (delta: number) => {
     setTime(Math.max(0, seconds + delta));
+  };
+
+  // Keep any host-facing output window (opened via Output Links)
+  // in sync with this dashboard in real time.
+  const syncOutput = (payload: Record<string, unknown>) => {
+    try {
+      const channel = new BroadcastChannel(CHANNEL_NAME);
+      channel.postMessage(payload);
+      channel.close();
+    } catch {
+      /* BroadcastChannel unavailable */
+    }
+    try {
+      localStorage.setItem('timerState', JSON.stringify({ seconds, isRunning }));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  // Publish every state change so output windows stay mirrored.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wrappedSetTime = (value: number) => {
+    setTime(value);
+    syncOutput({ seconds: value, isRunning });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wrappedStart = () => {
+    startTimer();
+    syncOutput({ isRunning: true });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wrappedPause = () => {
+    pauseTimer();
+    syncOutput({ isRunning: false });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wrappedReset = () => {
+    resetTimer();
+    syncOutput({ seconds: mode === 'countdown' ? DEFAULT_TIME : 0, isRunning: false });
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const openOutput = () => {
+    syncOutput({ seconds, isRunning });
+    window.open('/output', '_blank');
+  };
+
+  const sendOutputAction = (action: 'flash' | 'blackout', value: boolean) => {
+    syncOutput({ [action]: value });
   };
 
   return (
@@ -67,7 +121,8 @@ function App() {
               </button>
               <button
                 type="button"
-                className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+                onClick={openOutput}
+                className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"
               >
                 🖵 Output Links
               </button>
@@ -255,7 +310,8 @@ function App() {
             </div>
             <button
               type="button"
-              className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white"
+              onClick={() => syncOutput({ flash: true })}
+              className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"
             >
               ⚡ Flash
             </button>
