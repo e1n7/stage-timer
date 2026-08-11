@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useTimer } from './hooks/useTimer';
+import { ProgressBar } from './components/ProgressBar';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
@@ -51,8 +52,8 @@ function App() {
 
   // Broadcast state changes every time seconds or isRunning updates
   useEffect(() => {
-    syncOutput({ seconds, isRunning, totalTime: DEFAULT_TIME });
-  }, [seconds, isRunning, DEFAULT_TIME]);
+    syncOutput({ seconds, isRunning, totalTime: DEFAULT_TIME, segments: settings.segments });
+  }, [seconds, isRunning, DEFAULT_TIME, settings.segments]);
 
   // Listen for handshake from late-joining output windows
   useEffect(() => {
@@ -61,12 +62,12 @@ function App() {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.onmessage = (event) => {
         if (event.data?.type === 'handshake') {
-          channel?.postMessage({ seconds, isRunning, totalTime: DEFAULT_TIME });
+          channel?.postMessage({ seconds, isRunning, totalTime: DEFAULT_TIME, segments: settings.segments });
         }
       };
     } catch { /* ignore */ }
     return () => channel?.close();
-  }, [seconds, isRunning, DEFAULT_TIME]);
+  }, [seconds, isRunning, DEFAULT_TIME, settings.segments]);
 
   // Publish every state change so output windows stay mirrored.
   const wrappedSetTime = (value: number) => {
@@ -146,16 +147,13 @@ function App() {
             </div>
             <div className="digit mt-2 text-center text-[84px] font-bold leading-none tracking-[-0.02em] text-white">{currentTime}</div>
 
-            <div className="mt-3 h-4 w-full overflow-hidden rounded-sm border border-[#2a2a2a]">
-              <div
-                className="flex h-full"
-                style={{ width: '100%' }}
-              >
-                <div className="h-full flex-1 bg-[#40c057]" />
-                <div className="h-full w-[6%] bg-[#f08c00]" />
-                <div className="h-full w-[3%] bg-[#fa5252]" />
-              </div>
-            </div>
+            <ProgressBar 
+              currentSeconds={seconds} 
+              totalSeconds={DEFAULT_TIME} 
+              segments={settings.segments} 
+              height="h-4"
+              className="mt-3"
+            />
 
             <div className="mt-2 flex items-center justify-between text-[12px]">
               <span className="inline-block rounded-sm bg-[#333] px-2 py-[2px] text-[11px] font-bold tracking-wider text-white">ON AIR</span>
@@ -169,11 +167,13 @@ function App() {
               <div className="bg-[#1c1c1c] p-1 text-[#22c55e]">5:00</div>
               <div className="bg-[#1c1c1c] p-1 text-[#22c55e]">2:30</div>
             </div>
-            <div className="mt-1 flex h-2 overflow-hidden rounded-sm">
-              <div className="w-[82%] bg-[#40c057]" />
-              <div className="w-[12%] bg-[#f08c00]" />
-              <div className="w-[6%] bg-[#fa5252]" />
-            </div>
+            <ProgressBar 
+              currentSeconds={seconds} 
+              totalSeconds={DEFAULT_TIME} 
+              segments={settings.segments} 
+              height="h-2"
+              className="mt-1 border-none"
+            />
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-2">
@@ -380,7 +380,7 @@ function App() {
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-3 py-2 text-[11px] text-[#8a8a8a]">
         <div className="flex items-center gap-2">
-          <span className="text-[#555]">stagemtimer.io · v3.5.9 · Docs · ■ 783 ms</span>
+          <span className="text-[#555]">stagetimer.io · v3.5.9 · Docs · ■ 783 ms</span>
         </div>
 
         <div className="flex items-center gap-2">

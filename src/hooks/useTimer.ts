@@ -2,17 +2,26 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 5 * 60; // 5 minutes
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS: TimerSettings = {
   audioVolume: 0.5,
   beepOnReach: true,
   beepOnHalfTime: true,
   beepOnOneMinute: true,
   warningThreshold: 60,
   dangerThreshold: 0,
-  historyLimit: 10
+  historyLimit: 10,
+  segments: [
+    { threshold: 60, color: '#f08c00' }, // Warning: Orange
+    { threshold: 10, color: '#fa5252' }  // Danger: Red
+  ]
 };
 
 export type TimerMode = 'countdown' | 'countup' | 'time';
+
+export interface ProgressSegment {
+  threshold: number; // seconds
+  color: string;
+}
 
 interface TimerSettings {
   audioVolume: number;
@@ -22,6 +31,7 @@ interface TimerSettings {
   warningThreshold: number;
   dangerThreshold: number;
   historyLimit: number;
+  segments: ProgressSegment[];
 }
 
 interface LogEntry {
@@ -168,17 +178,17 @@ export const useTimer = () => {
     if (status === 'finished' || (mode === 'countdown' && seconds <= 0)) {
       return 'danger';
     }
-    if (mode === 'countdown' && seconds <= settings.warningThreshold) {
-      return 'warning';
-    }
-    if (mode === 'countup' && settings.dangerThreshold > 0 && seconds >= settings.dangerThreshold) {
-      return 'danger';
-    }
-    if (mode === 'countup' && settings.warningThreshold > 0 && seconds >= settings.warningThreshold) {
-      return 'warning';
+    if (mode === 'countdown') {
+      // Find the first segment that matches the current time
+      const sortedSegments = [...settings.segments].sort((a, b) => a.threshold - b.threshold);
+      for (const segment of sortedSegments) {
+        if (seconds <= segment.threshold) {
+          return segment.color === '#fa5252' ? 'danger' : 'warning';
+        }
+      }
     }
     return 'safe';
-  }, [mode, seconds, status, settings.warningThreshold, settings.dangerThreshold]);
+  }, [mode, seconds, status, settings.segments]);
 
   const [warningState, setWarningState] = useState<string[]>([]);
 
