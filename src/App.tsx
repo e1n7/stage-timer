@@ -148,13 +148,20 @@ interface TimerSettingsModalProps {
   settings: any;
   updateSettings: (updates: any) => void;
   onApplyToAll?: (settings: any) => void;
+  onConfirm?: (settings: any) => void;
 }
 
-const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll }: TimerSettingsModalProps) => {
+const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm }: TimerSettingsModalProps) => {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    if (isOpen) setLocalSettings(settings);
+  }, [isOpen, settings]);
+
   if (!isOpen) return null;
 
-  const yellowSegment = settings.segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
-  const redSegment = settings.segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
+  const yellowSegment = localSettings.segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
+  const redSegment = localSettings.segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
 
   const formatMMSS = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -188,7 +195,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="mb-6 flex items-center justify-between border-b border-[#333] pb-4">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
-            <h2 className="text-lg font-bold text-white">Settings for {settings.title || 'Timer 1'}</h2>
+            <h2 className="text-lg font-bold text-white">Settings for {localSettings.title || 'Timer 1'}</h2>
           </div>
           <button onClick={onClose} className="text-xl text-[#8a8a8a] hover:text-white">✕</button>
         </div>
@@ -196,7 +203,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Title</label>
-            <input type="text" value={settings.title || 'Timer 1'} onChange={(e) => updateSettings({ title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
+            <input type="text" value={localSettings.title || 'Timer 1'} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
 
         </div>
@@ -210,16 +217,16 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
               <input 
                 type="text" 
-                value={formatHHMMSS(settings.targetDuration || 0)} 
-                onChange={(e) => updateSettings({ targetDuration: parseHHMMSS(e.target.value) })}
+                value={formatHHMMSS(localSettings.targetDuration || 0)} 
+                onChange={(e) => setLocalSettings({ ...localSettings, targetDuration: parseHHMMSS(e.target.value) })}
                 className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] font-mono text-white text-center focus:outline-none focus:border-[#555]"
               />
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
               <select 
-                value={settings.mode || 'countdown'} 
-                onChange={(e) => updateSettings({ mode: e.target.value as any })}
+                value={localSettings.mode || 'countdown'} 
+                onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
                 className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
               >
                 <option value="countdown">Countdown</option>
@@ -230,7 +237,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <button 
                 type="button"
                 onClick={() => {
-                  onApplyToAll?.({ targetDuration: settings.targetDuration, mode: settings.mode });
+                  updateSettings(localSettings);
+                  onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode });
                   onClose();
                 }}
                 className="text-[11px] text-[#4a9eff] hover:underline"
@@ -251,19 +259,19 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
           <div className="space-y-6 pt-2">
             <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#22c55e]" /><span className="w-16 text-[13px] text-[#8a8a8a]">Start</span><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#f08c00]" /><span className="w-16 text-[13px] text-white">Yellow</span><input type="text" value={formatMMSS(yellowSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = settings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); updateSettings({ segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#fa5252]" /><span className="w-16 text-[13px] text-white">Red</span><input type="text" value={formatMMSS(redSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = settings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); updateSettings({ segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#f08c00]" /><span className="w-16 text-[13px] text-white">Yellow</span><input type="text" value={formatMMSS(yellowSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = localSettings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); setLocalSettings({ ...localSettings, segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#fa5252]" /><span className="w-16 text-[13px] text-white">Red</span><input type="text" value={formatMMSS(redSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = localSettings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); setLocalSettings({ ...localSettings, segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
             <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#666]" /><span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span><select className="ml-[108px] w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
           </div>
         </div>
 
-        <div className="mt-12 flex gap-4"><button onClick={onClose} className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]">Cancel</button><button onClick={onClose} className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]">Confirm</button></div>
+        <div className="mt-12 flex gap-4"><button onClick={onClose} className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]">Cancel</button><button onClick={() => { onConfirm?.(localSettings); onClose(); }} className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]">Confirm</button></div>
       </div>
     </div>
   );
 };
 
-const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll }: TimerSettingsModalProps) => {
+const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -319,7 +327,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <button 
                 type="button"
                 onClick={() => {
-                  updateSettings(localSettings);
+                  onConfirm?.(localSettings);
                   onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode });
                   onClose();
                 }}
@@ -339,7 +347,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             Cancel
           </button>
           <button 
-            onClick={() => { updateSettings(localSettings); onClose(); }} 
+            onClick={() => { onConfirm?.(localSettings); onClose(); }} 
             className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-2.5 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]"
           >
             Save
@@ -410,7 +418,11 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
             const stored = localStorage.getItem(`timerSettings_${id}`);
-            if (stored) updateSettings(JSON.parse(stored));
+            if (stored) {
+              const newSettings = JSON.parse(stored);
+              updateSettings(newSettings);
+              setTime(newSettings.targetDuration);
+            }
             break;
         }
       }
@@ -514,8 +526,28 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           )}
         </div>
       </div>
-      <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} onApplyToAll={onApplyToAll} />
-      <QuickSettingsModal isOpen={isQuickSettingsOpen} onClose={() => setIsQuickSettingsOpen(false)} settings={settings} updateSettings={updateSettings} onApplyToAll={onApplyToAll} />
+      <TimerSettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        settings={settings} 
+        updateSettings={updateSettings} 
+        onApplyToAll={onApplyToAll}
+        onConfirm={(newSettings) => {
+          updateSettings(newSettings);
+          setTime(newSettings.targetDuration);
+        }}
+      />
+      <QuickSettingsModal 
+        isOpen={isQuickSettingsOpen} 
+        onClose={() => setIsQuickSettingsOpen(false)} 
+        settings={settings} 
+        updateSettings={updateSettings} 
+        onApplyToAll={onApplyToAll}
+        onConfirm={(newSettings) => {
+          updateSettings(newSettings);
+          setTime(newSettings.targetDuration);
+        }}
+      />
     </div>
   );
 };
