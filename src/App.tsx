@@ -290,7 +290,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen ? 50 : 1, position: 'relative' as const };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen ? 100 : 1, position: 'relative' as const };
 
   useEffect(() => {
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
