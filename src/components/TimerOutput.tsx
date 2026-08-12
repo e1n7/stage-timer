@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
 
 const CHANNEL_NAME = 'stage-timer-sync';
@@ -28,6 +28,9 @@ export const TimerOutput = () => {
     { threshold: 10, color: '#fa5252' }  // Danger: Red
   ]);
 
+  const startTimeRef = useRef<number | null>(null);
+  const initialSecondsRef = useRef<number>(DEFAULT_TIME);
+
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
     let timerInterval: number | null = null;
@@ -38,62 +41,77 @@ export const TimerOutput = () => {
         const data = event.data;
         if (!data || typeof data !== 'object') return;
         
-        if ('seconds' in data) setSeconds(data.seconds);
         if ('totalTime' in data) setTotalTime(data.totalTime);
-        if ('isRunning' in data) setIsRunning(data.isRunning);
         if ('segments' in data) setSegments(data.segments);
         if ('flash' in data) {
           setFlash(true);
           setTimeout(() => setFlash(false), 600);
         }
         if ('blackout' in data) setBlackout(data.blackout);
+
+        // Sync seconds and running state
+        if ('seconds' in data || 'isRunning' in data) {
+          const newSeconds = data.seconds ?? seconds;
+          const newIsRunning = data.isRunning ?? isRunning;
+          
+          setSeconds(newSeconds);
+          setIsRunning(newIsRunning);
+          
+          if (newIsRunning) {
+            startTimeRef.current = Date.now();
+            initialSecondsRef.current = newSeconds;
+          } else {
+            startTimeRef.current = null;
+          }
+        }
       };
       // Request current state
       channel.postMessage({ type: 'handshake' });
     } catch {
-      // Fallback to localStorage if BroadcastChannel fails
+      // Fallback to localStorage
       const stored = localStorage.getItem('timerState');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           if (typeof parsed.seconds === 'number') setSeconds(parsed.seconds);
           if (typeof parsed.totalTime === 'number') setTotalTime(parsed.totalTime);
-          if (typeof parsed.isRunning === 'boolean') setIsRunning(parsed.isRunning);
-        } catch { /* ignore */ }
-      }
-      const storedSettings = localStorage.getItem('timerSettings');
-      if (storedSettings) {
-        try {
-          const parsed = JSON.parse(storedSettings);
-          if (parsed.segments) setSegments(parsed.segments);
+          if (typeof parsed.isRunning === 'boolean') {
+            setIsRunning(parsed.isRunning);
+            if (parsed.isRunning) {
+              startTimeRef.current = Date.now();
+              initialSecondsRef.current = parsed.seconds;
+            }
+          }
         } catch { /* ignore */ }
       }
     }
 
-    if (isRunning) {
-      timerInterval = window.setInterval(() => {
-        setSeconds(prev => {
-          const next = prev - 0.1;
+    // High-precision local timer for smoothness and background reliability
+    timerInterval = window.setInterval(() => {
+      if (isRunning && startTimeRef.current !== null) {
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        setSeconds(() => {
+          const next = initialSecondsRef.current - elapsed;
           return next <= 0 ? 0 : Math.round(next * 10) / 10;
         });
-      }, 100);
-    }
+      }
+    }, 100);
 
     return () => {
       channel?.close();
       if (timerInterval) clearInterval(timerInterval);
     };
-  }, [isRunning]);
+  }, [isRunning]); // Re-run effect when running state changes to reset interval/refs
 
   // Determine text color based on thresholds
   const getTextColor = () => {
     if (flash) return '#ffffff';
-    if (seconds <= 0) return '#fa5252';
+    const rounded = Math.floor(seconds);
+    if (rounded <= 0) return '#fa5252';
     
-    // Find matching segment color
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
     for (const seg of sorted) {
-      if (seconds <= seg.threshold) return seg.color;
+      if (rounded <= seg.threshold) return seg.color;
     }
     return '#ffffff';
   };
@@ -111,11 +129,8 @@ export const TimerOutput = () => {
   return (
     <div
       className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]"
-      style={{
-        transition: 'background-color 0.6s ease',
-      }}
+      style={{ transition: 'background-color 0.6s ease' }}
     >
-      {/* Invisible Fullscreen Button */}
       <button 
         onClick={toggleFullscreen}
         className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0"
@@ -126,7 +141,6 @@ export const TimerOutput = () => {
         <div className="h-full w-full bg-black" />
       ) : (
         <div className="flex w-full flex-col items-center px-[8vw]">
-          {/* Timer display */}
           <div
             className="text-center font-bold tabular-nums tracking-tighter"
             style={{
@@ -140,7 +154,6 @@ export const TimerOutput = () => {
             {formatClock(seconds)}
           </div>
 
-          {/* Progress bar */}
           <div className="mt-[5vh] w-full">
             <ProgressBar 
               currentSeconds={seconds} 

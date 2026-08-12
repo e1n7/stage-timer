@@ -49,7 +49,6 @@ interface LogEntry {
 }
 
 export const useTimer = () => {
-  // Use regular state for seconds during active playback to avoid localStorage overhead every 100ms
   const [seconds, setSeconds] = useState<number>(() => {
     const saved = localStorage.getItem('timerSeconds');
     return saved ? JSON.parse(saved) : DEFAULT_TIME;
@@ -64,13 +63,16 @@ export const useTimer = () => {
 
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const initialSecondsRef = useRef<number>(DEFAULT_TIME);
+  
   const lastBeepsRef = useRef<{ halfTime: boolean; oneMinute: boolean; reach: boolean }>({
     halfTime: false,
     oneMinute: false,
     reach: false
   });
 
-  // Periodically save seconds to localStorage (less frequently than 100ms)
+  // Persist seconds to localStorage periodically
   useEffect(() => {
     const saveInterval = setInterval(() => {
       localStorage.setItem('timerSeconds', JSON.stringify(seconds));
@@ -99,9 +101,7 @@ export const useTimer = () => {
     const s = total % 60;
     const padNum = (num: number): string => num.toString().padStart(2, '0');
 
-    if (hours > 0) {
-      return `${hours}:${padNum(minutes)}:${padNum(s)}`;
-    }
+    if (hours > 0) return `${hours}:${padNum(minutes)}:${padNum(s)}`;
     return `${padNum(minutes)}:${padNum(s)}`;
   }, []);
 
@@ -115,9 +115,7 @@ export const useTimer = () => {
   }, []);
 
   const getDisplayValue = useCallback((): string => {
-    if (mode === 'time') {
-      return formatTimeOfDay(seconds);
-    }
+    if (mode === 'time') return formatTimeOfDay(seconds);
     return formatTime(seconds);
   }, [mode, seconds, formatTimeOfDay, formatTime]);
 
@@ -126,12 +124,8 @@ export const useTimer = () => {
     const rounded = Math.floor(currentSeconds);
 
     if (mode === 'countdown') {
-      if (rounded <= settings.warningThreshold && rounded > 0) {
-        newWarnings.push('warning');
-      }
-      if (rounded <= 0) {
-        newWarnings.push('danger');
-      }
+      if (rounded <= settings.warningThreshold && rounded > 0) newWarnings.push('warning');
+      if (rounded <= 0) newWarnings.push('danger');
     }
 
     // Beep logic
@@ -146,21 +140,16 @@ export const useTimer = () => {
         lastBeepsRef.current.reach = false;
       }
     }
-
     return newWarnings;
   }, [mode, settings.warningThreshold, settings.beepOnReach]);
 
   const getColorClass = useCallback((): string => {
     const rounded = Math.floor(seconds);
-    if (status === 'finished' || (mode === 'countdown' && rounded <= 0)) {
-      return '#fa5252';
-    }
+    if (status === 'finished' || (mode === 'countdown' && rounded <= 0)) return '#fa5252';
     if (mode === 'countdown') {
       const sortedSegments = [...settings.segments].sort((a, b) => a.threshold - b.threshold);
       for (const segment of sortedSegments) {
-        if (rounded <= segment.threshold) {
-          return segment.color;
-        }
+        if (rounded <= segment.threshold) return segment.color;
       }
     }
     return '#22c55e';
@@ -169,19 +158,23 @@ export const useTimer = () => {
   const [warningState, setWarningState] = useState<string[]>([]);
 
   const startTimer = useCallback(() => {
-    // If starting at 0, don't just stop immediately if it's meant to be a countdown from somewhere
-    // But if the user explicitly set it to 0, we'll allow it to run/stop based on mode
     setStatus('running');
     setIsRunning(true);
+    startTimeRef.current = Date.now();
+    initialSecondsRef.current = seconds;
 
     if (intervalRef.current) clearInterval(intervalRef.current);
     
     intervalRef.current = window.setInterval(() => {
-      setSeconds(prev => {
+      if (!startTimeRef.current) return;
+      
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      
+      setSeconds(() => {
         let newTime: number;
 
         if (mode === 'countdown') {
-          newTime = prev - 0.1;
+          newTime = initialSecondsRef.current - elapsed;
           if (newTime <= 0) {
             newTime = 0;
             setStatus('finished');
@@ -189,7 +182,7 @@ export const useTimer = () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
           }
         } else if (mode === 'countup') {
-          newTime = prev + 0.1;
+          newTime = initialSecondsRef.current + elapsed;
         } else {
           newTime = Date.now() / 1000;
         }
@@ -199,7 +192,7 @@ export const useTimer = () => {
         return Math.round(newTime * 10) / 10;
       });
     }, 100);
-  }, [mode, checkWarnings]);
+  }, [mode, checkWarnings, seconds]);
 
   const pauseTimer = useCallback(() => {
     setIsRunning(false);
@@ -208,6 +201,7 @@ export const useTimer = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    startTimeRef.current = null;
   }, []);
 
   const resetTimer = useCallback(() => {
@@ -218,16 +212,22 @@ export const useTimer = () => {
     setIsRunning(false);
     setStatus('idle');
     setWarningState([]);
-    setSeconds(mode === 'countdown' ? DEFAULT_TIME : 0);
+    startTimeRef.current = null;
+    const resetTime = mode === 'countdown' ? DEFAULT_TIME : 0;
+    setSeconds(resetTime);
+    localStorage.setItem('timerSeconds', JSON.stringify(resetTime));
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
   }, [mode]);
 
   const setTime = useCallback((newTime: number) => {
     setSeconds(newTime);
-    if (newTime > 0) {
-      setStatus('idle');
+    initialSecondsRef.current = newTime;
+    if (isRunning && startTimeRef.current) {
+      startTimeRef.current = Date.now();
     }
-  }, []);
+    if (newTime > 0) setStatus('idle');
+    localStorage.setItem('timerSeconds', JSON.stringify(newTime));
+  }, [isRunning]);
 
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -242,7 +242,6 @@ export const useTimer = () => {
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     const s = total % 60;
-
     if (hours > 0) return `${hours}h ${minutes}m ${s}s`;
     if (minutes > 0) return `${minutes}m ${s}s`;
     return `${s}s`;
