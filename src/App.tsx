@@ -132,6 +132,43 @@ const StartTimeInput = ({ value, onChange, selectedTimeZone }: { value: number |
   );
 };
 
+const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
+  const m = Math.floor(value / 60);
+  const s = value % 60;
+
+  const update = (newM: number, newS: number) => {
+    onChange(newM * 60 + newS);
+  };
+
+  const inputClass = "w-14 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[14px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex flex-col items-center gap-0.5">
+        <input 
+          type="number" 
+          value={pad(m)} 
+          onChange={(e) => update(Math.min(99, Math.max(0, parseInt(e.target.value) || 0)), s)}
+          onFocus={(e) => e.target.select()}
+          className={inputClass}
+        />
+        <span className="text-[8px] uppercase tracking-tighter text-[#555]">Min</span>
+      </div>
+      <span className="text-sm font-bold text-[#444] pb-3">:</span>
+      <div className="flex flex-col items-center gap-0.5">
+        <input 
+          type="number" 
+          value={pad(s)} 
+          onChange={(e) => update(m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+          onFocus={(e) => e.target.select()}
+          className={inputClass}
+        />
+        <span className="text-[8px] uppercase tracking-tighter text-[#555]">Sec</span>
+      </div>
+    </div>
+  );
+};
+
 const formatClock = (seconds: number) => {
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
@@ -420,29 +457,23 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex items-center gap-4">
               <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
               <span className="w-16 text-[13px] text-white">Yellow</span>
-              <input 
-                type="text" 
-                value={formatMMSS(yellowSegment.threshold)} 
-                onChange={(e) => { 
-                  const val = parseMMSS(e.target.value); 
+              <ThresholdInput 
+                value={yellowSegment.threshold} 
+                onChange={(val) => {
                   const newSegments = localSettings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); 
                   setLocalSettings({ ...localSettings, segments: newSegments }); 
-                }} 
-                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" 
+                }}
               />
             </div>
             <div className="flex items-center gap-4">
               <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
               <span className="w-16 text-[13px] text-white">Red</span>
-              <input 
-                type="text" 
-                value={formatMMSS(redSegment.threshold)} 
-                onChange={(e) => { 
-                  const val = parseMMSS(e.target.value); 
+              <ThresholdInput 
+                value={redSegment.threshold} 
+                onChange={(val) => {
                   const newSegments = localSettings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); 
                   setLocalSettings({ ...localSettings, segments: newSegments }); 
-                }} 
-                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" 
+                }}
               />
             </div>
             <div className="flex items-center gap-4">
