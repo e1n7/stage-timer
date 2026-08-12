@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: TimerSettings = {
   warningThreshold: 60,
   dangerThreshold: 0,
   historyLimit: 10,
+  targetDuration: 600, // 10 minutes default
   segments: [
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -26,7 +27,7 @@ export interface ProgressSegment {
   color: string;
 }
 
-interface TimerSettings {
+export interface TimerSettings {
   title: string;
   speaker: string;
   notes: string;
@@ -37,6 +38,7 @@ interface TimerSettings {
   warningThreshold: number;
   dangerThreshold: number;
   historyLimit: number;
+  targetDuration: number;
   segments: ProgressSegment[];
 }
 
@@ -205,13 +207,13 @@ export const useTimer = (id: string = 'default') => {
   const resetTimer = useCallback(() => {
     setSyncState({
       startTime: null,
-      initialSeconds: DEFAULT_TIME,
+      initialSeconds: settings.targetDuration,
       isRunning: false,
       mode: 'countdown',
       lastUpdated: Date.now()
     });
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
-  }, []);
+  }, [settings.targetDuration]);
 
   const setTime = useCallback((newTime: number) => {
     setSyncState(prev => ({
