@@ -173,21 +173,21 @@ export const useTimer = () => {
     return newWarnings;
   }, [mode, settings.warningThreshold, settings.dangerThreshold, settings.beepOnReach, settings.beepOnHalfTime, settings.beepOnOneMinute]);
 
-  // Get color class based on time and mode
+  // Get color based on time and mode
   const getColorClass = useCallback((): string => {
     if (status === 'finished' || (mode === 'countdown' && seconds <= 0)) {
-      return 'danger';
+      return '#fa5252'; // Danger Red
     }
     if (mode === 'countdown') {
       // Find the first segment that matches the current time
       const sortedSegments = [...settings.segments].sort((a, b) => a.threshold - b.threshold);
       for (const segment of sortedSegments) {
         if (seconds <= segment.threshold) {
-          return segment.color === '#fa5252' ? 'danger' : 'warning';
+          return segment.color;
         }
       }
     }
-    return 'safe';
+    return '#22c55e'; // Safe Green
   }, [mode, seconds, status, settings.segments]);
 
   const [warningState, setWarningState] = useState<string[]>([]);

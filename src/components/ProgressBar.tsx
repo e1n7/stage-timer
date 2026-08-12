@@ -13,6 +13,12 @@ interface ProgressBarProps {
   height?: string;
 }
 
+/**
+ * A flexible progress bar that shows colored segments based on time thresholds.
+ * The bar shrinks from left to right as time progresses (for countdowns),
+ * meaning the "safe" (green) part disappears first, then "warning" (orange),
+ * and finally "danger" (red).
+ */
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentSeconds,
   totalSeconds,
@@ -20,88 +26,68 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   className = '',
   height = 'h-4',
 }) => {
+  const safeTotal = Math.max(totalSeconds, 1);
+  const progressPercent = (Math.max(0, currentSeconds) / safeTotal) * 100;
+
   // Sort segments by threshold descending (e.g., 60s, then 10s)
   const sortedSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
-  
-  const progressPercent = (currentSeconds / Math.max(totalSeconds, 1)) * 100;
 
-  // We want to render a bar that is divided into segments.
-  // The total width is totalSeconds.
-  // Segment 1 (Safe): from totalSeconds down to sortedSegments[0].threshold
-  // Segment 2: from sortedSegments[0].threshold down to sortedSegments[1].threshold
+  // We define the zones from 0 to totalSeconds
+  // Zone 1: 0 to T_last (e.g., 0 to 10s) -> Color_last
+  // Zone 2: T_last to T_prev (e.g., 10s to 60s) -> Color_prev
   // ...
-  // Last Segment: from sortedSegments[last].threshold down to 0
+  // Zone N: T_first to Total (e.g., 60s to 300s) -> Default Green
+
+  const zones: { width: number; color: string }[] = [];
+  let lastThreshold = 0;
+
+  // Add segments from smallest threshold to largest
+  const ascendingSegments = [...segments].sort((a, b) => a.threshold - b.threshold);
   
-  const barSegments = [];
-  let currentTop = totalSeconds;
-
-  // Safe segment (Green)
-  const firstThreshold = sortedSegments.length > 0 ? sortedSegments[0].threshold : 0;
-  if (currentTop > firstThreshold) {
-    barSegments.push({
-      width: ((currentTop - firstThreshold) / totalSeconds) * 100,
-      color: '#40c057', // Green
-      startPercent: (firstThreshold / totalSeconds) * 100,
-      endPercent: (currentTop / totalSeconds) * 100
-    });
-    currentTop = firstThreshold;
-  }
-
-  // Warning/Danger segments
-  for (let i = 0; i < sortedSegments.length; i++) {
-    const threshold = sortedSegments[i].threshold;
-    const nextThreshold = i + 1 < sortedSegments.length ? sortedSegments[i + 1].threshold : 0;
-    
-    if (threshold > nextThreshold) {
-      barSegments.push({
-        width: ((threshold - nextThreshold) / totalSeconds) * 100,
-        color: sortedSegments[i].color,
-        startPercent: (nextThreshold / totalSeconds) * 100,
-        endPercent: (threshold / totalSeconds) * 100
+  for (const seg of ascendingSegments) {
+    if (seg.threshold > lastThreshold) {
+      zones.push({
+        width: ((seg.threshold - lastThreshold) / safeTotal) * 100,
+        color: seg.color
       });
+      lastThreshold = seg.threshold;
     }
-    currentTop = nextThreshold;
   }
 
-  // If there's still space down to 0 (e.g. if the last threshold wasn't 0)
-  if (currentTop > 0) {
-      // This part would normally be covered by the last segment's color if threshold was 0.
-      // But if not, we can default it to the last segment's color or a default red.
-      const lastColor = sortedSegments.length > 0 ? sortedSegments[sortedSegments.length - 1].color : '#fa5252';
-      barSegments.push({
-          width: (currentTop / totalSeconds) * 100,
-          color: lastColor,
-          startPercent: 0,
-          endPercent: (currentTop / totalSeconds) * 100
-      });
+  // Add the remaining "safe" zone if any
+  if (lastThreshold < safeTotal) {
+    zones.push({
+      width: ((safeTotal - lastThreshold) / safeTotal) * 100,
+      color: '#22c55e' // Default Green
+    });
   }
+
+  // Reverse zones to display from Green (left) to Red (right)
+  // Green is the largest threshold to Total
+  // Red is 0 to smallest threshold
+  const displayZones = [...zones].reverse();
 
   return (
-    <div className={`w-full overflow-hidden rounded-sm bg-[#1c1c1c] ${height} ${className}`}>
-      <div className="relative h-full w-full flex">
-        {barSegments.map((seg, i) => {
-          // How much of this segment is "active" (remaining time)
-          // progressPercent is 0 to 100
-          const activeWidth = Math.min(seg.width, Math.max(0, progressPercent - seg.startPercent));
-          const activePercent = (activeWidth / seg.width) * 100;
-
-          return (
-            <div 
-              key={i} 
-              style={{ width: `${seg.width}%` }} 
-              className="h-full bg-[#2a2a2a] relative"
-            >
-              <div 
-                className="h-full transition-all duration-300"
-                style={{ 
-                  width: `${activePercent}%`,
-                  backgroundColor: seg.color 
-                }}
-              />
-            </div>
-          );
-        })}
+    <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
+      {/* The full timeline with all colors */}
+      <div className="flex h-full w-full">
+        {displayZones.map((zone, i) => (
+          <div
+            key={i}
+            style={{ width: `${zone.width}%`, backgroundColor: zone.color }}
+            className="h-full"
+          />
+        ))}
       </div>
+
+      {/* The mask that hides the "elapsed" time from the left */}
+      <div 
+        className="absolute inset-0 bg-[#141414] transition-all duration-1000 ease-linear"
+        style={{ 
+          width: `${100 - progressPercent}%`,
+          left: 0
+        }}
+      />
     </div>
   );
 };

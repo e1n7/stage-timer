@@ -24,6 +24,8 @@ function App() {
     startTimer,
     pauseTimer,
     resetTimer,
+    settings,
+    updateSettings,
   } = useTimer();
 
   const currentTime = formatClock(seconds);
@@ -247,6 +249,65 @@ function App() {
             <span>Live Connections 1/3</span>
             <span>›</span>
           </button>
+
+          <div className="mt-4 rounded-md border border-[#333] bg-[#141414] p-3">
+            <div className="mb-3 text-[14px] font-bold text-white">Progress Bar Segments</div>
+            <div className="space-y-2">
+              {settings.segments.map((seg, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-[#8a8a8a] uppercase block mb-1">Threshold (s)</label>
+                    <input 
+                      type="number" 
+                      value={seg.threshold} 
+                      onChange={(e) => {
+                        const newSegments = [...settings.segments];
+                        newSegments[i] = { ...seg, threshold: parseInt(e.target.value) || 0 };
+                        updateSettings({ segments: newSegments });
+                      }}
+                      className="w-full bg-[#2d2d2d] border border-[#444] rounded px-2 py-1 text-[12px] text-white focus:outline-none focus:border-[#555]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[#8a8a8a] uppercase block mb-1">Color</label>
+                    <input 
+                      type="color" 
+                      value={seg.color} 
+                      onChange={(e) => {
+                        const newSegments = [...settings.segments];
+                        newSegments[i] = { ...seg, color: e.target.value };
+                        updateSettings({ segments: newSegments });
+                      }}
+                      className="w-10 h-[26px] bg-[#2d2d2d] border border-[#444] rounded p-0 cursor-pointer"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const newSegments = settings.segments.filter((_, index) => index !== i);
+                      updateSettings({ segments: newSegments });
+                    }}
+                    className="mt-4 text-[#fa5252] hover:text-[#ff6b6b] p-1"
+                    title="Remove segment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button 
+              onClick={() => {
+                const minThreshold = settings.segments.length > 0 
+                  ? Math.min(...settings.segments.map(s => s.threshold)) 
+                  : 60;
+                updateSettings({ 
+                  segments: [...settings.segments, { threshold: Math.max(0, minThreshold - 10), color: '#fcc419' }] 
+                });
+              }}
+              className="mt-3 w-full rounded border border-[#444] bg-[#2d2d2d] py-1 text-[12px] text-[#8a8a8a] hover:bg-[#383838] hover:text-white transition-colors"
+            >
+              + Add Segment
+            </button>
+          </div>
         </aside>
 
         {/* Center: Timers panel */}

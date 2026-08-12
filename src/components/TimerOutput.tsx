@@ -10,6 +10,7 @@ const formatClock = (seconds: number) => {
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
+  
   if (hours > 0) {
     return `${hours}:${pad(minutes)}:${pad(secs)}`;
   }
@@ -23,8 +24,8 @@ export const TimerOutput = () => {
   const [flash, setFlash] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
-    { threshold: 60, color: '#f08c00' },
-    { threshold: 10, color: '#fa5252' }
+    { threshold: 60, color: '#f08c00' }, // Warning: Orange
+    { threshold: 10, color: '#fa5252' }  // Danger: Red
   ]);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export const TimerOutput = () => {
       channel.onmessage = (event) => {
         const data = event.data;
         if (!data || typeof data !== 'object') return;
+        
         if ('seconds' in data) setSeconds(data.seconds);
         if ('totalTime' in data) setTotalTime(data.totalTime);
         if ('isRunning' in data) setIsRunning(data.isRunning);
@@ -46,8 +48,10 @@ export const TimerOutput = () => {
         }
         if ('blackout' in data) setBlackout(data.blackout);
       };
+      // Request current state
       channel.postMessage({ type: 'handshake' });
     } catch {
+      // Fallback to localStorage if BroadcastChannel fails
       const stored = localStorage.getItem('timerState');
       if (stored) {
         try {
@@ -59,10 +63,10 @@ export const TimerOutput = () => {
       }
       const storedSettings = localStorage.getItem('timerSettings');
       if (storedSettings) {
-          try {
-              const parsed = JSON.parse(storedSettings);
-              if (parsed.segments) setSegments(parsed.segments);
-          } catch { /* ignore */ }
+        try {
+          const parsed = JSON.parse(storedSettings);
+          if (parsed.segments) setSegments(parsed.segments);
+        } catch { /* ignore */ }
       }
     }
 
@@ -78,45 +82,52 @@ export const TimerOutput = () => {
     };
   }, [isRunning]);
 
-  const isDanger = seconds <= 0;
-  const textColor = isDanger ? '#fa5252' : '#ffffff';
+  // Determine text color based on thresholds
+  const getTextColor = () => {
+    if (flash) return '#ffffff';
+    if (seconds <= 0) return '#fa5252';
+    
+    // Find matching segment color
+    const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
+    for (const seg of sorted) {
+      if (seconds <= seg.threshold) return seg.color;
+    }
+    return '#ffffff';
+  };
 
   return (
     <div
-      className="flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#141414]"
+      className="flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]"
       style={{
         transition: 'background-color 0.6s ease',
       }}
     >
       {blackout ? (
-        <div className="h-full w-full bg-[#000000]" />
+        <div className="h-full w-full bg-black" />
       ) : (
-        <div className="flex flex-col items-center w-full px-[5vw]">
-          {/* Timer display on top */}
+        <div className="flex w-full flex-col items-center px-[8vw]">
+          {/* Timer display */}
           <div
-            key={flash ? 'flash' : 'normal'}
-            className="digit text-center select-none font-bold"
+            className="text-center font-bold tabular-nums tracking-tighter"
             style={{
-              color: flash ? '#ffffff' : textColor,
-              fontSize: 'min(45vw, 60vh)',
-              lineHeight: 1.1,
-              fontFamily: "Inter, system-ui, -apple-system, sans-serif",
-              fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.02em',
-              transition: flash ? 'none' : 'color 0.6s ease',
+              color: getTextColor(),
+              fontSize: 'min(35vw, 50vh)',
+              lineHeight: 0.9,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              transition: flash ? 'none' : 'color 0.3s ease',
             }}
           >
             {formatClock(seconds)}
           </div>
 
-          {/* Progress bar below the timer */}
-          <div className="w-full mt-4">
+          {/* Progress bar */}
+          <div className="mt-[5vh] w-full">
             <ProgressBar 
               currentSeconds={seconds} 
               totalSeconds={totalTime} 
               segments={segments}
-              height="h-[6vh]"
-              className="rounded-lg border-none"
+              height="h-[4vh]"
+              className="rounded-md"
             />
           </div>
         </div>
