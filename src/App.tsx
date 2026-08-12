@@ -1405,11 +1405,11 @@ function App() {
           <div className="mt-4 grid grid-cols-2 gap-4 text-center">
             <div className="flex flex-col items-center">
               <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span>
-              <span className={`mt-1 text-[17px] font-bold tabular-nums ${displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? 'text-[#fa5252]' : 'text-white'}`}>{activeTimerId ? cueFinish : '--:--'}</span>
+              <span className="mt-1 text-[17px] font-bold tabular-nums text-white">{activeTimerId ? cueFinish : '--:--'}</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span>
-              <span className={`mt-1 text-[17px] font-bold tabular-nums ${overUnder.startsWith('+') ? 'text-[#fa5252]' : 'text-[#22c55e]'}`}>{activeTimerId ? overUnder : '--:--'}</span>
+              <span className="mt-1 text-[17px] font-bold tabular-nums text-white">{activeTimerId ? overUnder : '--:--'}</span>
             </div>
           </div>
         </aside>
