@@ -245,6 +245,9 @@ const IconDownload = ({ className = "", size = 14 }: IconProps) => (
 const IconUpload = ({ className = "", size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
+const IconSave = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+);
 const IconScreen = ({ className = "", size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
 );
@@ -849,6 +852,8 @@ interface Room {
   timerIds: string[];
   activeTimerId: string;
   messages: Array<{ id: string; text: string; color: string; }>;
+  timerSettings?: Record<string, any>;
+  activeRoomSettings?: any;
 }
 
 function App() {
@@ -1059,12 +1064,42 @@ function App() {
   };
 
   const loadRoom = useCallback((room: Room) => {
+    // Remove old per-timer settings for timers no longer in this room
+    timerIds.forEach(id => {
+      if (!(room.timerIds || []).includes(id)) {
+        localStorage.removeItem(`timerSettings_${id}`);
+        localStorage.removeItem(`timerSync_${id}`);
+        localStorage.removeItem(`timerSeconds_${id}`);
+      }
+    });
+    // Apply saved per-timer settings
+    if (room.timerSettings) {
+      Object.keys(room.timerSettings).forEach(id => {
+        localStorage.setItem(`timerSettings_${id}`, JSON.stringify(room.timerSettings![id]));
+      });
+    }
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
     setMessages(room.messages || [{ id: '1', text: '', color: '#ffffff' }]);
     setIsRoomMenuOpen(false);
-  }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
+  }, [timerIds, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
+
+  const saveRoom = useCallback(() => {
+    const roomName = currentRoomName.trim() || 'Unnamed';
+    const timerSettings: Record<string, any> = {};
+    timerIds.forEach(id => {
+      const stored = localStorage.getItem(`timerSettings_${id}`);
+      if (stored) timerSettings[id] = JSON.parse(stored);
+    });
+    setRooms(prev => {
+      const existingIndex = prev.findIndex(r => r.name === roomName);
+      const roomData: Room = { id: existingIndex >= 0 ? prev[existingIndex].id : Date.now().toString(), name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
+      const next = existingIndex >= 0 ? [...prev] : [...prev];
+      if (existingIndex >= 0) next[existingIndex] = roomData; else next.push(roomData);
+      return next;
+    });
+  }, [currentRoomName, timerIds, activeTimerId, messages, setRooms]);
 
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
     try {
@@ -1193,6 +1228,7 @@ function App() {
       <header className="flex items-center justify-between px-3 py-2 border-b border-[#333]">
         <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-64" placeholder="Unnamed" />
         <div className="flex items-center gap-2">
+          <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
           <div className="relative">
             <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
             {isRoomMenuOpen && (
@@ -1210,7 +1246,9 @@ function App() {
           </div>
           <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { setRooms(imported.rooms); if (imported.activeRoomName) { const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName); if (activeRoom) loadRoom(activeRoom); } } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
-          <button type="button" onClick={() => { const exportData = { rooms: [...rooms, { id: Date.now().toString(), name: currentRoomName, timerIds, activeTimerId, messages }], activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+          <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
+            timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
+            const exportData = { rooms: [...rooms, { id: Date.now().toString(), name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings }], activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
