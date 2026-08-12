@@ -23,6 +23,55 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
+const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
+  const h = Math.floor(value / 3600);
+  const m = Math.floor((value % 3600) / 60);
+  const s = value % 60;
+
+  const update = (newH: number, newM: number, newS: number) => {
+    onChange(newH * 3600 + newM * 60 + newS);
+  };
+
+  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center gap-1">
+        <input 
+          type="number" 
+          value={pad(h)} 
+          onChange={(e) => update(Math.max(0, parseInt(e.target.value) || 0), m, s)}
+          onFocus={(e) => e.target.select()}
+          className={inputClass}
+        />
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
+      </div>
+      <span className="text-xl font-bold text-[#444] pb-5">:</span>
+      <div className="flex flex-col items-center gap-1">
+        <input 
+          type="number" 
+          value={pad(m)} 
+          onChange={(e) => update(h, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)), s)}
+          onFocus={(e) => e.target.select()}
+          className={inputClass}
+        />
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes</span>
+      </div>
+      <span className="text-xl font-bold text-[#444] pb-5">:</span>
+      <div className="flex flex-col items-center gap-1">
+        <input 
+          type="number" 
+          value={pad(s)} 
+          onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+          onFocus={(e) => e.target.select()}
+          className={inputClass}
+        />
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Seconds</span>
+      </div>
+    </div>
+  );
+};
+
 const formatClock = (seconds: number) => {
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
@@ -213,13 +262,11 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="grid grid-cols-1 gap-12">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Duration</h3>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-6 py-2">
               <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
-              <input 
-                type="text" 
-                value={formatHHMMSS(localSettings.targetDuration || 0)} 
-                onChange={(e) => setLocalSettings({ ...localSettings, targetDuration: parseHHMMSS(e.target.value) })}
-                className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] font-mono text-white text-center focus:outline-none focus:border-[#555]"
+              <DurationInput 
+                value={localSettings.targetDuration || 0} 
+                onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
               />
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -301,13 +348,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           <h3 className="text-[16px] font-bold text-white mb-6">Duration</h3>
           
           <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-6 py-2">
               <span className="text-[13px] text-[#8a8a8a]">Duration ⓘ</span>
-              <input 
-                type="text" 
-                value={formatHHMMSS(localSettings.targetDuration || 0)} 
-                onChange={(e) => setLocalSettings({ ...localSettings, targetDuration: parseHHMMSS(e.target.value) })}
-                className="flex-1 rounded border border-[#333] bg-[#141414] px-4 py-2.5 text-[16px] font-mono text-white text-center focus:outline-none focus:border-[#555]"
+              <DurationInput 
+                value={localSettings.targetDuration || 0} 
+                onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
               />
             </div>
             
