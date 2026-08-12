@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS: TimerSettings = {
   warningThreshold: 60,
   dangerThreshold: 0,
   historyLimit: 10,
-  targetDuration: 600, // 10 minutes default
+  targetDuration: 0, // Default to 0:00 as requested
   segments: [
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
