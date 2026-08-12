@@ -197,15 +197,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
             <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Title</label>
             <input type="text" value={settings.title || 'Timer 1'} onChange={(e) => updateSettings({ title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
-          <div className="flex gap-4">
-            <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Speaker</label>
-            <input type="text" placeholder="Speaker (optional)" value={settings.speaker || ''} onChange={(e) => updateSettings({ speaker: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
-          </div>
-          <div className="flex gap-4">
-            <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Notes</label>
-            <textarea placeholder="Notes (optional)" value={settings.notes || ''} onChange={(e) => updateSettings({ notes: e.target.value })} className="flex-1 h-24 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none resize-none" />
-          </div>
-          <div className="flex gap-4"><label className="w-20 text-[13px] text-[#8a8a8a] pt-1">Labels</label><button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-white hover:bg-[#383838]">+ Add label</button></div>
+
         </div>
 
         <div className="my-8 border-t border-[#333]" />
