@@ -140,11 +140,11 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
     onChange(newM * 60 + newS);
   };
 
-  const inputClass = "w-14 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[14px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[16px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col items-center gap-0.5">
+    <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
           value={pad(m)} 
@@ -152,10 +152,10 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
-        <span className="text-[8px] uppercase tracking-tighter text-[#555]">Min</span>
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Min</span>
       </div>
-      <span className="text-sm font-bold text-[#444] pb-3">:</span>
-      <div className="flex flex-col items-center gap-0.5">
+      <span className="text-xl font-bold text-[#444] pb-5">:</span>
+      <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
           value={pad(s)} 
@@ -163,7 +163,7 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
-        <span className="text-[8px] uppercase tracking-tighter text-[#555]">Sec</span>
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Sec</span>
       </div>
     </div>
   );
@@ -450,11 +450,11 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
           <div className="space-y-6 pt-2">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#22c55e]" />
               <span className="w-16 text-[13px] text-[#8a8a8a]">Start</span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
               <span className="w-16 text-[13px] text-white">Yellow</span>
               <ThresholdInput 
@@ -465,7 +465,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 }}
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
               <span className="w-16 text-[13px] text-white">Red</span>
               <ThresholdInput 
@@ -476,7 +476,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 }}
               />
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 py-2">
               <div className="h-3 w-3 rounded-full bg-[#666]" />
               <span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span>
             </div>
