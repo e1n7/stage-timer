@@ -726,9 +726,8 @@ function App() {
                   <span 
                     className="font-mono text-[15px]" 
                     style={{ 
-                      color: getDashboardTextColor(), 
-                      opacity: (isFlashing && !isFlash) ? 0 : 1,
-                      textShadow: isFlash ? `0 0 10px ${getDashboardGlowColor()}` : 'none'
+                      color: '#ffffff', 
+                      textShadow: '0 0 4px rgba(255, 255, 255, 0.3)'
                     }}
                   >
                     {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
