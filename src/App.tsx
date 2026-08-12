@@ -659,7 +659,16 @@ function App() {
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
-            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-opacity duration-75" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : '#ffffff', opacity: isFlash ? 0 : 1 }}>{currentTime}</div>
+            <div 
+              className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-all duration-75" 
+              style={{ 
+                color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : '#ffffff', 
+                opacity: isFlash ? 0 : 1,
+                textShadow: activeTimerId ? `0 0 20px ${displaySeconds <= 0 ? 'rgba(250, 82, 82, 0.4)' : 'rgba(255, 255, 255, 0.3)'}` : 'none'
+              }}
+            >
+              {currentTime}
+            </div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
           </div>
 
@@ -669,7 +678,14 @@ function App() {
                 <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
-                  <span className="font-mono text-[15px]" style={{ color: '#fff', opacity: isFlash ? 0 : 1 }}>
+                  <span 
+                    className="font-mono text-[15px]" 
+                    style={{ 
+                      color: '#fff', 
+                      opacity: isFlash ? 0 : 1,
+                      textShadow: '0 0 8px rgba(255, 255, 255, 0.5)'
+                    }}
+                  >
                     {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>

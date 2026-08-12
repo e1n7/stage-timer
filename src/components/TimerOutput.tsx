@@ -150,6 +150,15 @@ export const TimerOutput = () => {
     return '#ffffff';
   };
 
+  const getGlowColor = () => {
+    const color = getTextColor();
+    if (color === '#ffffff') return 'rgba(255, 255, 255, 0.3)';
+    if (color === '#fa5252') return 'rgba(250, 82, 82, 0.4)';
+    if (color === '#f08c00') return 'rgba(240, 140, 0, 0.4)';
+    if (color === '#22c55e') return 'rgba(34, 197, 94, 0.4)';
+    return 'transparent';
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -175,7 +184,8 @@ export const TimerOutput = () => {
               fontSize: 'min(35vw, 50vh)', 
               lineHeight: 0.9, 
               fontFamily: 'Inter, system-ui, sans-serif',
-              opacity: flash ? 0 : 1
+              opacity: flash ? 0 : 1,
+              textShadow: `0 0 40px ${getGlowColor()}`
             }}
           >
             {formatClock(seconds)}
