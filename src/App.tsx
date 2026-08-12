@@ -40,6 +40,30 @@ const IconLock = ({ className = "" }) => (
 const IconExternalLink = ({ className = "" }) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
 );
+const IconClock = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+);
+const IconCalendar = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+);
+const IconSpeaker = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+);
+const IconFlash = ({ className = "" }) => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+);
+const IconCircle = () => (
+  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+);
+const IconMore = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+);
+const IconMaximize = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+);
+const IconSquare = () => (
+  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+);
 
 interface TimeAdjustMenuProps {
   direction: 'decrease' | 'increase';
@@ -156,14 +180,14 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               <span className="text-[12px] text-[#8a8a8a]">Time ⓘ</span>
               <div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]">
                 <span>Select time</span>
-                <span>🕒</span>
+                <IconClock />
               </div>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-[#8a8a8a]">Date ⓘ</span>
               <div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]">
                 <span>Select date</span>
-                <span>📅</span>
+                <IconCalendar />
               </div>
             </div>
             <p className="text-[11px] text-[#666]">No start time given. Triggered manually.</p>
@@ -223,7 +247,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>None</option>
               </select>
-              <button className="text-[#8a8a8a]">🔊</button>
+              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
               <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>Flash ×0 ▾</option>
               </select>
@@ -248,7 +272,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>None</option>
               </select>
-              <button className="text-[#8a8a8a]">🔊</button>
+              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
               <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>Flash ×0 ▾</option>
               </select>
@@ -273,7 +297,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>None</option>
               </select>
-              <button className="text-[#8a8a8a]">🔊</button>
+              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
               <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>Flash ×0 ▾</option>
               </select>
@@ -286,7 +310,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               <select className="ml-[108px] w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>None</option>
               </select>
-              <button className="text-[#8a8a8a]">🔊</button>
+              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
               <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
                 <option>Flash ×0 ▾</option>
               </select>
@@ -394,7 +418,6 @@ function App() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Dashboard</h2>
             <div className="flex items-center gap-2">
-              <button type="button" className="flex h-8 w-12 items-center justify-center rounded-md bg-[#2d2d2d] text-white"><IconChevronDown /></button>
               <button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconExternalLink className="mr-1" /> Output Links</button>
             </div>
           </div>
@@ -464,7 +487,7 @@ function App() {
 
           <div className="mt-6 flex flex-col items-center">
             <div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]">
-              <span className="text-[#8a8a8a]">🕒</span>
+              <IconClock />
               <span>{wallClock}</span>
               <span className="text-[#8a8a8a]">{timeZone}</span>
             </div>
@@ -480,8 +503,6 @@ function App() {
               <span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span>
             </div>
           </div>
-
-
         </aside>
 
         {/* Center: Timers panel */}
@@ -492,9 +513,9 @@ function App() {
               <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white">● Blackout</button>
-              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white">⚡ Flash</button>
-              <button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white">⋯</button>
+              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white"><IconCircle /> Blackout</button>
+              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white"><IconFlash /> Flash</button>
+              <button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white"><IconMore /></button>
             </div>
           </div>
 
@@ -535,7 +556,7 @@ function App() {
               <h2 className="text-[17px] font-bold text-white">Messages</h2>
               <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
             </div>
-            <button type="button" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]">⚡ Flash</button>
+            <button type="button" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
           </div>
           
           <div className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
@@ -552,7 +573,7 @@ function App() {
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button>
-              <button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white">⛶</button>
+              <button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button>
             </div>
           </div>
 
@@ -574,7 +595,7 @@ function App() {
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
         <div className="flex items-center gap-4">
           <span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span>
-          <span>■ 395 ms</span>
+          <span><IconSquare /> 395 ms</span>
         </div>
         <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
           <span>0:00</span>
