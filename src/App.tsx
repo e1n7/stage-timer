@@ -536,13 +536,6 @@ function App() {
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
-            <div className="mt-4 flex items-center gap-4 text-[13px]"><span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span><div className="flex items-center gap-2 text-white"><div className="h-2 w-2 rounded-full bg-[#444]"></div><span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}{activeTimerId ? `.${Math.floor((displaySeconds % 1) * 10)}` : ''}</span></div></div>
-            {activeTimerId && (
-              <>
-                <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]"><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.settings.targetDuration || 0)}</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div></div>
-                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
-              </>
-            )}
           </div>
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
