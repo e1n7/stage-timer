@@ -1357,7 +1357,7 @@ function App() {
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
               <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
-              {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-1"><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
+              {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full left-0 z-50 mb-1"><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
             <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
@@ -1366,7 +1366,7 @@ function App() {
             <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative">
               <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
-              {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()} className="absolute top-full right-0 z-50 mt-1"><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
+              {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full right-0 z-50 mb-1"><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
           </div>
           <div className="mt-6 flex flex-col items-center">
