@@ -31,6 +31,7 @@ const formatClock = (seconds: number) => {
 };
 
 const CHANNEL_NAME = 'stage-timer-sync';
+const CONTROL_CHANNEL = 'stage-timer-controls';
 
 // SVG Icons
 const IconChevronDown = () => (
@@ -194,6 +195,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync }: TimerRowProps) =>
     startTimer,
     pauseTimer,
     resetTimer,
+    setTime,
     settings,
     updateSettings,
     syncState,
@@ -208,6 +210,23 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync }: TimerRowProps) =>
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 10 : 1, position: 'relative' as const };
 
+  // Listen for control channel messages
+  useEffect(() => {
+    const channel = new BroadcastChannel(CONTROL_CHANNEL);
+    channel.onmessage = (event) => {
+      const { targetId, command, payload } = event.data;
+      if (targetId === id) {
+        switch (command) {
+          case 'START': startTimer(); break;
+          case 'PAUSE': pauseTimer(); break;
+          case 'RESET': resetTimer(); break;
+          case 'ADJUST': setTime(Math.max(0, seconds + payload)); break;
+        }
+      }
+    };
+    return () => channel.close();
+  }, [id, startTimer, pauseTimer, resetTimer, setTime, seconds]);
+
   useEffect(() => {
     if (isActive) {
       onSync({ seconds, isRunning, settings, syncState, DEFAULT_TIME });
@@ -221,10 +240,10 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync }: TimerRowProps) =>
       <div className="mx-auto text-center text-[32px] font-bold tracking-tight tabular-nums">{currentTime}</div>
       <div className="text-[17px] font-bold truncate max-w-[150px]">{settings.title || `Timer ${index + 1}`}</div>
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={resetTimer} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipBack /></button>
+        <button type="button" onClick={() => setTime(Math.max(0, seconds - 5))} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipBack /></button>
         <button type="button" onClick={() => setIsSettingsOpen(true)} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSettings /></button>
         <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-10 w-14 items-center justify-center rounded bg-[#228b3a] hover:bg-[#2aa346] shadow-lg transition-colors">{isRunning ? <IconPause /> : <IconPlay />}</button>
-        <button type="button" className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipForward /></button>
+        <button type="button" onClick={() => setTime(seconds + 5)} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipForward /></button>
       </div>
       <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} />
     </div>
@@ -289,7 +308,14 @@ function App() {
     } catch { /* ignore */ }
   }, []);
 
-  // Real-time sync for active timer
+  const sendControl = useCallback((command: string, payload?: any) => {
+    try {
+      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+      channel.postMessage({ targetId: activeTimerId, command, payload });
+      channel.close();
+    } catch { /* ignore */ }
+  }, [activeTimerId]);
+
   useEffect(() => {
     if (activeTimerState) {
       syncOutput({ 
@@ -364,7 +390,15 @@ function App() {
             <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]"><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.DEFAULT_TIME || 0)}</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div></div>
             <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
           </div>
-          <div className="mt-4 grid grid-cols-7 gap-2"><button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className="text-[#22c55e]" /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] opacity-50"><IconSkipForward /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button><button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button></div>
+          <div className="mt-4 grid grid-cols-7 gap-2">
+            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
+            <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button>
+            <button onClick={() => sendControl('ADJUST', -5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button>
+            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className={activeTimerState?.isRunning ? 'text-white' : 'text-[#22c55e]'} /></button>
+            <button onClick={() => sendControl('ADJUST', 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipForward /></button>
+            <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button>
+            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
+          </div>
           <div className="mt-6 flex flex-col items-center"><div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div></div>
           <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div></div>
         </aside>
