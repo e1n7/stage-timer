@@ -25,7 +25,8 @@ export const TimerOutput = () => {
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
-  const [fontScale, setFontScale] = useState<number>(1.0);
+  const [fontHeight, setFontHeight] = useState<number>(1.6);
+  const [fontWidth, setFontWidth] = useState<number>(1.0);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -68,7 +69,8 @@ export const TimerOutput = () => {
 
       if ('totalTime' in data) setTotalTime(data.totalTime);
       if ('segments' in data) setSegments(data.segments);
-      if ('fontScale' in data) setFontScale(data.fontScale || 1.0);
+      if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
+      if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
 
       if ('startTime' in data || 'initialSeconds' in data || 'isRunning' in data) {
         if (data.type === 'force-sync' || (data.lastUpdated || 0) >= syncStateRef.current.lastUpdated) {
@@ -202,12 +204,12 @@ export const TimerOutput = () => {
               className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getTextColor(), 
-                fontSize: `calc(min(98vw, 65vh) * ${fontScale})`, 
+                fontSize: 'min(98vw, 65vh)', 
                 lineHeight: 1, 
                 fontFamily: 'Inter, system-ui, sans-serif',
                 opacity: (isFlashing && !flash) ? 0 : 1,
                 textShadow: flash ? `0 0 100px ${getGlowColor()}` : 'none',
-                transform: 'scaleY(1.6)',
+                transform: `scale(${fontWidth}, ${fontHeight})`,
                 transformOrigin: 'center'
               }}
             >

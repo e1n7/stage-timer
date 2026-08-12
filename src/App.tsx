@@ -281,18 +281,33 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               </select>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-[12px] text-[#8a8a8a]">Font Size</span>
+              <span className="text-[12px] text-[#8a8a8a]">Font Height</span>
+              <div className="flex flex-1 items-center gap-3">
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="3.0" 
+                  step="0.1"
+                  value={localSettings.fontHeight || 1.6} 
+                  onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })}
+                  className="flex-1 accent-[#4a9eff]"
+                />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[12px] text-[#8a8a8a]">Font Width</span>
               <div className="flex flex-1 items-center gap-3">
                 <input 
                   type="range" 
                   min="0.5" 
                   max="2.0" 
                   step="0.1"
-                  value={localSettings.fontScale || 1.0} 
-                  onChange={(e) => setLocalSettings({ ...localSettings, fontScale: parseFloat(e.target.value) })}
+                  value={localSettings.fontWidth || 1.0} 
+                  onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })}
                   className="flex-1 accent-[#4a9eff]"
                 />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontScale || 1.0).toFixed(1)}x</span>
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
               </div>
             </div>
             <div className="flex justify-end">
@@ -300,7 +315,12 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 type="button"
                 onClick={() => {
                   updateSettings(localSettings);
-                  onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode, fontScale: localSettings.fontScale });
+                  onApplyToAll?.({ 
+                    targetDuration: localSettings.targetDuration, 
+                    mode: localSettings.mode, 
+                    fontHeight: localSettings.fontHeight,
+                    fontWidth: localSettings.fontWidth 
+                  });
                   onClose();
                 }}
                 className="text-[11px] text-[#4a9eff] hover:underline"
@@ -784,7 +804,8 @@ function App() {
         ...activeTimerState.syncState,
         totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
         segments: activeTimerState.settings.segments,
-        fontScale: activeTimerState.settings.fontScale || 1.0,
+        fontHeight: activeTimerState.settings.fontHeight || 1.6,
+        fontWidth: activeTimerState.settings.fontWidth || 1.0,
         blackout: isBlackout,
         flash: isFlash,
         isEmpty: false
@@ -804,7 +825,8 @@ function App() {
         ...activeTimerState.syncState,
         totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
         segments: activeTimerState.settings.segments,
-        fontScale: activeTimerState.settings.fontScale || 1.0,
+        fontHeight: activeTimerState.settings.fontHeight || 1.6,
+        fontWidth: activeTimerState.settings.fontWidth || 1.0,
         blackout: isBlackout,
         flash: isFlash,
         type: 'force-sync',
