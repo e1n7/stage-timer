@@ -229,7 +229,18 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
                 className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] font-mono text-white text-center focus:outline-none focus:border-[#555]"
               />
             </div>
-            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Appearance</span><select className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"><option>Countdown</option></select></div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
+              <select 
+                value={settings.mode || 'countdown'} 
+                onChange={(e) => updateSettings({ mode: e.target.value as any })}
+                className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
+              >
+                <option value="countdown">Countdown</option>
+                <option value="countup">Countup</option>
+                <option value="time">Clock</option>
+              </select>
+            </div>
             <div className="flex justify-end"><button className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button></div>
             <p className="text-[11px] text-[#666]">Counting down from {Math.floor((settings.targetDuration || 0) / 60)} mins.</p>
           </div>
