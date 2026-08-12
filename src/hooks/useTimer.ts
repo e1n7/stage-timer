@@ -3,6 +3,9 @@ import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 5 * 60; // 5 minutes
 const DEFAULT_SETTINGS: TimerSettings = {
+  title: 'Timer 1',
+  speaker: '',
+  notes: '',
   audioVolume: 0.5,
   beepOnReach: true,
   beepOnHalfTime: true,
@@ -24,6 +27,9 @@ export interface ProgressSegment {
 }
 
 interface TimerSettings {
+  title: string;
+  speaker: string;
+  notes: string;
   audioVolume: number;
   beepOnReach: boolean;
   beepOnHalfTime: boolean;
@@ -49,6 +55,12 @@ export const useTimer = () => {
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'finished'>('idle');
   const [settings, setSettings] = useLocalStorage<TimerSettings>('timerSettings', DEFAULT_SETTINGS);
   const [log, setLog] = useLocalStorage<LogEntry[]>('timerLog', []);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
@@ -343,6 +355,15 @@ export const useTimer = () => {
     };
   }, []);
 
+  const wallClock = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone.replace('_', ' ');
+  const timeZoneAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
+
+  const cueFinishDate = new Date(now.getTime() + seconds * 1000);
+  const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  const overUnder = seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
+
   return {
     // State
     seconds,
@@ -354,6 +375,10 @@ export const useTimer = () => {
     warningState,
     settings,
     log,
+    wallClock,
+    timeZone: `${timeZone} (${timeZoneAbbr})`,
+    cueFinish,
+    overUnder,
 
     // Actions
     setMode,
