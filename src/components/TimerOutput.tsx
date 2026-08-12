@@ -182,26 +182,38 @@ export const TimerOutput = () => {
       className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300" 
       style={{ backgroundColor: '#0a0a0a' }}
     >
-      <button onClick={toggleFullscreen} className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0" aria-label="Toggle Fullscreen" />
+      {/* Maximize Button - shows on hover over its area */}
+      <button 
+        onClick={toggleFullscreen} 
+        className="absolute right-4 top-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100" 
+        aria-label="Toggle Fullscreen"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      </button>
+
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : (
-        <div className="flex w-full flex-col items-center px-[8vw]">
-          <div 
-            className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
-            style={{ 
-              color: getTextColor(), 
-              fontSize: 'min(35vw, 50vh)', 
-              lineHeight: 0.9, 
-              fontFamily: 'Inter, system-ui, sans-serif',
-              opacity: (isFlashing && !flash) ? 0 : 1,
-              textShadow: flash ? `0 0 60px ${getGlowColor()}` : 'none'
-            }}
-          >
-            {formatClock(seconds)}
+        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[0vh]">
+          <div className="flex flex-1 items-center justify-center w-full">
+            <div 
+              className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
+              style={{ 
+                color: getTextColor(), 
+                fontSize: 'min(98vw, 65vh)', 
+                lineHeight: 1, 
+                fontFamily: 'Inter, system-ui, sans-serif',
+                opacity: (isFlashing && !flash) ? 0 : 1,
+                textShadow: flash ? `0 0 100px ${getGlowColor()}` : 'none',
+                transform: 'scaleY(1.6)',
+                transformOrigin: 'center'
+              }}
+            >
+              {formatClock(seconds)}
+            </div>
           </div>
-          <div className="mt-[5vh] w-full">
-            <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} height="h-[4vh]" className="rounded-md" />
+          <div className="w-full pb-[2vh]">
+            <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
           </div>
         </div>
       )}
