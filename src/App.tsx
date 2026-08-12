@@ -1710,7 +1710,7 @@ function App() {
               </div>
             </div>
           );})}</div>
-          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button><div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div></div>
+          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
         </aside>
       </div>
 
