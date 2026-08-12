@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -68,6 +68,66 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Seconds</span>
       </div>
+    </div>
+  );
+};
+
+const StartTimeInput = ({ value, onChange, selectedTimeZone }: { value: number | null, onChange: (val: number | null) => void, selectedTimeZone: string }) => {
+  const now = new Date();
+  
+  const formatter = new Intl.DateTimeFormat('en-US', { 
+    timeZone: selectedTimeZone, 
+    hour12: false, 
+    hour: 'numeric', 
+    minute: 'numeric', 
+    second: 'numeric' 
+  });
+  const formatted = formatter.format(now);
+  const [hNow, mNow, sNow] = formatted.split(':').map(Number);
+  const secondsSinceMidnight = hNow * 3600 + mNow * 60 + sNow;
+
+  const displayValue = value === null ? secondsSinceMidnight : value;
+  
+  const h = Math.floor(displayValue / 3600);
+  const m = Math.floor((displayValue % 3600) / 60);
+  const s = displayValue % 60;
+
+  const update = (newH: number, newM: number, newS: number) => {
+    onChange(newH * 3600 + newM * 60 + newS);
+  };
+
+  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <input 
+          type="checkbox" 
+          id="manual-start"
+          checked={value !== null} 
+          onChange={(e) => onChange(e.target.checked ? displayValue : null)}
+          className="h-4 w-4 rounded border-[#333] bg-[#141414] accent-[#4a9eff]"
+        />
+        <label htmlFor="manual-start" className="text-[13px] text-[#8a8a8a] cursor-pointer">Set Specific Start Time</label>
+      </div>
+      {value !== null && (
+        <div className="flex items-center gap-3 ml-6">
+          <div className="flex flex-col items-center gap-1">
+            <input type="number" value={pad(h)} onChange={(e) => update(Math.max(0, parseInt(e.target.value) || 0), m, s)} onFocus={(e) => e.target.select()} className={inputClass} />
+            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
+          </div>
+          <span className="text-xl font-bold text-[#444] pb-5">:</span>
+          <div className="flex flex-col items-center gap-1">
+            <input type="number" value={pad(m)} onChange={(e) => update(h, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)), s)} onFocus={(e) => e.target.select()} className={inputClass} />
+            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Mins</span>
+          </div>
+          <span className="text-xl font-bold text-[#444] pb-5">:</span>
+          <div className="flex flex-col items-center gap-1">
+            <input type="number" value={pad(s)} onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))} onFocus={(e) => e.target.select()} className={inputClass} />
+            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Secs</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -198,9 +258,11 @@ interface TimerSettingsModalProps {
   updateSettings: (updates: any) => void;
   onApplyToAll?: (settings: any) => void;
   onConfirm?: (settings: any) => void;
+  onSettingsUpdate: () => void;
+  selectedTimeZone: string;
 }
 
-const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm }: TimerSettingsModalProps) => {
+const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -261,7 +323,17 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
         <div className="grid grid-cols-1 gap-12">
           <div className="space-y-4">
-            <h3 className="text-[14px] font-bold text-white">Duration</h3>
+            <h3 className="text-[14px] font-bold text-white">Timing</h3>
+            
+            <div className="flex items-start justify-between gap-6 py-2 border-b border-[#333] pb-6">
+              <span className="text-[12px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
+              <StartTimeInput 
+                value={localSettings.scheduledStart} 
+                onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
+                selectedTimeZone={selectedTimeZone}
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-6 py-2">
               <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
               <DurationInput 
@@ -319,8 +391,10 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                     targetDuration: localSettings.targetDuration, 
                     mode: localSettings.mode, 
                     fontHeight: localSettings.fontHeight,
-                    fontWidth: localSettings.fontWidth 
+                    fontWidth: localSettings.fontWidth,
+                    scheduledStart: localSettings.scheduledStart
                   });
+                  onSettingsUpdate();
                   onClose();
                 }}
                 className="text-[11px] text-[#4a9eff] hover:underline"
@@ -353,7 +427,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   );
 };
 
-const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm }: TimerSettingsModalProps) => {
+const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -380,9 +454,18 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
       <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-6">
-          <h3 className="text-[16px] font-bold text-white mb-6">Duration</h3>
+          <h3 className="text-[16px] font-bold text-white mb-6">Timing</h3>
           
           <div className="space-y-6">
+            <div className="flex items-start justify-between gap-6 py-2 border-b border-[#333] pb-6">
+              <span className="text-[13px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
+              <StartTimeInput 
+                value={localSettings.scheduledStart} 
+                onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
+                selectedTimeZone={selectedTimeZone}
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-6 py-2">
               <span className="text-[13px] text-[#8a8a8a]">Duration ⓘ</span>
               <DurationInput 
@@ -408,7 +491,13 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 type="button"
                 onClick={() => {
                   onConfirm?.(localSettings);
-                  onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode });
+                  onApplyToAll?.({ 
+                    targetDuration: localSettings.targetDuration, 
+                    mode: localSettings.mode,
+                    fontHeight: localSettings.fontHeight,
+                    fontWidth: localSettings.fontWidth,
+                    scheduledStart: localSettings.scheduledStart
+                  });
                   onClose();
                 }}
                 className="text-[12px] text-[#4a9eff] hover:underline"
@@ -442,6 +531,9 @@ interface TimerRowProps {
   id: string;
   index: number;
   isActive: boolean;
+  scheduledStart: number | null;
+  formatTime: (ts: number | null) => string;
+  selectedTimeZone: string;
   onActivate: () => void;
   onSync: (state: any) => void;
   onAddAbove: () => void;
@@ -449,9 +541,10 @@ interface TimerRowProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onApplyToAll?: (settings: any) => void;
+  onSettingsUpdate: () => void;
 }
 
-const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -530,23 +623,15 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
         {isHovered || isDragging ? <span className="text-[24px] font-light leading-none">=</span> : index + 1}
       </div>
 
-      {/* Add time label */}
-      <div className="relative">
+      {/* Scheduled Time Display */}
+      <div className="flex flex-col items-start w-32">
         <div 
-          onClick={(e) => { e.stopPropagation(); setIsAdjustMenuOpen(!isAdjustMenuOpen); }}
-          className="w-20 text-[13px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }}
+          className="text-[13px] font-bold text-white/50 hover:text-white transition-colors cursor-pointer"
+          title="Click to set start time"
         >
-          Add time
+          {(!isRunning && seconds === settings.targetDuration && !settings.scheduledStart) ? 'Add time' : formatTime(scheduledStart)}
         </div>
-        {isAdjustMenuOpen && (
-          <div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-1">
-            <TimeAdjustMenu 
-              direction="increase" 
-              onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
-              onClose={() => setIsAdjustMenuOpen(false)} 
-            />
-          </div>
-        )}
       </div>
 
       {/* Timer Display */}
@@ -612,9 +697,12 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
         settings={settings} 
         updateSettings={updateSettings} 
         onApplyToAll={onApplyToAll}
+        onSettingsUpdate={onSettingsUpdate}
+        selectedTimeZone={selectedTimeZone}
         onConfirm={(newSettings) => {
           updateSettings(newSettings);
           setTime(newSettings.targetDuration);
+          onSettingsUpdate();
         }}
       />
       <QuickSettingsModal 
@@ -623,9 +711,12 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
         settings={settings} 
         updateSettings={updateSettings} 
         onApplyToAll={onApplyToAll}
+        onSettingsUpdate={onSettingsUpdate}
+        selectedTimeZone={selectedTimeZone}
         onConfirm={(newSettings) => {
           updateSettings(newSettings);
           setTime(newSettings.targetDuration);
+          onSettingsUpdate();
         }}
       />
     </div>
@@ -651,6 +742,86 @@ function App() {
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
+  const [settingsVersion, setSettingsVersion] = useState(0);
+
+  const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone, cueFinish, overUnder } = useTimer('global-helper');
+
+  const schedule = useMemo(() => {
+    const result: Record<string, { start: number | null }> = {};
+    const now = new Date();
+    
+    const formatter = new Intl.DateTimeFormat('en-US', { 
+      timeZone: selectedTimeZone, 
+      hour12: false, 
+      hour: 'numeric', 
+      minute: 'numeric', 
+      second: 'numeric' 
+    });
+    const formatted = formatter.format(now);
+    const [h, m, s] = formatted.split(':').map(Number);
+    const secondsSinceMidnight = h * 3600 + m * 60 + s;
+    const midnight = (now.getTime() / 1000) - secondsSinceMidnight;
+
+    // Anchor to active timer if it's running or has been started
+    let anchorTime: number | null = null;
+    let anchorIndex = -1;
+
+    if (activeTimerId && activeTimerState?.syncState?.startTime) {
+      anchorTime = Math.floor(activeTimerState.syncState.startTime / 1000);
+      anchorIndex = timerIds.indexOf(activeTimerId);
+    }
+
+    // Forward pass
+    let currentEndTime = anchorTime;
+    for (let i = Math.max(0, anchorIndex); i < timerIds.length; i++) {
+      const id = timerIds[i];
+      const stored = localStorage.getItem(`timerSettings_${id}`);
+      const settings = stored ? JSON.parse(stored) : { targetDuration: 0, scheduledStart: null };
+      
+      let startTime = currentEndTime;
+      
+      // Handle manual start or unanchored start
+      if (startTime === null) {
+        if (settings.scheduledStart !== null) {
+          startTime = midnight + settings.scheduledStart;
+          currentEndTime = startTime;
+        }
+      }
+
+      result[id] = { start: startTime };
+      if (startTime !== null) {
+        currentEndTime = startTime + (settings.targetDuration || 0);
+      }
+    }
+
+    // Backward pass
+    if (anchorTime !== null && anchorIndex > 0) {
+      let currentStartTime = anchorTime;
+      for (let i = anchorIndex - 1; i >= 0; i--) {
+        const id = timerIds[i];
+        const stored = localStorage.getItem(`timerSettings_${id}`);
+        const settings = stored ? JSON.parse(stored) : { targetDuration: 0 };
+        
+        const endTime = currentStartTime;
+        const startTime = endTime - (settings.targetDuration || 0);
+        result[id] = { start: startTime };
+        currentStartTime = startTime;
+      }
+    }
+    
+    return result;
+  }, [timerIds, settingsVersion, selectedTimeZone, activeTimerId, activeTimerState]);
+
+  const formatScheduledTime = (timestamp: number | null) => {
+    if (timestamp === null) return '---';
+    return new Date(timestamp * 1000).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit', 
+      hour12: true,
+      timeZone: selectedTimeZone 
+    });
+  };
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -891,8 +1062,6 @@ function App() {
     return 'transparent';
   };
 
-  const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone, cueFinish, overUnder } = useTimer('global-helper');
-
   const TIMEZONES = [
     'UTC', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
     'America/Anchorage', 'America/Argentina/Buenos_Aires', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Mexico_City', 'America/New_York', 'America/Phoenix', 'America/Sao_Paulo',
@@ -1110,7 +1279,23 @@ function App() {
                   </div>
                 )}
               </div></div></div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} onAddAbove={() => addTimer(index)} onAddBelow={() => addTimer(index + 1)} onDuplicate={() => duplicateTimer(id, index)} onDelete={() => deleteTimer(id)} onApplyToAll={applyToAllSettings} />))}</div></SortableContext></DndContext>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (              <TimerRow
+                key={id}
+                id={id}
+                index={index}
+                isActive={activeTimerId === id}
+                scheduledStart={schedule[id]?.start ?? null}
+                formatTime={formatScheduledTime}
+                selectedTimeZone={selectedTimeZone}
+                onActivate={() => setActiveTimerId(id)}
+                onSync={setActiveTimerState}
+                onAddAbove={() => addTimer(index)}
+                onAddBelow={() => addTimer(index + 1)}
+                onDuplicate={() => duplicateTimer(id, index)}
+                onDelete={() => deleteTimer(id)}
+                onApplyToAll={applyToAllSettings}
+                onSettingsUpdate={() => setSettingsVersion(v => v + 1)}
+              />))}</div></SortableContext></DndContext>
           <div className="mt-10 flex justify-center">
             <button 
               type="button" 
