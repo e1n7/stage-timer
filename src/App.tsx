@@ -444,11 +444,9 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 onClick={() => {
                   updateSettings(localSettings);
                   onApplyToAll?.({ 
-                    targetDuration: localSettings.targetDuration, 
                     mode: localSettings.mode, 
                     fontHeight: localSettings.fontHeight,
-                    fontWidth: localSettings.fontWidth,
-                    scheduledStart: localSettings.scheduledStart
+                    fontWidth: localSettings.fontWidth
                   });
                   onSettingsUpdate();
                   onClose();
@@ -573,11 +571,9 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                 onClick={() => {
                   onConfirm?.(localSettings);
                   onApplyToAll?.({ 
-                    targetDuration: localSettings.targetDuration, 
                     mode: localSettings.mode,
                     fontHeight: localSettings.fontHeight,
-                    fontWidth: localSettings.fontWidth,
-                    scheduledStart: localSettings.scheduledStart
+                    fontWidth: localSettings.fontWidth
                   });
                   onClose();
                 }}
