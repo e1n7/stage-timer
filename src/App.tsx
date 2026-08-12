@@ -58,56 +58,57 @@ const INCREASE_OPTIONS = [
 ];
 
 // SVG Icons
-const IconChevronDown = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>
+interface IconProps { className?: string; size?: number; }
+const IconChevronDown = ({ className = "", size = 10 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M7 10l5 5 5-5H7z"/></svg>
 );
-const IconSkipBack = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+const IconSkipBack = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 );
-const IconSkipForward = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm9-12h2v12h-2z"/></svg>
+const IconSkipForward = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6zm9-12h2v12h-2z"/></svg>
 );
-const IconPlay = ({ className = "" }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M8 5v14l11-7z"/></svg>
+const IconPlay = ({ className = "", size = 16 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M8 5v14l11-7z"/></svg>
 );
-const IconPause = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+const IconPause = ({ size = 16 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
 );
-const IconSettings = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2.01 2.01 0 0 1-2.02 2 2 2 0 0 0-2 2 2.01 2.01 0 0 1-2 2.02 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2.01 2.01 0 0 1 2.02 2 2 2 0 0 0 2 2 2.01 2.01 0 0 1 2 2.02 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2.01 2.01 0 0 1 2.02-2 2 2 0 0 0 2-2 2.01 2.01 0 0 1 2-2.02 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2.01 2.01 0 0 1-2.02-2 2 2 0 0 0-2-2 2.01 2.01 0 0 1-2-2.02 2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>
+const IconSettings = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2.01 2.01 0 0 1-2.02 2 2 2 0 0 0-2 2 2.01 2.01 0 0 1-2 2.02 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2.01 2.01 0 0 1 2.02 2 2 2 0 0 0 2 2 2.01 2.01 0 0 1 2 2.02 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2.01 2.01 0 0 1 2.02-2 2 2 0 0 0 2-2 2.01 2.01 0 0 1 2-2.02 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2.01 2.01 0 0 1-2.02-2 2 2 0 0 0-2-2 2.01 2.01 0 0 1-2-2.02 2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>
 );
-const IconDownload = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+const IconDownload = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 );
-const IconUpload = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+const IconUpload = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
-const IconScreen = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+const IconScreen = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
 );
-const IconClock = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+const IconClock = ({ size = 12 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
 );
-const IconCalendar = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+const IconCalendar = ({ size = 12 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 );
-const IconSpeaker = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+const IconSpeaker = ({ className = "", size = 12 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
 );
-const IconFlash = ({ className = "" }) => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+const IconFlash = ({ className = "", size = 12 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 );
-const IconCircle = () => (
-  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+const IconCircle = ({ size = 8 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
 );
-const IconMore = ({ className = "" }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className={className}><circle cx="12" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+const IconMore = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><circle cx="12" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
 );
-const IconMaximize = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+const IconMaximize = ({ size = 12 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 );
-const IconSquare = () => (
-  <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+const IconSquare = ({ size = 8 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
 );
 
 interface TimeAdjustMenuProps {
@@ -343,23 +344,23 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       onClick={onActivate} 
       onMouseEnter={() => setIsHovered(true)} 
       onMouseLeave={() => setIsHovered(false)} 
-      className={`flex items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex items-center gap-4 rounded-xl px-8 py-5 text-white shadow-xl transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
-      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
-        {isHovered || isDragging ? <span className="text-[24px] font-light leading-none">=</span> : index + 1}
+      <div {...attributes} {...listeners} className="flex w-10 items-center justify-center text-[18px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
+        {isHovered || isDragging ? <span className="text-[28px] font-light leading-none">=</span> : index + 1}
       </div>
 
       {/* Add time label */}
       <div className="relative">
         <div 
           onClick={(e) => { e.stopPropagation(); setIsAdjustMenuOpen(!isAdjustMenuOpen); }}
-          className="w-20 text-[13px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
+          className="w-24 text-[14px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
         >
           Add time
         </div>
         {isAdjustMenuOpen && (
-          <div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-1">
+          <div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-2">
             <TimeAdjustMenu 
               direction="increase" 
               onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
@@ -370,55 +371,55 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       </div>
 
       {/* Timer Display */}
-      <div className="flex-1 text-center text-[42px] font-bold tracking-tight tabular-nums">
+      <div className="flex-1 text-center text-[48px] font-bold tracking-tight tabular-nums">
         {currentTime}
       </div>
 
       {/* Title */}
-      <div className="w-32 text-right text-[15px] font-medium truncate opacity-90 pr-2">
+      <div className="w-40 text-right text-[17px] font-bold truncate opacity-90 pr-4">
         {settings.title || `Timer ${index + 1}`}
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
         <button 
           type="button" 
           onClick={resetTimer} 
-          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-11 w-12 items-center justify-center rounded-lg border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
           title="Reset to assigned time"
         >
-          <IconSkipBack />
+          <IconSkipBack size={18} />
         </button>
         <button 
           type="button" 
           onClick={() => setIsSettingsOpen(true)} 
-          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-11 w-12 items-center justify-center rounded-lg border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
-          <IconSettings />
+          <IconSettings size={18} />
         </button>
         <button 
           type="button" 
           onClick={isRunning ? pauseTimer : startTimer} 
-          className="flex h-9 w-12 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
+          className="flex h-11 w-14 items-center justify-center rounded-lg bg-[#16a34a] hover:bg-[#15803d] shadow-lg transition-colors"
         >
-          {isRunning ? <IconPause /> : <IconPlay />}
+          {isRunning ? <IconPause size={20} /> : <IconPlay size={20} />}
         </button>
         
-        <div className="relative ml-1">
+        <div className="relative ml-2">
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 
-            className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
+            className="flex h-11 w-10 items-center justify-center text-white/40 hover:text-white transition-colors"
           >
-            <IconMore />
+            <IconMore size={20} />
           </button>
           {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-2xl">
-              <button onClick={() => { onAddAbove(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"><span>↑</span> Add timer above</button>
-              <button onClick={() => { onAddBelow(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"><span>↓</span> Add timer below</button>
-              <button onClick={() => { onDuplicate(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">Duplicate</button>
+            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
+              <button onClick={() => { onAddAbove(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]"><span>↑</span> Add timer above</button>
+              <button onClick={() => { onAddBelow(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]"><span>↓</span> Add timer below</button>
+              <button onClick={() => { onDuplicate(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">Duplicate</button>
               <div className="my-1 border-t border-[#333]" />
-              <button onClick={() => { onDelete(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10">Delete</button>
+              <button onClick={() => { onDelete(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">Delete</button>
             </div>
           )}
         </div>
@@ -837,14 +838,31 @@ function App() {
           <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? cueFinish : '--:--'}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? overUnder : '--:--'}</span></div></div>
         </aside>
 
-        <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">
-          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>            <div className="relative">
+        <main className="flex flex-1 flex-col px-10 py-6 bg-[#141414] overflow-y-auto custom-scrollbar">
+          <div className="mb-8 flex items-center justify-between">
+            <h2 className="text-[24px] font-bold text-white tracking-tight">Timers</h2>
+            <div className="flex items-center gap-3">
+              <button 
+                type="button" 
+                onClick={() => setIsBlackout(!isBlackout)} 
+                className={`flex h-10 items-center gap-2 rounded-lg border px-5 text-[14px] font-bold transition-all ${isBlackout ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-[#2d2d2d] text-white border-[#444] hover:bg-[#383838]'}`}
+              >
+                <IconCircle /> Blackout
+              </button>
+              <button 
+                type="button" 
+                onClick={handleFlash} 
+                className="flex h-10 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-5 text-[14px] font-bold text-white hover:bg-[#383838] transition-all"
+              >
+                <IconFlash /> Flash
+              </button>
+              <div className="relative">
                 <button 
                   type="button" 
                   onClick={(e) => { e.stopPropagation(); setIsTimersMenuOpen(!isTimersMenuOpen); }}
-                  className={`flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white hover:bg-[#383838] transition-colors ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                  className={`flex h-10 w-11 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
-                  <IconMore />
+                  <IconMore size={20} />
                 </button>
                 {isTimersMenuOpen && (
                   <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
@@ -862,7 +880,15 @@ function App() {
                 )}
               </div></div></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} onAddAbove={() => addTimer(index)} onAddBelow={() => addTimer(index + 1)} onDuplicate={() => duplicateTimer(id, index)} onDelete={() => deleteTimer(id)} />))}</div></SortableContext></DndContext>
-          <div className="mt-8 flex justify-center"><button type="button" onClick={() => addTimer()} className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg">+ Add Timer</button></div>
+          <div className="mt-10 flex justify-center">
+            <button 
+              type="button" 
+              onClick={() => addTimer()} 
+              className="flex items-center gap-2 rounded-xl border border-[#444] bg-[#262626] px-10 py-4 text-[16px] font-bold text-white hover:bg-[#2d2d2d] hover:border-[#555] transition-all shadow-xl active:scale-95"
+            >
+              + Add Timer
+            </button>
+          </div>
         </main>
 
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
