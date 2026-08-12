@@ -797,13 +797,7 @@ function App() {
                         {isFollowEnabled && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                       </div>
                     </button>
-                    <div className="my-1 border-t border-[#333]" />
-                    <button 
-                      onClick={deleteAllTimers}
-                      className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10"
-                    >
-                      Delete all timers
-                    </button>
+
                   </div>
                 )}
               </div></div></div>
