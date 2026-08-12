@@ -146,10 +146,11 @@ interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: any;
-  updateSettings: (s: any) => void;
+  updateSettings: (updates: any) => void;
+  onApplyToAll?: (settings: any) => void;
 }
 
-const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: TimerSettingsModalProps) => {
+const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll }: TimerSettingsModalProps) => {
   if (!isOpen) return null;
 
   const yellowSegment = settings.segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
@@ -223,10 +224,17 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               >
                 <option value="countdown">Countdown</option>
                 <option value="countup">Countup</option>
-                <option value="time">Clock</option>
               </select>
             </div>
-            <div className="flex justify-end"><button className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button></div>
+            <div className="flex justify-end">
+              <button 
+                type="button"
+                onClick={() => onApplyToAll?.({ targetDuration: settings.targetDuration, mode: settings.mode })}
+                className="text-[11px] text-[#4a9eff] hover:underline"
+              >
+                Apply to all
+              </button>
+            </div>
           </div>
         </div>
 
@@ -262,9 +270,10 @@ interface TimerRowProps {
   onAddBelow: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onApplyToAll?: (settings: any) => void;
 }
 
-const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -308,6 +317,10 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           case 'RESET': resetTimer(); break;
           case 'ADJUST': setTime(Math.max(0, seconds + payload)); break;
           case 'SET': setTime(payload); break;
+          case 'RELOAD_SETTINGS': 
+            const stored = localStorage.getItem(`timerSettings_${id}`);
+            if (stored) updateSettings(JSON.parse(stored));
+            break;
         }
       }
     };
@@ -354,7 +367,10 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       </div>
 
       {/* Timer Display */}
-      <div className="flex-1 text-center text-[48px] font-bold tracking-tight tabular-nums">
+      <div 
+        onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }}
+        className="flex-1 text-center text-[48px] font-bold tracking-tight tabular-nums hover:text-[#4a9eff] transition-colors cursor-pointer"
+      >
         {currentTime}
       </div>
 
@@ -407,7 +423,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           )}
         </div>
       </div>
-      <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} />
+      <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} onApplyToAll={onApplyToAll} />
     </div>
   );
 };
@@ -504,6 +520,22 @@ function App() {
     } else if (activeTimerId === id) {
       setActiveTimerId(newIds[0]);
     }
+  };
+
+  const applyToAllSettings = (sharedSettings: any) => {
+    timerIds.forEach(id => {
+      const stored = localStorage.getItem(`timerSettings_${id}`);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...sharedSettings }));
+      }
+    });
+    // Force a reload by triggering a BroadcastChannel message or state update
+    const channel = new BroadcastChannel(CONTROL_CHANNEL);
+    timerIds.forEach(id => {
+      channel.postMessage({ targetId: id, command: 'RELOAD_SETTINGS' });
+    });
+    channel.close();
   };
 
   const deleteAllTimers = () => {
@@ -862,7 +894,7 @@ function App() {
                   </div>
                 )}
               </div></div></div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} onAddAbove={() => addTimer(index)} onAddBelow={() => addTimer(index + 1)} onDuplicate={() => duplicateTimer(id, index)} onDelete={() => deleteTimer(id)} />))}</div></SortableContext></DndContext>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} onAddAbove={() => addTimer(index)} onAddBelow={() => addTimer(index + 1)} onDuplicate={() => duplicateTimer(id, index)} onDelete={() => deleteTimer(id)} onApplyToAll={applyToAllSettings} />))}</div></SortableContext></DndContext>
           <div className="mt-10 flex justify-center">
             <button 
               type="button" 
