@@ -392,20 +392,17 @@ function App() {
 
   const deleteTimer = (id: string) => {
     const newIds = timerIds.filter(tid => tid !== id);
+    setTimerIds(newIds);
     if (newIds.length === 0) {
-      const freshId = `timer_${Date.now()}`;
-      setTimerIds([freshId]);
-      setActiveTimerId(freshId);
-    } else {
-      setTimerIds(newIds);
-      if (activeTimerId === id) setActiveTimerId(newIds[0]);
+      setActiveTimerId('');
+    } else if (activeTimerId === id) {
+      setActiveTimerId(newIds[0]);
     }
   };
 
   const deleteAllTimers = () => {
-    const freshId = `timer_${Date.now()}`;
-    setTimerIds([freshId]);
-    setActiveTimerId(freshId);
+    setTimerIds([]);
+    setActiveTimerId('');
     setIsTimersMenuOpen(false);
   };
 
