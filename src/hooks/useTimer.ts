@@ -49,7 +49,12 @@ interface LogEntry {
 }
 
 export const useTimer = () => {
-  const [seconds, setSeconds] = useLocalStorage<number>('timerSeconds', DEFAULT_TIME);
+  // Use regular state for seconds during active playback to avoid localStorage overhead every 100ms
+  const [seconds, setSeconds] = useState<number>(() => {
+    const saved = localStorage.getItem('timerSeconds');
+    return saved ? JSON.parse(saved) : DEFAULT_TIME;
+  });
+  
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'finished'>('idle');
@@ -57,19 +62,26 @@ export const useTimer = () => {
   const [log, setLog] = useLocalStorage<LogEntry[]>('timerLog', []);
   const [now, setNow] = useState(new Date());
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
-  const startTimeRef = useRef<number>(0);
   const lastBeepsRef = useRef<{ halfTime: boolean; oneMinute: boolean; reach: boolean }>({
     halfTime: false,
     oneMinute: false,
     reach: false
   });
+
+  // Periodically save seconds to localStorage (less frequently than 100ms)
+  useEffect(() => {
+    const saveInterval = setInterval(() => {
+      localStorage.setItem('timerSeconds', JSON.stringify(seconds));
+    }, 1000);
+    return () => clearInterval(saveInterval);
+  }, [seconds]);
+
+  useEffect(() => {
+    const wallTimer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(wallTimer);
+  }, []);
 
   // Initialize audio
   useEffect(() => {
@@ -85,12 +97,12 @@ export const useTimer = () => {
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     const s = total % 60;
-    const pad = (num: number): string => num.toString().padStart(2, '0');
+    const padNum = (num: number): string => num.toString().padStart(2, '0');
 
     if (hours > 0) {
-      return `${hours}:${pad(minutes)}:${pad(s)}`;
+      return `${hours}:${padNum(minutes)}:${padNum(s)}`;
     }
-    return `${pad(minutes)}:${pad(s)}`;
+    return `${padNum(minutes)}:${padNum(s)}`;
   }, []);
 
   const formatTimeOfDay = useCallback((secs: number): string => {
@@ -98,8 +110,8 @@ export const useTimer = () => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const s = date.getSeconds();
-    const pad = (num: number): string => num.toString().padStart(2, '0');
-    return `${pad(hours)}:${pad(minutes)}:${pad(s)}`;
+    const padNum = (num: number): string => num.toString().padStart(2, '0');
+    return `${padNum(hours)}:${padNum(minutes)}:${padNum(s)}`;
   }, []);
 
   const getDisplayValue = useCallback((): string => {
@@ -122,7 +134,7 @@ export const useTimer = () => {
       }
     }
 
-    // Beep logic (only on whole seconds)
+    // Beep logic
     if (Math.abs(currentSeconds - rounded) < 0.05) {
       if (audioRef.current && settings.beepOnReach && rounded === 0 && mode === 'countdown') {
         if (!lastBeepsRef.current.reach) {
@@ -157,17 +169,21 @@ export const useTimer = () => {
   const [warningState, setWarningState] = useState<string[]>([]);
 
   const startTimer = useCallback(() => {
+    // If starting at 0, don't just stop immediately if it's meant to be a countdown from somewhere
+    // But if the user explicitly set it to 0, we'll allow it to run/stop based on mode
     setStatus('running');
     setIsRunning(true);
-    startTimeRef.current = Date.now();
 
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    
     intervalRef.current = window.setInterval(() => {
       setSeconds(prev => {
         let newTime: number;
 
         if (mode === 'countdown') {
-          newTime = Math.max(0, prev - 0.1);
+          newTime = prev - 0.1;
           if (newTime <= 0) {
+            newTime = 0;
             setStatus('finished');
             setIsRunning(false);
             if (intervalRef.current) clearInterval(intervalRef.current);
@@ -180,14 +196,10 @@ export const useTimer = () => {
 
         const newWarnings = checkWarnings(newTime);
         setWarningState(newWarnings);
-        return parseFloat(newTime.toFixed(1));
+        return Math.round(newTime * 10) / 10;
       });
     }, 100);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [mode, checkWarnings, setSeconds]);
+  }, [mode, checkWarnings]);
 
   const pauseTimer = useCallback(() => {
     setIsRunning(false);
@@ -208,11 +220,14 @@ export const useTimer = () => {
     setWarningState([]);
     setSeconds(mode === 'countdown' ? DEFAULT_TIME : 0);
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
-  }, [mode, setSeconds]);
+  }, [mode]);
 
   const setTime = useCallback((newTime: number) => {
     setSeconds(newTime);
-  }, [setSeconds]);
+    if (newTime > 0) {
+      setStatus('idle');
+    }
+  }, []);
 
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -223,13 +238,14 @@ export const useTimer = () => {
   }, [setLog]);
 
   const formatDuration = useCallback((secs: number): string => {
-    const hours = Math.floor(secs / 3600);
-    const minutes = Math.floor((secs % 3600) / 60);
-    const seconds = Math.floor(secs % 60);
+    const total = Math.floor(secs);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const s = total % 60;
 
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
+    if (hours > 0) return `${hours}h ${minutes}m ${s}s`;
+    if (minutes > 0) return `${minutes}m ${s}s`;
+    return `${s}s`;
   }, []);
 
   const formatLogDate = useCallback((isoDate: string): string => {
