@@ -76,8 +76,12 @@ export const useTimer = (id: string = 'default') => {
     const saved = localStorage.getItem(secondsKey);
     return saved ? JSON.parse(saved) : DEFAULT_TIME;
   });
+  const secondsRef = useRef(seconds);
+  useEffect(() => { secondsRef.current = seconds; }, [seconds]);
   
   const [settings, setSettings] = useLocalStorage<TimerSettings>(settingsKey, DEFAULT_SETTINGS);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   const [log, setLog] = useLocalStorage<LogEntry[]>(logKey, []);
   const [selectedTimeZone, setSelectedTimeZone] = useLocalStorage<string>('stage-timer-global-timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [now, setNow] = useState(new Date());
@@ -196,33 +200,33 @@ export const useTimer = (id: string = 'default') => {
   const startTimer = useCallback(() => {
     setSyncState({
       startTime: Date.now(),
-      initialSeconds: seconds,
+      initialSeconds: secondsRef.current,
       isRunning: true,
-      mode: settings.mode || 'countdown',
+      mode: settingsRef.current.mode || 'countdown',
       lastUpdated: Date.now()
     });
-  }, [seconds, settings.mode]);
+  }, []);
 
   const pauseTimer = useCallback(() => {
     setSyncState(prev => ({
       ...prev,
       isRunning: false,
       startTime: null,
-      initialSeconds: seconds,
+      initialSeconds: secondsRef.current,
       lastUpdated: Date.now()
     }));
-  }, [seconds]);
+  }, []);
 
   const resetTimer = useCallback(() => {
     setSyncState({
       startTime: null,
-      initialSeconds: settings.targetDuration,
+      initialSeconds: settingsRef.current.targetDuration,
       isRunning: false,
-      mode: settings.mode || 'countdown',
+      mode: settingsRef.current.mode || 'countdown',
       lastUpdated: Date.now()
     });
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
-  }, [settings.targetDuration, settings.mode]);
+  }, []);
 
   const setTime = useCallback((newTime: number) => {
     setSyncState(prev => ({

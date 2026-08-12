@@ -578,6 +578,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
+  const secondsRef = useRef(seconds);
+  useEffect(() => { secondsRef.current = seconds; }, [seconds]);
+
   useEffect(() => {
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
@@ -595,7 +598,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(Math.max(0, seconds + payload)); break;
+          case 'ADJUST': setTime(Math.max(0, secondsRef.current + payload)); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
             const stored = localStorage.getItem(`timerSettings_${id}`);
@@ -609,7 +612,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }
     };
     return () => channel.close();
-  }, [id, startTimer, pauseTimer, resetTimer, setTime, seconds, updateSettings]);
+  }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
 
   useEffect(() => {
     if (isActive) {
