@@ -6,7 +6,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 const pad = (value: number) => value.toString().padStart(2, '0');
 
 const formatClock = (seconds: number) => {
-  const total = Math.max(0, Math.round(seconds));
+  const total = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(total / 60);
   const secs = total % 60;
   return `${pad(minutes)}:${pad(secs)}`;
@@ -630,7 +630,7 @@ function App() {
               <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
               <div className="flex items-center gap-2 text-white">
                 <div className="h-2 w-2 rounded-full bg-[#444]"></div>
-                <span className="font-mono text-[15px]">{currentTime}.0</span>
+                <span className="font-mono text-[15px]">{currentTime}.{Math.floor((seconds % 1) * 10)}</span>
               </div>
             </div>
 
