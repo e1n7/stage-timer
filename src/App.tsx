@@ -394,82 +394,7 @@ function App() {
   ]);
   const currentTime = formatClock(seconds);
 
-  // Load state from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const data = params.get('data');
-    if (data) {
-      try {
-        const decoded = decodeData(data);
-        if (decoded.roomName) setCurrentRoomName(decoded.roomName);
-        if (decoded.seconds !== undefined) setTime(decoded.seconds);
-        if (decoded.settings) updateSettings(decoded.settings);
-        if (decoded.messages) setMessages(decoded.messages);
-        
-        // Auto-save this room to the new device's local list
-        const newRoom: Room = {
-          id: Date.now().toString(),
-          name: decoded.roomName || 'Imported Room',
-          timers: [{ id: '1', seconds: decoded.seconds || 0, settings: decoded.settings || {} }],
-          messages: decoded.messages || []
-        };
-        
-        setRooms(prev => {
-          const existing = prev.findIndex(r => r.name === newRoom.name);
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = newRoom;
-            return updated;
-          }
-          return [...prev, newRoom];
-        });
-
-        // Clear URL to avoid re-loading on refresh
-        window.history.replaceState({}, '', window.location.pathname);
-      } catch (e) {
-        console.error('Failed to parse shareable link data', e);
-      }
-    }
-  }, []);
-
-  const saveRoom = () => {
-    setSaveStatus('saving');
-    const roomData = {
-      roomName: currentRoomName,
-      seconds,
-      settings,
-      messages
-    };
-    
-    // 1. Save to Local Storage
-    const newRoom: Room = {
-      id: Date.now().toString(),
-      name: currentRoomName,
-      timers: [{ id: '1', seconds, settings: { ...settings } }],
-      messages: [...messages]
-    };
-    
-    const existingIndex = rooms.findIndex(r => r.name === currentRoomName);
-    if (existingIndex >= 0) {
-      const updatedRooms = [...rooms];
-      updatedRooms[existingIndex] = newRoom;
-      setRooms(updatedRooms);
-    } else {
-      setRooms([...rooms, newRoom]);
-    }
-
-    // 2. Generate shareable link
-    const encoded = encodeData(roomData);
-    const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    });
-  };
-
-  const loadRoom = (room: Room) => {
+  const loadRoom = useCallback((room: Room) => {
     setCurrentRoomName(room.name);
     if (room.timers?.[0]) {
       setTime(room.timers[0].seconds);
@@ -479,6 +404,106 @@ function App() {
       setMessages(room.messages);
     }
     setIsRoomMenuOpen(false);
+  }, [setCurrentRoomName, setTime, updateSettings, setMessages]);
+
+  // Load state from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get('data');
+    if (data) {
+      try {
+        const decoded = decodeData(data);
+        
+        // Handle multi-room import
+        if (decoded.rooms && Array.isArray(decoded.rooms)) {
+          setRooms(prev => {
+            const updated = [...prev];
+            decoded.rooms.forEach((newRoom: Room) => {
+              const existing = updated.findIndex(r => r.name === newRoom.name);
+              if (existing >= 0) {
+                updated[existing] = newRoom;
+              } else {
+                updated.push(newRoom);
+              }
+            });
+            return updated;
+          });
+          
+          // Set current room to the active one from the link
+          if (decoded.activeRoomName) {
+            const activeRoom = decoded.rooms.find((r: Room) => r.name === decoded.activeRoomName);
+            if (activeRoom) {
+              loadRoom(activeRoom);
+            }
+          }
+        } 
+        // Fallback for old single-room links
+        else if (decoded.roomName) {
+          setCurrentRoomName(decoded.roomName);
+          if (decoded.seconds !== undefined) setTime(decoded.seconds);
+          if (decoded.settings) updateSettings(decoded.settings);
+          if (decoded.messages) setMessages(decoded.messages);
+          
+          const newRoom: Room = {
+            id: Date.now().toString(),
+            name: decoded.roomName || 'Imported Room',
+            timers: [{ id: '1', seconds: decoded.seconds || 0, settings: decoded.settings || {} }],
+            messages: decoded.messages || []
+          };
+          
+          setRooms(prev => {
+            const existing = prev.findIndex(r => r.name === newRoom.name);
+            if (existing >= 0) {
+              const updated = [...prev];
+              updated[existing] = newRoom;
+              return updated;
+            }
+            return [...prev, newRoom];
+          });
+        }
+
+        // Clear URL to avoid re-loading on refresh
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch (e) {
+        console.error('Failed to parse shareable link data', e);
+      }
+    }
+  }, [loadRoom, setCurrentRoomName, setMessages, setRooms, setTime, updateSettings]);
+
+  const saveRoom = () => {
+    setSaveStatus('saving');
+    
+    // 1. Update the current room in the rooms list first
+    const currentRoom: Room = {
+      id: Date.now().toString(),
+      name: currentRoomName,
+      timers: [{ id: '1', seconds, settings: { ...settings } }],
+      messages: [...messages]
+    };
+    
+    let updatedRooms = [...rooms];
+    const existingIndex = updatedRooms.findIndex(r => r.name === currentRoomName);
+    if (existingIndex >= 0) {
+      updatedRooms[existingIndex] = currentRoom;
+    } else {
+      updatedRooms.push(currentRoom);
+    }
+    setRooms(updatedRooms);
+
+    // 2. Generate shareable link with ALL rooms
+    const shareData = {
+      rooms: updatedRooms,
+      activeRoomName: currentRoomName
+    };
+    
+    const encoded = encodeData(shareData);
+    const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(url).then(() => {
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    });
   };
 
   const deleteRoom = (id: string, e: React.MouseEvent) => {
