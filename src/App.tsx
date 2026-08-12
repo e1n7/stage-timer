@@ -260,6 +260,89 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   );
 };
 
+const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll }: TimerSettingsModalProps) => {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  useEffect(() => {
+    if (isOpen) setLocalSettings(settings);
+  }, [isOpen, settings]);
+
+  if (!isOpen) return null;
+
+  const formatHHMMSS = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${pad(h)} : ${pad(m)} : ${pad(s)}`;
+  };
+
+  const parseHHMMSS = (val: string) => {
+    const parts = val.split(':').map(p => parseInt(p.trim()) || 0);
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return 0;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-6">
+          <h3 className="text-[16px] font-bold text-white mb-6">Duration</h3>
+          
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[13px] text-[#8a8a8a]">Duration ⓘ</span>
+              <input 
+                type="text" 
+                value={formatHHMMSS(localSettings.targetDuration || 0)} 
+                onChange={(e) => setLocalSettings({ ...localSettings, targetDuration: parseHHMMSS(e.target.value) })}
+                className="flex-1 rounded border border-[#333] bg-[#141414] px-4 py-2.5 text-[16px] font-mono text-white text-center focus:outline-none focus:border-[#555]"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[13px] text-[#8a8a8a]">Appearance</span>
+              <select 
+                value={localSettings.mode || 'countdown'} 
+                onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
+                className="flex-1 rounded border border-[#333] bg-[#141414] px-4 py-2 text-[14px] text-white focus:outline-none"
+              >
+                <option value="countdown">Countdown</option>
+                <option value="countup">Countup</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end">
+              <button 
+                type="button"
+                onClick={() => onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode })}
+                className="text-[12px] text-[#4a9eff] hover:underline"
+              >
+                Apply to all
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-10 flex gap-4 border-t border-[#333] pt-6">
+          <button 
+            onClick={onClose} 
+            className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-2.5 text-[14px] font-bold text-white hover:bg-[#383838]"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => { updateSettings(localSettings); onClose(); }} 
+            className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-2.5 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface TimerRowProps {
   id: string;
   index: number;
@@ -288,6 +371,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
   } = useTimer(id);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -368,7 +452,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
 
       {/* Timer Display */}
       <div 
-        onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }}
+        onClick={(e) => { e.stopPropagation(); setIsQuickSettingsOpen(true); }}
         className="flex-1 text-center text-[32px] font-bold tracking-tight tabular-nums hover:text-[#4a9eff] transition-colors cursor-pointer"
       >
         {currentTime}
@@ -424,6 +508,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
         </div>
       </div>
       <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} onApplyToAll={onApplyToAll} />
+      <QuickSettingsModal isOpen={isQuickSettingsOpen} onClose={() => setIsQuickSettingsOpen(false)} settings={settings} updateSettings={updateSettings} onApplyToAll={onApplyToAll} />
     </div>
   );
 };
