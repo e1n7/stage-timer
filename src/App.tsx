@@ -401,7 +401,7 @@ function App() {
 
           {/* DASHBOARD PREVIEW CARD */}
           <div className="rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl">
-            <div className="flex items-center justify-end text-[12px]">
+            <div className="flex items-center justify-center text-[12px]">
               <span className="font-bold text-[#7eb8ff]">{settings.title || 'Timer 1'}</span>
             </div>
             
