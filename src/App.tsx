@@ -819,7 +819,7 @@ function App() {
                   <IconChevronDown />
                 </button>
                 {isTimeZoneMenuOpen && (
-                  <div className="absolute top-full left-1/2 z-50 mt-1 max-h-64 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
+                  <div className="absolute bottom-full left-1/2 z-50 mb-1 max-h-64 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
                     <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Select Timezone</div>
                     {TIMEZONES.map((tz) => (
                       <div 
