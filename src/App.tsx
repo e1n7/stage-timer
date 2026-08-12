@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -15,14 +15,6 @@ const formatClock = (seconds: number) => {
 const CHANNEL_NAME = 'stage-timer-sync';
 const DECREASE_OPTIONS = [-2, -5, -10, -20, -30];
 const INCREASE_OPTIONS = [2, 5, 10, 20, 30];
-
-// Robust Base64 for Unicode
-const encodeData = (obj: any) => {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-};
-const decodeData = (str: string) => {
-  return JSON.parse(decodeURIComponent(escape(atob(str))));
-};
 
 // SVG Icons
 const IconChevronDown = () => (
@@ -43,8 +35,11 @@ const IconPause = () => (
 const IconSettings = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2.01 2.01 0 0 1-2.02 2 2 2 0 0 0-2 2 2.01 2.01 0 0 1-2 2.02 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2.01 2.01 0 0 1 2.02 2 2 2 0 0 0 2 2 2.01 2.01 0 0 1 2 2.02 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2.01 2.01 0 0 1 2.02-2 2 2 0 0 0 2-2 2.01 2.01 0 0 1 2-2.02 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2.01 2.01 0 0 1-2.02-2 2 2 0 0 0-2-2 2.01 2.01 0 0 1-2-2.02 2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>
 );
-const IconLock = ({ className = "" }) => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+const IconDownload = ({ className = "" }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+);
+const IconUpload = ({ className = "" }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
 );
 const IconScreen = ({ className = "" }) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -72,9 +67,6 @@ const IconMaximize = () => (
 );
 const IconSquare = () => (
   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
-);
-const IconCheck = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
 );
 
 interface TimeAdjustMenuProps {
@@ -388,10 +380,10 @@ function App() {
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [
     { id: '1', text: '', color: '#ffffff' }
   ]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const currentTime = formatClock(seconds);
 
   const loadRoom = useCallback((room: Room) => {
@@ -406,74 +398,8 @@ function App() {
     setIsRoomMenuOpen(false);
   }, [setCurrentRoomName, setTime, updateSettings, setMessages]);
 
-  // Load state from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const data = params.get('data');
-    if (data) {
-      try {
-        const decoded = decodeData(data);
-        
-        // Handle multi-room import
-        if (decoded.rooms && Array.isArray(decoded.rooms)) {
-          setRooms(prev => {
-            const updated = [...prev];
-            decoded.rooms.forEach((newRoom: Room) => {
-              const existing = updated.findIndex(r => r.name === newRoom.name);
-              if (existing >= 0) {
-                updated[existing] = newRoom;
-              } else {
-                updated.push(newRoom);
-              }
-            });
-            return updated;
-          });
-          
-          // Set current room to the active one from the link
-          if (decoded.activeRoomName) {
-            const activeRoom = decoded.rooms.find((r: Room) => r.name === decoded.activeRoomName);
-            if (activeRoom) {
-              loadRoom(activeRoom);
-            }
-          }
-        } 
-        // Fallback for old single-room links
-        else if (decoded.roomName) {
-          setCurrentRoomName(decoded.roomName);
-          if (decoded.seconds !== undefined) setTime(decoded.seconds);
-          if (decoded.settings) updateSettings(decoded.settings);
-          if (decoded.messages) setMessages(decoded.messages);
-          
-          const newRoom: Room = {
-            id: Date.now().toString(),
-            name: decoded.roomName || 'Imported Room',
-            timers: [{ id: '1', seconds: decoded.seconds || 0, settings: decoded.settings || {} }],
-            messages: decoded.messages || []
-          };
-          
-          setRooms(prev => {
-            const existing = prev.findIndex(r => r.name === newRoom.name);
-            if (existing >= 0) {
-              const updated = [...prev];
-              updated[existing] = newRoom;
-              return updated;
-            }
-            return [...prev, newRoom];
-          });
-        }
-
-        // Clear URL to avoid re-loading on refresh
-        window.history.replaceState({}, '', window.location.pathname);
-      } catch (e) {
-        console.error('Failed to parse shareable link data', e);
-      }
-    }
-  }, [loadRoom, setCurrentRoomName, setMessages, setRooms, setTime, updateSettings]);
-
-  const saveRoom = () => {
-    setSaveStatus('saving');
-    
-    // 1. Update the current room in the rooms list first
+  const exportLibrary = () => {
+    // 1. Ensure current state is saved to the rooms list
     const currentRoom: Room = {
       id: Date.now().toString(),
       name: currentRoomName,
@@ -490,20 +416,49 @@ function App() {
     }
     setRooms(updatedRooms);
 
-    // 2. Generate shareable link with ALL rooms
-    const shareData = {
+    // 2. Create export object
+    const exportData = {
       rooms: updatedRooms,
-      activeRoomName: currentRoomName
+      activeRoomName: currentRoomName,
+      exportedAt: new Date().toISOString()
     };
-    
-    const encoded = encodeData(shareData);
-    const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    });
+
+    // 3. Trigger download
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        if (imported.rooms && Array.isArray(imported.rooms)) {
+          setRooms(imported.rooms);
+          if (imported.activeRoomName) {
+            const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName);
+            if (activeRoom) loadRoom(activeRoom);
+          }
+          alert('Library imported successfully!');
+        }
+      } catch (err) {
+        console.error('Failed to import library', err);
+        alert('Failed to import library. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
   };
 
   const deleteRoom = (id: string, e: React.MouseEvent) => {
@@ -615,14 +570,27 @@ function App() {
               </div>
             )}
           </div>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={importLibrary} 
+            accept=".json" 
+            className="hidden" 
+          />
           <button 
             type="button" 
-            onClick={saveRoom}
-            disabled={saveStatus !== 'idle'}
-            className={`flex h-9 items-center gap-2 rounded-md border border-[#444] px-4 text-[13px] text-white shadow-sm transition-all ${saveStatus === 'success' ? 'bg-[#228b3a] border-[#228b3a]' : 'bg-[#2d2d2d] hover:bg-[#383838]'}`}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
           >
-            {saveStatus === 'success' ? <IconCheck /> : <IconLock className="mr-1" />}
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'success' ? 'Saved & Copied!' : 'Save'}
+            <IconUpload className="mr-1" /> Import
+          </button>
+          <button 
+            type="button" 
+            onClick={exportLibrary}
+            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
+          >
+            <IconDownload className="mr-1" /> Export
           </button>
         </div>
       </header>
