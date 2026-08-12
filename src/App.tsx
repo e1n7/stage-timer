@@ -660,6 +660,13 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
 
   useEffect(() => {
+    const handleInWindowResetAll = (event: Event) => {
+      const payload = (event as CustomEvent<string>).detail;
+      if (payload !== id) {
+        resetTimer();
+      }
+    };
+    window.addEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
       const { targetId, command, payload } = event.data;
@@ -667,6 +674,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       // Global commands
       if (command === 'PAUSE_ALL_EXCEPT' && payload !== id) {
         pauseTimer();
+        return;
+      }
+      if (command === 'RESET_ALL_EXCEPT' && payload !== id) {
+        resetTimer();
         return;
       }
 
@@ -689,7 +700,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }
       }
     };
-    return () => channel.close();
+    return () => {
+      window.removeEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
+      channel.close();
+    };
   }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
 
   useEffect(() => {
@@ -764,8 +778,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           onClick={() => {
             if (!isRunning) {
               onActivate();
+              window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
               const channel = new BroadcastChannel(CONTROL_CHANNEL);
-              channel.postMessage({ command: 'PAUSE_ALL_EXCEPT', payload: id });
+              channel.postMessage({ command: 'RESET_ALL_EXCEPT', payload: id });
               channel.close();
               startTimer();
             } else {
@@ -953,7 +968,9 @@ function App() {
           try {
             const channel = new BroadcastChannel(CONTROL_CHANNEL);
             channel.postMessage({ targetId: nextId, command: 'START' });
+            channel.postMessage({ command: 'RESET_ALL_EXCEPT', payload: nextId });
             channel.close();
+            window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: nextId }));
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
         }, 300);
       }
