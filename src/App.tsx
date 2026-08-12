@@ -33,6 +33,24 @@ const formatClock = (seconds: number) => {
 const CHANNEL_NAME = 'stage-timer-sync';
 const CONTROL_CHANNEL = 'stage-timer-controls';
 
+const DECREASE_OPTIONS = [
+  { label: '-1s', value: -1 },
+  { label: '-10s', value: -10 },
+  { label: '-20s', value: -20 },
+  { label: '-1m', value: -60 },
+  { label: '-5m', value: -300 },
+  { label: '-10m', value: -600 },
+];
+
+const INCREASE_OPTIONS = [
+  { label: '+1s', value: 1 },
+  { label: '+10s', value: 10 },
+  { label: '+20s', value: 20 },
+  { label: '+1m', value: 60 },
+  { label: '+5m', value: 300 },
+  { label: '+10m', value: 600 },
+];
+
 // SVG Icons
 const IconChevronDown = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>
@@ -85,6 +103,37 @@ const IconMaximize = () => (
 const IconSquare = () => (
   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
 );
+
+interface TimeAdjustMenuProps {
+  direction: 'decrease' | 'increase';
+  onSelect: (seconds: number) => void;
+  onClose: () => void;
+}
+
+const TimeAdjustMenu = ({ direction, onSelect, onClose }: TimeAdjustMenuProps) => {
+  const options = direction === 'decrease' ? DECREASE_OPTIONS : INCREASE_OPTIONS;
+
+  return (
+    <div className={`absolute bottom-full z-50 mb-2 w-32 rounded-md border border-[#444] bg-[#242424] p-1 shadow-2xl ${direction === 'decrease' ? 'left-0' : 'right-0'}`}>
+      <div className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-[#777]">
+        {direction === 'decrease' ? 'Subtract time' : 'Add time'}
+      </div>
+      {options.map((opt) => (
+        <button
+          key={opt.label}
+          type="button"
+          onClick={() => {
+            onSelect(opt.value);
+            onClose();
+          }}
+          className="block w-full rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] transition-colors"
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 interface TimerSettingsModalProps {
   isOpen: boolean;
@@ -266,6 +315,7 @@ function App() {
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -391,13 +441,47 @@ function App() {
             <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
           </div>
           <div className="mt-4 grid grid-cols-7 gap-2">
-            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
-            <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button>
-            <button onClick={() => sendControl('ADJUST', -5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button>
-            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className={activeTimerState?.isRunning ? 'text-white' : 'text-[#22c55e]'} /></button>
-            <button onClick={() => sendControl('ADJUST', 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipForward /></button>
-            <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button>
-            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease')}
+                className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}
+              >
+                <IconChevronDown />
+              </button>
+              {openAdjustMenu === 'decrease' && (
+                <TimeAdjustMenu 
+                  direction="decrease" 
+                  onSelect={(secs) => sendControl('ADJUST', secs)} 
+                  onClose={() => setOpenAdjustMenu(null)} 
+                />
+              )}
+            </div>
+
+            <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
+            <button onClick={() => sendControl('ADJUST', -5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors"><IconSkipBack /></button>
+            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors">
+              {activeTimerState?.isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}
+            </button>
+            <button onClick={() => sendControl('ADJUST', 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors"><IconSkipForward /></button>
+            <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
+            
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase')}
+                className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}
+              >
+                <IconChevronDown />
+              </button>
+              {openAdjustMenu === 'increase' && (
+                <TimeAdjustMenu 
+                  direction="increase" 
+                  onSelect={(secs) => sendControl('ADJUST', secs)} 
+                  onClose={() => setOpenAdjustMenu(null)} 
+                />
+              )}
+            </div>
           </div>
           <div className="mt-6 flex flex-col items-center"><div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div></div>
           <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div></div>
