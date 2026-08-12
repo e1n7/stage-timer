@@ -1472,22 +1472,6 @@ function App() {
               <span className="mt-1 text-[17px] font-bold tabular-nums text-white">{activeTimerId ? overUnder : '--:--'}</span>
             </div>
           </div>
-          {/* Active message */}
-          {getActiveMessage().messageText && (
-            <div className="mt-5 border-t border-[#333] pt-4">
-              <span className="text-[11px] uppercase tracking-wider text-[#8a8a8a]">Message</span>
-              <div 
-                className="mt-1.5 text-center text-[15px] font-bold leading-snug break-words"
-                style={{
-                  color: getActiveMessage().messageColor,
-                  fontWeight: getActiveMessage().messageBold ? 800 : 700,
-                  textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none'
-                }}
-              >
-                {getActiveMessage().messageText}
-              </div>
-            </div>
-          )}
         </aside>
 
         <main className="flex flex-1 flex-col px-10 py-6 bg-[#141414] overflow-y-auto custom-scrollbar">
