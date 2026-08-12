@@ -700,12 +700,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       <div className="flex flex-col items-start w-32">
         <div 
           onClick={(e) => { 
-            if (isRunning) return;
             e.stopPropagation(); 
             setIsSettingsOpen(true); 
           }}
-          className={`text-[13px] font-bold transition-colors ${isRunning ? 'text-white/30 cursor-default' : 'text-white/50 hover:text-white cursor-pointer'}`}
-          title={isRunning ? "Cannot edit while running" : "Click to set start time"}
+          className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
+          title="Click to set start time"
         >
           {formatTime(scheduledStart)}
         </div>
@@ -714,11 +713,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       {/* Timer Display */}
       <div 
         onClick={(e) => { 
-          if (isRunning) return;
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`flex-1 text-center text-[32px] font-bold tracking-tight tabular-nums transition-colors ${isRunning ? 'text-white cursor-default' : 'text-white hover:text-[#4a9eff] cursor-pointer'}`}
+        className="flex-1 text-center text-[32px] font-bold tracking-tight tabular-nums transition-colors text-white hover:text-[#4a9eff] cursor-pointer"
       >
         {currentTime}
       </div>
@@ -740,12 +738,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         </button>
         <button 
           type="button" 
-          onClick={() => {
-            if (isRunning) return;
-            setIsSettingsOpen(true);
-          }}
-          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isRunning ? 'opacity-30 cursor-not-allowed' : isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
-          disabled={isRunning}
+          onClick={() => setIsSettingsOpen(true)}
+          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
           <IconSettings size={16} />
         </button>
