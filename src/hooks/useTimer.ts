@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 
-const DEFAULT_TIME = 5 * 60; // 5 minutes
+const DEFAULT_TIME = 0; // All timers start at 0:00 as requested
 const DEFAULT_SETTINGS: TimerSettings = {
   title: 'Timer 1',
   speaker: '',
@@ -55,17 +55,21 @@ export interface SyncState {
   mode: TimerMode;
 }
 
-export const useTimer = () => {
+export const useTimer = (id: string = 'default') => {
+  const secondsKey = `timerSeconds_${id}`;
+  const settingsKey = `timerSettings_${id}`;
+  const logKey = `timerLog_${id}`;
+
   const [seconds, setSeconds] = useState<number>(() => {
-    const saved = localStorage.getItem('timerSeconds');
+    const saved = localStorage.getItem(secondsKey);
     return saved ? JSON.parse(saved) : DEFAULT_TIME;
   });
   
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'finished'>('idle');
-  const [settings, setSettings] = useLocalStorage<TimerSettings>('timerSettings', DEFAULT_SETTINGS);
-  const [log, setLog] = useLocalStorage<LogEntry[]>('timerLog', []);
+  const [settings, setSettings] = useLocalStorage<TimerSettings>(settingsKey, DEFAULT_SETTINGS);
+  const [log, setLog] = useLocalStorage<LogEntry[]>(logKey, []);
   const [now, setNow] = useState(new Date());
 
   const intervalRef = useRef<number | null>(null);
@@ -86,10 +90,10 @@ export const useTimer = () => {
   // Persist seconds to localStorage periodically
   useEffect(() => {
     const saveInterval = setInterval(() => {
-      localStorage.setItem('timerSeconds', JSON.stringify(seconds));
+      localStorage.setItem(secondsKey, JSON.stringify(seconds));
     }, 1000);
     return () => clearInterval(saveInterval);
-  }, [seconds]);
+  }, [seconds, secondsKey]);
 
   useEffect(() => {
     const wallTimer = setInterval(() => setNow(new Date()), 1000);
@@ -243,9 +247,9 @@ export const useTimer = () => {
     };
     
     setSeconds(resetTime);
-    localStorage.setItem('timerSeconds', JSON.stringify(resetTime));
+    localStorage.setItem(secondsKey, JSON.stringify(resetTime));
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
-  }, [mode]);
+  }, [mode, secondsKey]);
 
   const setTime = useCallback((newTime: number) => {
     setSeconds(newTime);
@@ -254,8 +258,8 @@ export const useTimer = () => {
       syncStateRef.current.startTime = Date.now();
     }
     if (newTime > 0) setStatus('idle');
-    localStorage.setItem('timerSeconds', JSON.stringify(newTime));
-  }, []);
+    localStorage.setItem(secondsKey, JSON.stringify(newTime));
+  }, [secondsKey]);
 
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));

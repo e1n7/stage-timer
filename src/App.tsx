@@ -1,7 +1,25 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
@@ -342,14 +360,97 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
   );
 };
 
+interface TimerRowProps {
+  id: string;
+  index: number;
+  isActive: boolean;
+  onActivate: () => void;
+  onSync: (state: any) => void;
+}
+
+const TimerRow = ({ id, index, isActive, onActivate, onSync }: TimerRowProps) => {
+  const {
+    seconds,
+    isRunning,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    settings,
+    updateSettings,
+    syncState,
+    DEFAULT_TIME
+  } = useTimer(id);
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const currentTime = formatClock(seconds);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    position: 'relative' as const,
+  };
+
+  // Sync to parent when active
+  useEffect(() => {
+    if (isActive) {
+      onSync({
+        seconds,
+        isRunning,
+        settings,
+        syncState,
+        DEFAULT_TIME
+      });
+    }
+  }, [isActive, seconds, isRunning, settings, syncState, DEFAULT_TIME, onSync]);
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      onClick={onActivate}
+      className={`flex items-center gap-4 rounded-lg px-6 py-5 text-white shadow-2xl transition-all cursor-pointer ${isActive ? 'bg-[#2546c9]' : 'bg-[#2d2d2d] hover:bg-[#383838]'} ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div {...attributes} {...listeners} className="text-[18px] font-bold opacity-80 cursor-grab active:cursor-grabbing px-2 -ml-2">
+        {index + 1}
+      </div>
+      <div className="text-[15px] font-bold opacity-60 border-b border-dotted border-white/40">Add time</div>
+      <div className="mx-auto text-center text-[32px] font-bold tracking-tight tabular-nums">{currentTime}</div>
+      <div className="text-[17px] font-bold truncate max-w-[150px]">{settings.title || `Timer ${index + 1}`}</div>
+      
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={resetTimer} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipBack /></button>
+        <button type="button" onClick={() => setIsSettingsOpen(true)} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSettings /></button>
+        <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-10 w-14 items-center justify-center rounded bg-[#228b3a] hover:bg-[#2aa346] shadow-lg transition-colors">
+          {isRunning ? <IconPause /> : <IconPlay />}
+        </button>
+        <button type="button" className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipForward /></button>
+      </div>
+
+      <TimerSettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        settings={settings}
+        updateSettings={updateSettings}
+      />
+    </div>
+  );
+};
+
 interface Room {
   id: string;
   name: string;
-  timers: Array<{
-    id: string;
-    seconds: number;
-    settings: any;
-  }>;
+  timerIds: string[];
+  activeTimerId: string;
   messages: Array<{
     id: string;
     text: string;
@@ -358,88 +459,73 @@ interface Room {
 }
 
 function App() {
-  const {
-    seconds,
-    isRunning,
-    DEFAULT_TIME,
-    setTime,
-    startTimer,
-    pauseTimer,
-    resetTimer,
-    settings,
-    updateSettings,
-    colorClass,
-    wallClock,
-    timeZone,
-    cueFinish,
-    overUnder,
-    syncState,
-  } = useTimer();
-
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
-  const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
-  const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', ['default']);
+  const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', 'default');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [
     { id: '1', text: '', color: '#ffffff' }
   ]);
+
+  const [activeTimerState, setActiveTimerState] = useState<any>(null);
+  const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const currentTime = formatClock(seconds);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setTimerIds((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const addTimer = () => {
+    const newId = `timer_${Date.now()}`;
+    setTimerIds([...timerIds, newId]);
+    setActiveTimerId(newId);
+  };
 
   const loadRoom = useCallback((room: Room) => {
     setCurrentRoomName(room.name);
-    if (room.timers?.[0]) {
-      setTime(room.timers[0].seconds);
-      updateSettings(room.timers[0].settings);
-    }
-    if (room.messages) {
-      setMessages(room.messages);
-    }
+    setTimerIds(room.timerIds || ['default']);
+    setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || 'default'));
+    setMessages(room.messages || [{ id: '1', text: '', color: '#ffffff' }]);
     setIsRoomMenuOpen(false);
-  }, [setCurrentRoomName, setTime, updateSettings, setMessages]);
+  }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
 
   const exportLibrary = () => {
-    // 1. Ensure current state is saved to the rooms list
-    const currentRoom: Room = {
-      id: Date.now().toString(),
-      name: currentRoomName,
-      timers: [{ id: '1', seconds, settings: { ...settings } }],
-      messages: [...messages]
-    };
-    
-    let updatedRooms = [...rooms];
-    const existingIndex = updatedRooms.findIndex(r => r.name === currentRoomName);
-    if (existingIndex >= 0) {
-      updatedRooms[existingIndex] = currentRoom;
-    } else {
-      updatedRooms.push(currentRoom);
-    }
-    setRooms(updatedRooms);
-
-    // 2. Create export object
     const exportData = {
-      rooms: updatedRooms,
+      rooms: [...rooms, {
+        id: Date.now().toString(),
+        name: currentRoomName,
+        timerIds,
+        activeTimerId,
+        messages
+      }],
       activeRoomName: currentRoomName,
       exportedAt: new Date().toISOString()
     };
-
-    // 3. Trigger download
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
   const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -450,30 +536,11 @@ function App() {
             const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName);
             if (activeRoom) loadRoom(activeRoom);
           }
-          alert('Library imported successfully!');
         }
-      } catch (err) {
-        console.error('Failed to import library', err);
-        alert('Failed to import library. Please check the file format.');
-      }
+      } catch (err) { console.error(err); }
     };
     reader.readAsText(file);
-    // Reset input
     e.target.value = '';
-  };
-
-  const deleteRoom = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setRooms(rooms.filter(r => r.id !== id));
-  };
-
-  const adjustTime = (delta: number) => {
-    setTime(Math.max(0, seconds + delta));
-  };
-
-  const handleMenuSelection = (minutes: number) => {
-    adjustTime(minutes * 60);
-    setOpenAdjustMenu(null);
   };
 
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -487,43 +554,27 @@ function App() {
     } catch { /* ignore */ }
   }, []);
 
-  // Sync only when running state, total time, or segments change - not every 100ms
+  // Sync active timer to output
   useEffect(() => {
-    syncOutput({ 
-      ...syncState,
-      totalTime: DEFAULT_TIME, 
-      segments: settings.segments 
-    });
-  }, [isRunning, DEFAULT_TIME, settings.segments, syncOutput]);
+    if (activeTimerState) {
+      syncOutput({ 
+        ...activeTimerState.syncState,
+        totalTime: activeTimerState.DEFAULT_TIME, 
+        segments: activeTimerState.settings.segments 
+      });
+    }
+  }, [activeTimerState, syncOutput]);
 
-  useEffect(() => {
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel(CHANNEL_NAME);
-      channel.onmessage = (event) => {
-        if (event.data?.type === 'handshake') {
-          channel?.postMessage({ 
-            ...syncState,
-            totalTime: DEFAULT_TIME, 
-            segments: settings.segments 
-          });
-        }
-      };
-    } catch { /* ignore */ }
-    return () => channel?.close();
-  }, [isRunning, DEFAULT_TIME, settings.segments]);
+  const openOutput = () => window.open('/output', '_blank');
+  const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
+  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
-  const openOutput = () => {
-    window.open('/output', '_blank');
-  };
+  const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '00:00';
+  const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
+  const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'Timer 1', segments: [] };
 
-  const updateMessage = (id: string, text: string) => {
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
-  };
-
-  const addMessage = () => {
-    setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
-  };
+  // Wall clock and other functional values (from any useTimer instance, but let's use a dedicated one or the active one)
+  const { wallClock, timeZone, cueFinish, overUnder } = useTimer('global-helper');
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased">
@@ -538,70 +589,25 @@ function App() {
         />
         <div className="flex items-center gap-2">
           <div className="relative">
-            <button 
-              type="button" 
-              onClick={() => setIsRoomMenuOpen(!isRoomMenuOpen)}
-              className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
-            >
-              Room <IconChevronDown />
-            </button>
-            
+            <button type="button" onClick={() => setIsRoomMenuOpen(!isRoomMenuOpen)} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
             {isRoomMenuOpen && (
               <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
-                {rooms.length === 0 && (
-                  <div className="px-2 py-3 text-center text-[12px] text-[#555]">No saved rooms</div>
-                )}
-                <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                  {rooms.map((room) => (
-                    <div 
-                      key={room.id}
-                      onClick={() => loadRoom(room)}
-                      className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer"
-                    >
-                      <span className="truncate">{room.name}</span>
-                      <button 
-                        onClick={(e) => deleteRoom(room.id, e)}
-                        className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {rooms.map((room) => (
+                  <div key={room.id} onClick={() => loadRoom(room)} className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer">
+                    <span className="truncate">{room.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); setRooms(rooms.filter(r => r.id !== room.id)); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
+                  </div>
+                ))}
                 <div className="mt-1 border-t border-[#333] pt-1">
-                  <button 
-                    onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }}
-                    className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]"
-                  >
-                    + Create New Room
-                  </button>
+                  <button onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button>
                 </div>
               </div>
             )}
           </div>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={importLibrary} 
-            accept=".json" 
-            className="hidden" 
-          />
-          <button 
-            type="button" 
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
-          >
-            <IconUpload className="mr-1" /> Import
-          </button>
-          <button 
-            type="button" 
-            onClick={exportLibrary}
-            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
-          >
-            <IconDownload className="mr-1" /> Export
-          </button>
+          <input type="file" ref={fileInputRef} onChange={importLibrary} accept=".json" className="hidden" />
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
+          <button type="button" onClick={exportLibrary} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -610,96 +616,50 @@ function App() {
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Dashboard</h2>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button>
-            </div>
+            <button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button>
           </div>
 
-          {/* DASHBOARD PREVIEW CARD */}
           <div className="rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl">
-            <div className="flex items-center justify-center text-[12px]">
-              <span className="font-bold text-[#7eb8ff]">{settings.title || 'Timer 1'}</span>
-            </div>
-            
-            <div 
-              className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-colors duration-300"
-              style={{ color: colorClass === '#22c55e' ? '#ffffff' : colorClass }}
-            >
-              {currentTime}
-            </div>
-
-            <ProgressBar 
-              currentSeconds={seconds} 
-              totalSeconds={DEFAULT_TIME || 600} 
-              segments={settings.segments} 
-              height="h-6"
-              className="mt-3 rounded-sm"
-            />
-
+            <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
+            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: displaySeconds <= 0 ? '#fa5252' : '#ffffff' }}>{currentTime}</div>
+            <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />
             <div className="mt-4 flex items-center gap-4 text-[13px]">
               <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
               <div className="flex items-center gap-2 text-white">
                 <div className="h-2 w-2 rounded-full bg-[#444]"></div>
-                <span className="font-mono text-[15px]">{currentTime}.{Math.floor((seconds % 1) * 10)}</span>
+                <span className="font-mono text-[15px]">{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span>
               </div>
             </div>
-
             <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
-              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(DEFAULT_TIME || 600)}</div>
+              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.DEFAULT_TIME || 0)}</div>
               <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div>
               <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div>
               <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div>
             </div>
-            <ProgressBar 
-              currentSeconds={seconds} 
-              totalSeconds={DEFAULT_TIME || 600} 
-              segments={settings.segments} 
-              height="h-1.5"
-              className="mt-1 border-none rounded-b-sm"
-            />
+            <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
           </div>
 
-          {/* DASHBOARD CONTROLS */}
           <div className="mt-4 grid grid-cols-7 gap-2">
-            <div className="relative col-span-1">
-              <button onClick={() => setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease')} className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconChevronDown /></button>
-              {openAdjustMenu === 'decrease' && <TimeAdjustMenu direction="decrease" onSelect={handleMenuSelection} />}
-            </div>
-            <button onClick={() => adjustTime(-60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838]">-1m</button>
-            <button onClick={() => setTime(Math.max(0, seconds - 5))} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconSkipBack /></button>
-            <button onClick={isRunning ? pauseTimer : startTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]">
-              {isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}
-            </button>
-            <button onClick={() => setTime(seconds + 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconSkipForward /></button>
-            <button onClick={() => adjustTime(60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838]">+1m</button>
-            <div className="relative col-span-1">
-              <button onClick={() => setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase')} className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconChevronDown /></button>
-              {openAdjustMenu === 'increase' && <TimeAdjustMenu direction="increase" onSelect={handleMenuSelection} />}
-            </div>
+            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
+            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button>
+            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button>
+            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className="text-[#22c55e]" /></button>
+            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] opacity-50"><IconSkipForward /></button>
+            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button>
+            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
           </div>
 
           <div className="mt-6 flex flex-col items-center">
-            <div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]">
-              <IconClock />
-              <span>{wallClock}</span>
-              <span className="text-[#8a8a8a]">{timeZone}</span>
-            </div>
+            <div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div>
           </div>
-
           <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-            <div className="flex flex-col items-center">
-              <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span>
-              <span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span>
-              <span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span>
-            </div>
+            <div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div>
+            <div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div>
           </div>
         </aside>
 
         {/* Center: Timers panel */}
-        <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414]">
+        <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h2 className="text-[20px] font-bold text-white">Timers</h2>
@@ -712,112 +672,65 @@ function App() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* TIMER ROW */}
-            <div className="flex items-center gap-4 rounded-lg bg-[#2546c9] px-6 py-5 text-white shadow-2xl">
-              <div className="text-[18px] font-bold opacity-80">1</div>
-              <div className="text-[15px] font-bold opacity-60 border-b border-dotted border-white/40 cursor-pointer">Add time</div>
-              <div className="mx-auto text-center text-[32px] font-bold tracking-tight tabular-nums">{currentTime}</div>
-              <div className="text-[17px] font-bold">{settings.title || 'Timer 1'}</div>
-              
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={resetTimer} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipBack /></button>
-                <button type="button" onClick={() => setIsSettingsOpen(true)} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSettings /></button>
-                <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-10 w-14 items-center justify-center rounded bg-[#228b3a] hover:bg-[#2aa346] shadow-lg transition-colors">
-                  {isRunning ? <IconPause /> : <IconPlay />}
-                </button>
-                <button type="button" className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipForward /></button>
+          <DndContext 
+            sensors={sensors} 
+            collisionDetection={closestCenter} 
+            onDragEnd={handleDragEnd}
+            modifiers={[restrictToVerticalAxis]}
+          >
+            <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {timerIds.map((id, index) => (
+                  <TimerRow 
+                    key={id} 
+                    id={id} 
+                    index={index} 
+                    isActive={activeTimerId === id}
+                    onActivate={() => setActiveTimerId(id)}
+                    onSync={setActiveTimerState}
+                  />
+                ))}
               </div>
-            </div>
+            </SortableContext>
+          </DndContext>
 
-            <div className="mt-8 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setTime(0)}
-                className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg"
-              >
-                + Add Timer
-              </button>
-            </div>
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={addTimer}
+              className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg"
+            >
+              + Add Timer
+            </button>
           </div>
         </main>
 
         {/* Right: Messages panel */}
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-[17px] font-bold text-white">Messages</h2>
-              <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
-            </div>
-            <button type="button" onClick={() => syncOutput({ flash: true })} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
+            <div className="flex items-center gap-4"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div>
+            <button type="button" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
           </div>
-          
           <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
             {messages.map((msg) => (
               <div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
-                <div className="flex gap-3">
-                  <span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span>
-                  <input 
-                    type="text"
-                    value={msg.text}
-                    onChange={(e) => updateMessage(msg.id, e.target.value)}
-                    placeholder="Enter message ..."
-                    className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]"
-                  />
-                </div>
-                <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2">
-                  <div className="flex gap-4">
-                    {['A', 'A', 'A', 'B', 'āA'].map((tag, index) => (
-                      <button key={index} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff', borderColor: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-                  <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button>
-                  <button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button>
-                </div>
+                <div className="flex gap-3"><span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span><input type="text" value={msg.text} onChange={(e) => updateMessage(msg.id, e.target.value)} placeholder="Enter message ..." className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]" /></div>
+                <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2"><div className="flex gap-4">{['A', 'A', 'A', 'B', 'āA'].map((tag, i) => (<button key={i} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff', borderColor: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>))}</div></div>
+                <div className="mt-4 flex justify-end gap-2"><button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button><button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button></div>
               </div>
             ))}
           </div>
-
           <div className="mt-6 space-y-4">
-            <button 
-              type="button" 
-              onClick={addMessage}
-              className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md"
-            >
-              + Add Message
-            </button>
+            <button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button>
             <div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div>
           </div>
         </aside>
       </div>
 
-      <TimerSettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        settings={settings}
-        updateSettings={updateSettings}
-      />
-
       {/* Footer */}
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
-        <div className="flex items-center gap-4">
-          <span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span>
-          <span><IconSquare /> 395 ms</span>
-        </div>
-        <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
-          <span>0:00</span>
-          <div className="group relative flex-1">
-            <div className="absolute inset-0 flex items-center">
-              <div className="h-1 w-full rounded-full bg-[#333]"></div>
-            </div>
-            <div className="relative flex h-4 items-center">
-              <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform"></div>
-            </div>
-          </div>
-          <span>-10:00</span>
-        </div>
+        <div className="flex items-center gap-4"><span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span><span><IconSquare /> 395 ms</span></div>
+        <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12"><span>0:00</span><div className="group relative flex-1"><div className="absolute inset-0 flex items-center"><div className="h-1 w-full rounded-full bg-[#333]"></div></div><div className="relative flex h-4 items-center"><div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform"></div></div></div><span>-10:00</span></div>
       </footer>
     </div>
   );
