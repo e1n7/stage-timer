@@ -645,7 +645,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           className={`text-[13px] font-bold transition-colors ${isRunning ? 'text-white/30 cursor-default' : 'text-white/50 hover:text-white cursor-pointer'}`}
           title={isRunning ? "Cannot edit while running" : "Click to set start time"}
         >
-          {(!isRunning && seconds === settings.targetDuration && !settings.scheduledStart) ? 'Add time' : formatTime(scheduledStart)}
+          {formatTime(scheduledStart)}
         </div>
       </div>
 
@@ -796,8 +796,8 @@ function App() {
     const midnight = (now.getTime() / 1000) - secondsSinceMidnight;
 
     // Anchor to active timer if it's running or has been started
-    let anchorTime: number | null = null;
-    let anchorIndex = -1;
+    let anchorTime: number = Math.floor(now.getTime() / 1000);
+    let anchorIndex = 0;
 
     if (activeTimerId && activeTimerState?.syncState?.startTime) {
       anchorTime = Math.floor(activeTimerState.syncState.startTime / 1000);
@@ -806,25 +806,20 @@ function App() {
 
     // Forward pass
     let currentEndTime = anchorTime;
-    for (let i = Math.max(0, anchorIndex); i < timerIds.length; i++) {
+    for (let i = anchorIndex; i < timerIds.length; i++) {
       const id = timerIds[i];
       const stored = localStorage.getItem(`timerSettings_${id}`);
       const settings = stored ? JSON.parse(stored) : { targetDuration: 0, scheduledStart: null };
       
       let startTime = currentEndTime;
       
-      // Handle manual start or unanchored start
-      if (startTime === null) {
-        if (settings.scheduledStart !== null) {
-          startTime = midnight + settings.scheduledStart;
-          currentEndTime = startTime;
-        }
+      // Only apply manual start to the anchor or if explicitly set
+      if (settings.scheduledStart !== null && (i === anchorIndex && !activeTimerState?.isRunning)) {
+        startTime = midnight + settings.scheduledStart;
       }
 
       result[id] = { start: startTime };
-      if (startTime !== null) {
-        currentEndTime = startTime + (settings.targetDuration || 0);
-      }
+      currentEndTime = startTime + (settings.targetDuration || 0);
     }
 
     // Backward pass
