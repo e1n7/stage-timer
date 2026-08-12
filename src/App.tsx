@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -125,7 +125,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
         <div className="mb-6 flex items-center justify-between border-b border-[#333] pb-4">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
-            <h2 className="text-lg font-bold text-white">Settings for Timer 1 »Timer 1«</h2>
+            <h2 className="text-lg font-bold text-white">Settings for {settings.title || 'Timer 1'}</h2>
           </div>
           <button onClick={onClose} className="text-xl text-[#8a8a8a] hover:text-white">✕</button>
         </div>
@@ -342,8 +342,16 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
 interface Room {
   id: string;
   name: string;
-  seconds: number;
-  settings: any;
+  timers: Array<{
+    id: string;
+    seconds: number;
+    settings: any;
+  }>;
+  messages: Array<{
+    id: string;
+    text: string;
+    color: string;
+  }>;
 }
 
 function App() {
@@ -369,14 +377,44 @@ function App() {
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [
+    { id: '1', text: '', color: '#ffffff' }
+  ]);
   const currentTime = formatClock(seconds);
 
+  // Load state from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get('data');
+    if (data) {
+      try {
+        const decoded = JSON.parse(atob(data));
+        if (decoded.roomName) setCurrentRoomName(decoded.roomName);
+        if (decoded.seconds !== undefined) setTime(decoded.seconds);
+        if (decoded.settings) updateSettings(decoded.settings);
+        if (decoded.messages) setMessages(decoded.messages);
+        // Clear URL to avoid re-loading on refresh
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch (e) {
+        console.error('Failed to parse shareable link data', e);
+      }
+    }
+  }, []);
+
   const saveRoom = () => {
+    const roomData = {
+      roomName: currentRoomName,
+      seconds,
+      settings,
+      messages
+    };
+    
+    // 1. Save to Local Storage
     const newRoom: Room = {
       id: Date.now().toString(),
       name: currentRoomName,
-      seconds,
-      settings: { ...settings }
+      timers: [{ id: '1', seconds, settings: { ...settings } }],
+      messages: [...messages]
     };
     
     const existingIndex = rooms.findIndex(r => r.name === currentRoomName);
@@ -387,12 +425,26 @@ function App() {
     } else {
       setRooms([...rooms, newRoom]);
     }
+
+    // 2. Generate shareable link
+    const encoded = btoa(JSON.stringify(roomData));
+    const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Room saved! Shareable link copied to clipboard.');
+    });
   };
 
   const loadRoom = (room: Room) => {
     setCurrentRoomName(room.name);
-    setTime(room.seconds);
-    updateSettings(room.settings);
+    if (room.timers?.[0]) {
+      setTime(room.timers[0].seconds);
+      updateSettings(room.timers[0].settings);
+    }
+    if (room.messages) {
+      setMessages(room.messages);
+    }
     setIsRoomMenuOpen(false);
   };
 
@@ -410,7 +462,7 @@ function App() {
     setOpenAdjustMenu(null);
   };
 
-  const syncOutput = (payload: Record<string, unknown>) => {
+  const syncOutput = useCallback((payload: Record<string, unknown>) => {
     try {
       const channel = new BroadcastChannel(CHANNEL_NAME);
       channel.postMessage(payload);
@@ -419,11 +471,11 @@ function App() {
     try {
       localStorage.setItem('timerState', JSON.stringify({ seconds, isRunning, totalTime: DEFAULT_TIME }));
     } catch { /* ignore */ }
-  };
+  }, [seconds, isRunning, DEFAULT_TIME]);
 
   useEffect(() => {
     syncOutput({ seconds, isRunning, totalTime: DEFAULT_TIME, segments: settings.segments });
-  }, [seconds, isRunning, DEFAULT_TIME, settings.segments]);
+  }, [seconds, isRunning, DEFAULT_TIME, settings.segments, syncOutput]);
 
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
@@ -440,6 +492,14 @@ function App() {
 
   const openOutput = () => {
     window.open('/output', '_blank');
+  };
+
+  const updateMessage = (id: string, text: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
+  };
+
+  const addMessage = () => {
+    setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
   };
 
   return (
@@ -651,29 +711,45 @@ function App() {
               <h2 className="text-[17px] font-bold text-white">Messages</h2>
               <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
             </div>
-            <button type="button" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
+            <button type="button" onClick={() => syncOutput({ flash: true })} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
           </div>
           
-          <div className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
-            <div className="flex gap-3">
-              <span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span>
-              <div className="flex-1 rounded-md border border-[#444] bg-[#1c1c1c] p-2.5 text-[14px] text-[#555] italic">Enter message ...</div>
-            </div>
-            <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2">
-              <div className="flex gap-4">
-                {['A', 'A', 'A', 'B', 'āA'].map((tag, index) => (
-                  <button key={index} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff', borderColor: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>
-                ))}
+          <div className="space-y-3">
+            {messages.map((msg) => (
+              <div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
+                <div className="flex gap-3">
+                  <span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span>
+                  <input 
+                    type="text"
+                    value={msg.text}
+                    onChange={(e) => updateMessage(msg.id, e.target.value)}
+                    placeholder="Enter message ..."
+                    className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]"
+                  />
+                </div>
+                <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2">
+                  <div className="flex gap-4">
+                    {['A', 'A', 'A', 'B', 'āA'].map((tag, index) => (
+                      <button key={index} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff', borderColor: index === 1 ? '#22c55e' : index === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button>
+                  <button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button>
+                </div>
               </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button>
-              <button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button>
-            </div>
+            ))}
           </div>
 
           <div className="mt-6 space-y-4">
-            <button type="button" className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button>
+            <button 
+              type="button" 
+              onClick={addMessage}
+              className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md"
+            >
+              + Add Message
+            </button>
             <div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div>
           </div>
         </aside>
