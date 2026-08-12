@@ -616,6 +616,27 @@ function App() {
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
 
+  const getDashboardTextColor = () => {
+    if (!activeTimerId) return '#333';
+    const rounded = Math.floor(displaySeconds);
+    if (rounded <= 0) return '#fa5252';
+    const sorted = [...(displaySettings.segments || [])].sort((a, b) => a.threshold - b.threshold);
+    for (const seg of sorted) {
+      if (rounded <= seg.threshold) return seg.color;
+    }
+    return '#ffffff';
+  };
+
+  const getDashboardGlowColor = () => {
+    if (!activeTimerId) return 'transparent';
+    const color = getDashboardTextColor();
+    if (color === '#ffffff') return 'rgba(255, 255, 255, 0.3)';
+    if (color === '#fa5252') return 'rgba(250, 82, 82, 0.4)';
+    if (color === '#f08c00') return 'rgba(240, 140, 0, 0.4)';
+    if (color === '#22c55e') return 'rgba(34, 197, 94, 0.4)';
+    return 'transparent';
+  };
+
   const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone, cueFinish, overUnder } = useTimer('global-helper');
 
   const TIMEZONES = [
@@ -662,9 +683,9 @@ function App() {
             <div 
               className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
-                color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : '#ffffff', 
+                color: getDashboardTextColor(), 
                 opacity: isFlash ? 0 : 1,
-                textShadow: activeTimerId ? `0 0 20px ${displaySeconds <= 0 ? 'rgba(250, 82, 82, 0.4)' : 'rgba(255, 255, 255, 0.3)'}` : 'none'
+                textShadow: activeTimerId ? `0 0 20px ${getDashboardGlowColor()}` : 'none'
               }}
             >
               {currentTime}
@@ -681,9 +702,9 @@ function App() {
                   <span 
                     className="font-mono text-[15px]" 
                     style={{ 
-                      color: '#fff', 
+                      color: getDashboardTextColor(), 
                       opacity: isFlash ? 0 : 1,
-                      textShadow: '0 0 8px rgba(255, 255, 255, 0.5)'
+                      textShadow: `0 0 8px ${getDashboardGlowColor()}`
                     }}
                   >
                     {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
