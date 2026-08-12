@@ -477,6 +477,8 @@ function App() {
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
+  const [isBlackout, setIsBlackout] = useState(false);
+  const [isFlash, setIsFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(
@@ -567,10 +569,17 @@ function App() {
       syncOutput({ 
         ...activeTimerState.syncState,
         totalTime: activeTimerState.DEFAULT_TIME, 
-        segments: activeTimerState.settings.segments 
+        segments: activeTimerState.settings.segments,
+        blackout: isBlackout,
+        flash: isFlash
       });
     }
-  }, [activeTimerState, syncOutput]);
+  }, [activeTimerState, syncOutput, isBlackout, isFlash]);
+
+  const handleFlash = () => {
+    setIsFlash(true);
+    setTimeout(() => setIsFlash(false), 600);
+  };
 
   const openOutput = () => window.open('/output', '_blank');
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
@@ -626,15 +635,16 @@ function App() {
             <button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button>
           </div>
 
-          <div className="rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl">
+          <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 ${isFlash ? 'bg-white' : ''}`}>
+            {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
-            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: displaySeconds <= 0 ? '#fa5252' : '#ffffff' }}>{currentTime}</div>
+            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
             <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />
             <div className="mt-4 flex items-center gap-4 text-[13px]">
               <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
               <div className="flex items-center gap-2 text-white">
                 <div className="h-2 w-2 rounded-full bg-[#444]"></div>
-                <span className="font-mono text-[15px]">{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span>
+                <span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
@@ -673,8 +683,20 @@ function App() {
               <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
             </div>
             <div className="flex items-center gap-2">
-              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white"><IconCircle /> Blackout</button>
-              <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white"><IconFlash /> Flash</button>
+              <button 
+                type="button" 
+                onClick={() => setIsBlackout(!isBlackout)}
+                className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}
+              >
+                <IconCircle /> Blackout
+              </button>
+              <button 
+                type="button" 
+                onClick={handleFlash}
+                className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
+              >
+                <IconFlash /> Flash
+              </button>
               <button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white"><IconMore /></button>
             </div>
           </div>
@@ -716,7 +738,7 @@ function App() {
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-4"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div>
-            <button type="button" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
+            <button type="button" onClick={handleFlash} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
           </div>
           <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
             {messages.map((msg) => (

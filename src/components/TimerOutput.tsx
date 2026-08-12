@@ -43,15 +43,19 @@ export const TimerOutput = () => {
       
       if ('totalTime' in data) setTotalTime(data.totalTime);
       if ('segments' in data) setSegments(data.segments);
-      if ('flash' in data) {
+      
+      // Blackout & Flash Sync
+      if ('blackout' in data) setBlackout(!!data.blackout);
+      if ('flash' in data && data.flash) {
         setFlash(true);
         setTimeout(() => setFlash(false), 600);
       }
-      if ('blackout' in data) setBlackout(data.blackout);
 
       // Core sync logic: use startTime as the single reference point
       if ('startTime' in data || 'initialSeconds' in data || 'isRunning' in data) {
-        setIsRunning(!!data.isRunning);
+        const newIsRunning = !!data.isRunning;
+        setIsRunning(newIsRunning);
+        
         syncStateRef.current = {
           startTime: data.startTime,
           initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
@@ -59,7 +63,7 @@ export const TimerOutput = () => {
         };
         
         // Initial jump to correct time
-        if (data.isRunning && data.startTime) {
+        if (newIsRunning && data.startTime) {
           const elapsed = (Date.now() - data.startTime) / 1000;
           const next = data.mode === 'countdown' 
             ? Math.max(0, data.initialSeconds - elapsed)
@@ -110,7 +114,7 @@ export const TimerOutput = () => {
   }, [isRunning]);
 
   const getTextColor = () => {
-    if (flash) return '#ffffff';
+    if (flash) return '#000000'; // Black text during white flash
     const rounded = Math.floor(seconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -129,13 +133,27 @@ export const TimerOutput = () => {
   };
 
   return (
-    <div className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]" style={{ transition: 'background-color 0.6s ease' }}>
+    <div 
+      className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300" 
+      style={{ 
+        backgroundColor: flash ? '#ffffff' : '#0a0a0a'
+      }}
+    >
       <button onClick={toggleFullscreen} className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0" aria-label="Toggle Fullscreen" />
+      
       {blackout ? (
         <div className="h-full w-full bg-black" />
       ) : (
         <div className="flex w-full flex-col items-center px-[8vw]">
-          <div className="text-center font-bold tabular-nums tracking-tighter" style={{ color: getTextColor(), fontSize: 'min(35vw, 50vh)', lineHeight: 0.9, fontFamily: 'Inter, system-ui, sans-serif', transition: flash ? 'none' : 'color 0.3s ease' }}>
+          <div 
+            className="text-center font-bold tabular-nums tracking-tighter transition-colors duration-300" 
+            style={{ 
+              color: getTextColor(), 
+              fontSize: 'min(35vw, 50vh)', 
+              lineHeight: 0.9, 
+              fontFamily: 'Inter, system-ui, sans-serif'
+            }}
+          >
             {formatClock(seconds)}
           </div>
           <div className="mt-[5vh] w-full">
