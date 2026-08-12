@@ -1200,28 +1200,30 @@ function App() {
   const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: !m.uppercase } : m));
   const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
   const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
-    const msg = messageShownId ? (messages.find(m => m.id === messageShownId) || null) : null;
+    // Maximized message takes precedence over the shown message
+    const activeId = (messageMaximizeId && messages.some(m => m.id === messageMaximizeId)) ? messageMaximizeId : messageShownId;
+    const msg = activeId ? (messages.find(m => m.id === activeId) || null) : null;
     const shownText = msg ? msg.text || '' : '';
     return {
       messageText: shownText,
       messageColor: msg?.color || '#ffffff',
       messageBold: !!msg?.bold,
       messageUppercase: !!msg?.uppercase,
-      messageShown: !!messageShownId,
+      messageShown: !!messageShownId || !!messageMaximizeId,
       messageFlash: false,
-      messageMaximize: !!messageMaximizeId && messageMaximizeId === messageShownId
+      messageMaximize: !!messageMaximizeId
     };
   };
   const maximizeMessage = (id: string) => {
     if (messageMaximizeId === id) {
       setMessageMaximizeId(null);
-      syncOutput({ messageMaximize: false, type: 'force-sync' });
+      syncOutput({ messageMaximize: false, messageShown: !!messageShownId, type: 'force-sync' });
       return;
     }
     setMessageMaximizeId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageMaximize: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageMaximize: true, messageShown: true, type: 'force-sync' });
     }
   };
   const showMessage = (id: string) => {
@@ -1622,7 +1624,7 @@ function App() {
                 <div className="flex overflow-hidden rounded-md border border-[#444]">
                   <button
                     type="button"
-                    onClick={() => flashMessage(msg.id)}
+                    onClick={() => showMessage(msg.id)}
                     className={`flex items-center gap-2 px-4 py-1.5 text-[13px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
                   >
                     <span className={`inline-block h-2.5 w-2.5 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
