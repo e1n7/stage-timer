@@ -26,6 +26,12 @@ export const TimerOutput = () => {
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [fontHeight, setFontHeight] = useState<number>(1.6);
   const [fontWidth, setFontWidth] = useState<number>(1.0);
+  const [messageText, setMessageText] = useState<string>('');
+  const [messageColor, setMessageColor] = useState<string>('#ffffff');
+  const [messageBold, setMessageBold] = useState<boolean>(false);
+  const [messageUppercase, setMessageUppercase] = useState<boolean>(false);
+  const [messageVisible, setMessageVisible] = useState<boolean>(false);
+  const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -70,6 +76,26 @@ export const TimerOutput = () => {
       if ('segments' in data) setSegments(data.segments);
       if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
       if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
+      if ('messageText' in data) {
+        const hasMsg = !!data.messageText;
+        setMessageText(data.messageText || '');
+        setMessageColor(data.messageColor || '#ffffff');
+        setMessageBold(!!data.messageBold);
+        setMessageUppercase(!!data.messageUppercase);
+        setMessageVisible(hasMsg && !data.messageFlash);
+        setMessageFlashing(!!data.messageFlash);
+      }
+      if ('messageFlash' in data) {
+        const flashOn = !!data.messageFlash;
+        setMessageFlashing(flashOn);
+        if (flashOn && data.messageText) {
+          setMessageText(data.messageText);
+          setMessageColor(data.messageColor || '#ffffff');
+          setMessageBold(!!data.messageBold);
+          setMessageUppercase(!!data.messageUppercase);
+          setMessageVisible(true);
+        }
+      }
 
       if ('startTime' in data || 'initialSeconds' in data || 'isRunning' in data) {
         if (data.type === 'force-sync' || (data.lastUpdated || 0) >= syncStateRef.current.lastUpdated) {
@@ -219,6 +245,23 @@ export const TimerOutput = () => {
             >
               {seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)}
             </div>
+            {/* Message display */}
+            {(messageVisible || messageFlashing) && messageText && (
+              <div
+                className="absolute bottom-[14vh] left-1/2 z-10 -translate-x-1/2 text-center transition-opacity duration-150"
+                style={{
+                  opacity: messageFlashing ? 1 : 1,
+                  color: messageColor,
+                  fontSize: 'min(6vw, 5vh)',
+                  fontWeight: messageBold ? 800 : 600,
+                  textTransform: messageUppercase ? 'uppercase' : 'none',
+                  textShadow: `0 2px 12px rgba(0,0,0,0.6), 0 0 30px ${messageColor}55`,
+                  letterSpacing: '0.04em'
+                }}
+              >
+                {messageText}
+              </div>
+            )}
           </div>
           <div className="w-full pb-[2vh]">
             <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />

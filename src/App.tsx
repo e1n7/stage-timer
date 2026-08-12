@@ -857,6 +857,8 @@ function App() {
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
+  const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
+  const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
@@ -1138,16 +1140,18 @@ function App() {
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
         blackout: isBlackout,
         flash: isFlash,
-        isEmpty: false
+        isEmpty: false,
+        ...getActiveMessage()
       });
     } else if (timerIds.length === 0) {
       syncOutput({ 
         isEmpty: true,
         blackout: isBlackout,
-        flash: isFlash
+        flash: isFlash,
+        ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageFlashId]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -1160,14 +1164,16 @@ function App() {
         blackout: isBlackout,
         flash: isFlash,
         type: 'force-sync',
-        isEmpty: false
+        isEmpty: false,
+        ...getActiveMessage()
       });
     } else if (timerIds.length === 0) {
       syncOutput({ 
         isEmpty: true,
         blackout: isBlackout,
         flash: isFlash,
-        type: 'force-sync'
+        type: 'force-sync',
+        ...getActiveMessage()
       });
     }
     window.open('/output', '_blank');
@@ -1187,6 +1193,47 @@ function App() {
     }, 150);
   };
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
+  const updateMessageColor = (id: string, color: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, color } : m));
+  const toggleMessageBold = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: !m.bold } : m));
+  const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: !m.uppercase } : m));
+  const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
+  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFlash: boolean } => {
+    const active = messageFlashId ? messages.find(m => m.id === messageFlashId) : null;
+    const visible = !messageFlashId ? messages.find(m => m.text && m.text.trim()) : null;
+    const msg = active || visible || null;
+    return msg
+      ? { messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFlash: !!messageFlashId }
+      : { messageText: '', messageColor: '#ffffff', messageBold: false, messageUppercase: false, messageFlash: false };
+  };
+  const showMessage = (id: string) => {
+    if (messageFlashId === id) { setMessageFlashId(null); return; }
+    setMessageFlashId(id);
+    const msg = messages.find(m => m.id === id);
+    if (msg) {
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFlash: true, type: 'force-sync' });
+    }
+    setIsFlashing(true);
+    let count = 0;
+    const interval = setInterval(() => {
+      setIsFlash(prev => !prev);
+      count += 1;
+      if (count >= 6) {
+        clearInterval(interval);
+        setIsFlash(false);
+        setIsFlashing(false);
+        setMessageFlashId(null);
+      }
+    }, 250);
+  };
+  const moveMessage = (fromId: string, toId: string) => setMessages(prev => {
+    const fromIdx = prev.findIndex(m => m.id === fromId);
+    const toIdx = prev.findIndex(m => m.id === toId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
+    const next = [...prev];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    return next;
+  });
   const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
   const goToNextTimer = () => {
@@ -1410,6 +1457,22 @@ function App() {
               <span className="mt-1 text-[17px] font-bold tabular-nums text-white">{activeTimerId ? overUnder : '--:--'}</span>
             </div>
           </div>
+          {/* Active message */}
+          {getActiveMessage().messageText && (
+            <div className="mt-5 border-t border-[#333] pt-4">
+              <span className="text-[11px] uppercase tracking-wider text-[#8a8a8a]">Message</span>
+              <div 
+                className="mt-1.5 text-center text-[15px] font-bold leading-snug break-words"
+                style={{
+                  color: getActiveMessage().messageColor,
+                  fontWeight: getActiveMessage().messageBold ? 800 : 700,
+                  textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none'
+                }}
+              >
+                {getActiveMessage().messageText}
+              </div>
+            </div>
+          )}
         </aside>
 
         <main className="flex flex-1 flex-col px-10 py-6 bg-[#141414] overflow-y-auto custom-scrollbar">
@@ -1482,8 +1545,70 @@ function App() {
         </main>
 
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
-          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={handleFlash} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button></div>
-          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg) => (<div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg"><div className="flex gap-3"><span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span><input type="text" value={msg.text} onChange={(e) => updateMessage(msg.id, e.target.value)} placeholder="Enter message ..." className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]" /></div><div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2"><div className="flex gap-4">{['A', 'A', 'A', 'B', 'āA'].map((tag, i) => (<button key={i} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff', borderColor: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>))}</div></div><div className="mt-4 flex justify-end gap-2"><button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button><button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button></div></div>))}</div>
+          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[13px] text-[#8a8a8a] hover:text-[#c9c9c9] cursor-pointer">Select</span></div><button type="button" onClick={handleFlash} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button></div>
+          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => (
+            <div key={msg.id} className="group relative rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg transition-opacity">
+              {draggingMsgId === msg.id && <div className="absolute inset-0 z-20 rounded-lg bg-[#4a9eff]/10 pointer-events-none" />}
+              <div className="flex gap-3">
+                {/* Drag handle (visible on hover) */}
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', msg.id); setDraggingMsgId(msg.id); }}
+                  onDragEnd={() => setDraggingMsgId(null)}
+                  onDragOver={(e) => { if (draggingMsgId && draggingMsgId !== msg.id) e.preventDefault(); }}
+                  onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId) moveMessage(fromId, msg.id); setDraggingMsgId(null); }}
+                  className="flex items-center justify-center px-1 pt-1 text-[#555] hover:text-[#8a8a8a] cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Drag to reorder"
+                >
+                  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
+                </button>
+                <span className="text-[14px] font-bold text-[#8a8a8a] pt-1">{idx + 1}</span>
+                <textarea
+                  value={msg.text}
+                  onChange={(e) => updateMessage(msg.id, e.target.value)}
+                  placeholder="Enter message ..."
+                  rows={2}
+                  className="flex-1 resize-none bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]"
+                />
+                {/* Delete button (visible on hover) */}
+                <button
+                  type="button"
+                  onClick={() => deleteMessage(msg.id)}
+                  className="flex items-center justify-center px-1 pt-1 text-[#666] hover:text-[#fa5252] opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Delete message"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                </button>
+              </div>
+              {/* Toolbar */}
+              <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2">
+                <div className="flex items-center gap-4">
+                  {/* White */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff' }}>A</button>
+                  {/* Green */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#22c55e' }}>A</button>
+                  {/* Red */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#fa5252' }}>A</button>
+                  {/* Bold */}
+                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-1 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff', fontWeight: 700 }}>B</button>
+                  {/* Uppercase */}
+                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-1 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff', fontWeight: 700 }}>āA</button>
+                </div>
+              </div>
+              {/* Show / Flash row */}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => showMessage(msg.id)}
+                  className={`flex items-center gap-2 rounded-md border px-4 py-1.5 text-[13px] font-bold transition-colors ${messageFlashId === msg.id ? 'border-[#4a9eff] bg-[#4a9eff]/15 text-[#4a9eff]' : 'border-[#444] bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+                >
+                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${messageFlashId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
+                  Show
+                </button>
+              </div>
+            </div>
+          ))}</div>
           <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button><div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div></div>
         </aside>
       </div>
