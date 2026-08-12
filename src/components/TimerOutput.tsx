@@ -83,8 +83,13 @@ export const TimerOutput = () => {
         setMessageColor(data.messageColor || '#ffffff');
         setMessageBold(!!data.messageBold);
         setMessageUppercase(!!data.messageUppercase);
-        setMessageVisible(hasMsg && !data.messageFlash);
-        setMessageFlashing(!!data.messageFlash);
+        // Persistent show: stays on screen until toggled off
+        if ('messageShown' in data) {
+          setMessageVisible(hasMsg && !!data.messageShown);
+        }
+      }
+      if ('messageShown' in data) {
+        setMessageVisible(!!data.messageShown);
       }
       if ('messageFlash' in data) {
         const flashOn = !!data.messageFlash;
@@ -94,7 +99,6 @@ export const TimerOutput = () => {
           setMessageColor(data.messageColor || '#ffffff');
           setMessageBold(!!data.messageBold);
           setMessageUppercase(!!data.messageUppercase);
-          setMessageVisible(true);
         }
       }
       if ('messageMaximize' in data) {
