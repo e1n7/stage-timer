@@ -201,7 +201,7 @@ export const TimerOutput = () => {
           <div className="flex flex-1 items-center justify-center w-full">
             {seconds < 0 && (
               <div className="absolute left-1/2 top-[6vh] z-10 -translate-x-1/2">
-                <span className="inline-block rounded bg-[#fa5252]/20 px-4 py-2 text-[3vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
+                <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4.5vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
               </div>
             )}
             <div 
@@ -217,7 +217,7 @@ export const TimerOutput = () => {
                 transformOrigin: 'center'
               }}
             >
-              {seconds < 0 ? formatClock(seconds, true) : formatClock(seconds)}
+              {seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)}
             </div>
           </div>
           <div className="w-full pb-[2vh]">

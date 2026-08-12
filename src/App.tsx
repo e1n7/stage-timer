@@ -746,7 +746,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }}
         className={`flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
       >
-        {seconds < 0 && settings.mode === 'countdown' ? formatClock(seconds, true) : currentTime}
+        {seconds < 0 && settings.mode === 'countdown' ? '+' + formatClock(Math.abs(seconds)) : currentTime}
       </div>
 
       {/* Title */}
@@ -1265,8 +1265,8 @@ function App() {
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
-              <div className="flex items-center justify-center pt-1">
-                <span className="inline-block rounded bg-[#fa5252]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
+              <div className="flex items-center justify-center pt-1.5">
+                <span className="inline-block rounded bg-[#fa5252]/15 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
               </div>
             )}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
@@ -1280,7 +1280,7 @@ function App() {
                 transformOrigin: 'center'
               }}
             >
-              {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? formatClock(displaySeconds, true) : currentTime}
+              {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
           </div>
@@ -1298,7 +1298,7 @@ function App() {
                       textShadow: '0 0 4px rgba(255, 255, 255, 0.3)'
                     }}
                   >
-                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? formatClock(displaySeconds, true) : currentTime)}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
+                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime)}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>
               </div>
