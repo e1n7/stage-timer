@@ -5,7 +5,7 @@ const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 5 * 60; // 5 minutes
 
 const formatClock = (seconds: number) => {
-  const total = Math.max(0, seconds);
+  const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
@@ -72,8 +72,11 @@ export const TimerOutput = () => {
 
     if (isRunning) {
       timerInterval = window.setInterval(() => {
-        setSeconds(prev => Math.max(0, prev - 1));
-      }, 1000);
+        setSeconds(prev => {
+          const next = prev - 0.1;
+          return next <= 0 ? 0 : Math.round(next * 10) / 10;
+        });
+      }, 100);
     }
 
     return () => {
