@@ -1384,3 +1384,5 @@ function App() {
 export default App;
 
 // Fresh build trigger
+
+// Final UI cleanup verification: sound and flash options removed from all threshold rows.
