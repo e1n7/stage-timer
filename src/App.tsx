@@ -354,8 +354,8 @@ interface Room {
 function App() {
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
-  const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', ['default']);
-  const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', 'default');
+  const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
+  const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
@@ -395,6 +395,7 @@ function App() {
     setTimerIds(newIds);
     if (newIds.length === 0) {
       setActiveTimerId('');
+      setActiveTimerState(null);
     } else if (activeTimerId === id) {
       setActiveTimerId(newIds[0]);
     }
@@ -403,6 +404,7 @@ function App() {
   const deleteAllTimers = () => {
     setTimerIds([]);
     setActiveTimerId('');
+    setActiveTimerState(null);
     setIsTimersMenuOpen(false);
   };
 
@@ -423,8 +425,8 @@ function App() {
 
   const loadRoom = useCallback((room: Room) => {
     setCurrentRoomName(room.name);
-    setTimerIds(room.timerIds || ['default']);
-    setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || 'default'));
+    setTimerIds(room.timerIds || []);
+    setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
     setMessages(room.messages || [{ id: '1', text: '', color: '#ffffff' }]);
     setIsRoomMenuOpen(false);
   }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
@@ -441,6 +443,7 @@ function App() {
   }, []);
 
   const sendControl = useCallback((command: string, payload?: any) => {
+    if (!activeTimerId) return;
     try {
       const channel = new BroadcastChannel(CONTROL_CHANNEL);
       channel.postMessage({ targetId: activeTimerId, command, payload });
@@ -449,23 +452,38 @@ function App() {
   }, [activeTimerId]);
 
   useEffect(() => {
-    if (activeTimerState) {
+    if (activeTimerId && activeTimerState) {
       syncOutput({ 
         ...activeTimerState.syncState,
         totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
         segments: activeTimerState.settings.segments,
         blackout: isBlackout,
+        flash: isFlash,
+        isEmpty: false
+      });
+    } else if (timerIds.length === 0) {
+      syncOutput({ 
+        isEmpty: true,
+        blackout: isBlackout,
         flash: isFlash
       });
     }
-  }, [activeTimerState, syncOutput, isBlackout, isFlash]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length]);
 
   const openOutput = () => {
-    if (activeTimerState) {
+    if (activeTimerId && activeTimerState) {
       syncOutput({ 
         ...activeTimerState.syncState,
         totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
         segments: activeTimerState.settings.segments,
+        blackout: isBlackout,
+        flash: isFlash,
+        type: 'force-sync',
+        isEmpty: false
+      });
+    } else if (timerIds.length === 0) {
+      syncOutput({ 
+        isEmpty: true,
         blackout: isBlackout,
         flash: isFlash,
         type: 'force-sync'
@@ -478,9 +496,9 @@ function App() {
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
-  const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '00:00';
+  const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '--:--';
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
-  const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'Timer 1', segments: [] };
+  const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
 
   const { wallClock, timeZone, cueFinish, overUnder } = useTimer('global-helper');
 
@@ -516,11 +534,15 @@ function App() {
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 ${isFlash ? 'bg-white' : ''}`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
-            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
-            <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />
-            <div className="mt-4 flex items-center gap-4 text-[13px]"><span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span><div className="flex items-center gap-2 text-white"><div className="h-2 w-2 rounded-full bg-[#444]"></div><span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span></div></div>
-            <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]"><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.settings.targetDuration || 0)}</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div></div>
-            <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
+            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
+            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
+            <div className="mt-4 flex items-center gap-4 text-[13px]"><span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span><div className="flex items-center gap-2 text-white"><div className="h-2 w-2 rounded-full bg-[#444]"></div><span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}{activeTimerId ? `.${Math.floor((displaySeconds % 1) * 10)}` : ''}</span></div></div>
+            {activeTimerId && (
+              <>
+                <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]"><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.settings.targetDuration || 0)}</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div></div>
+                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
+              </>
+            )}
           </div>
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
@@ -538,7 +560,7 @@ function App() {
             </div>
           </div>
           <div className="mt-6 flex flex-col items-center"><div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div></div>
-          <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div></div>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? cueFinish : '--:--'}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? overUnder : '--:--'}</span></div></div>
         </aside>
 
         <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">

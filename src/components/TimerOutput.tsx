@@ -23,6 +23,7 @@ export const TimerOutput = () => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [flash, setFlash] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
+  const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -33,7 +34,8 @@ export const TimerOutput = () => {
     initialSeconds: DEFAULT_TIME,
     mode: 'countdown' as 'countdown' | 'countup' | 'time',
     lastUpdated: 0,
-    isRunning: false
+    isRunning: false,
+    isEmpty: false
   });
 
   useEffect(() => {
@@ -48,6 +50,11 @@ export const TimerOutput = () => {
         setTimeout(() => setFlash(false), 600);
       }
 
+      if ('isEmpty' in data) {
+        setIsEmpty(!!data.isEmpty);
+        syncStateRef.current.isEmpty = !!data.isEmpty;
+      }
+
       if ('totalTime' in data) setTotalTime(data.totalTime);
       if ('segments' in data) setSegments(data.segments);
 
@@ -56,6 +63,7 @@ export const TimerOutput = () => {
           const newIsRunning = !!data.isRunning;
           setIsRunning(newIsRunning);
           syncStateRef.current = {
+            ...syncStateRef.current,
             startTime: data.startTime,
             initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
             mode: data.mode ?? 'countdown',
@@ -102,7 +110,12 @@ export const TimerOutput = () => {
 
   useEffect(() => {
     const tick = () => {
-      const { isRunning: syncIsRunning, startTime, initialSeconds, mode } = syncStateRef.current;
+      const { isRunning: syncIsRunning, startTime, initialSeconds, mode, isEmpty: syncIsEmpty } = syncStateRef.current;
+      if (syncIsEmpty) {
+        setSeconds(0);
+        return;
+      }
+      
       if (syncIsRunning && startTime !== null) {
         const elapsed = (Date.now() - startTime) / 1000;
         setSeconds(() => {
@@ -128,6 +141,7 @@ export const TimerOutput = () => {
 
   const getTextColor = () => {
     if (flash) return '#000000';
+    if (isEmpty) return '#000000'; // Invisible or black in empty state
     const rounded = Math.floor(seconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -151,7 +165,7 @@ export const TimerOutput = () => {
       style={{ backgroundColor: flash ? '#ffffff' : '#0a0a0a' }}
     >
       <button onClick={toggleFullscreen} className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0" aria-label="Toggle Fullscreen" />
-      {blackout ? (
+      {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : (
         <div className="flex w-full flex-col items-center px-[8vw]">
