@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
@@ -338,6 +339,13 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
   );
 };
 
+interface Room {
+  id: string;
+  name: string;
+  seconds: number;
+  settings: any;
+}
+
 function App() {
   const {
     seconds,
@@ -356,9 +364,42 @@ function App() {
     overUnder,
   } = useTimer();
 
+  const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
+  const [currentRoomName, setCurrentRoomName] = useState('Unnamed');
+  const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const currentTime = formatClock(seconds);
+
+  const saveRoom = () => {
+    const newRoom: Room = {
+      id: Date.now().toString(),
+      name: currentRoomName,
+      seconds,
+      settings: { ...settings }
+    };
+    
+    const existingIndex = rooms.findIndex(r => r.name === currentRoomName);
+    if (existingIndex >= 0) {
+      const updatedRooms = [...rooms];
+      updatedRooms[existingIndex] = newRoom;
+      setRooms(updatedRooms);
+    } else {
+      setRooms([...rooms, newRoom]);
+    }
+  };
+
+  const loadRoom = (room: Room) => {
+    setCurrentRoomName(room.name);
+    setTime(room.seconds);
+    updateSettings(room.settings);
+    setIsRoomMenuOpen(false);
+  };
+
+  const deleteRoom = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRooms(rooms.filter(r => r.id !== id));
+  };
 
   const adjustTime = (delta: number) => {
     setTime(Math.max(0, seconds + delta));
@@ -405,10 +446,64 @@ function App() {
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased">
       {/* Top bar */}
       <header className="flex items-center justify-between px-3 py-2 border-b border-[#333]">
-        <div className="text-[20px] font-bold text-[#8a8a8a]">Unnamed</div>
+        <input 
+          type="text"
+          value={currentRoomName}
+          onChange={(e) => setCurrentRoomName(e.target.value)}
+          className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-64"
+          placeholder="Unnamed"
+        />
         <div className="flex items-center gap-2">
-          <button type="button" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white">Room <IconChevronDown /></button>
-          <button type="button" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm"><IconLock className="mr-1" /> Save</button>
+          <div className="relative">
+            <button 
+              type="button" 
+              onClick={() => setIsRoomMenuOpen(!isRoomMenuOpen)}
+              className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
+            >
+              Room <IconChevronDown />
+            </button>
+            
+            {isRoomMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
+                {rooms.length === 0 && (
+                  <div className="px-2 py-3 text-center text-[12px] text-[#555]">No saved rooms</div>
+                )}
+                <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                  {rooms.map((room) => (
+                    <div 
+                      key={room.id}
+                      onClick={() => loadRoom(room)}
+                      className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer"
+                    >
+                      <span className="truncate">{room.name}</span>
+                      <button 
+                        onClick={(e) => deleteRoom(room.id, e)}
+                        className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1 border-t border-[#333] pt-1">
+                  <button 
+                    onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }}
+                    className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]"
+                  >
+                    + Create New Room
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button 
+            type="button" 
+            onClick={saveRoom}
+            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
+          >
+            <IconLock className="mr-1" /> Save
+          </button>
         </div>
       </header>
 
