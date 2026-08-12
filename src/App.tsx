@@ -656,11 +656,11 @@ function App() {
               {openAdjustMenu === 'decrease' && <TimeAdjustMenu direction="decrease" onSelect={handleMenuSelection} />}
             </div>
             <button onClick={() => adjustTime(-60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838]">-1m</button>
-            <button onClick={resetTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconSkipBack /></button>
+            <button onClick={() => setTime(Math.max(0, seconds - 5))} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconSkipBack /></button>
             <button onClick={isRunning ? pauseTimer : startTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]">
               {isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}
             </button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] opacity-50"><IconSkipForward /></button>
+            <button onClick={() => setTime(seconds + 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconSkipForward /></button>
             <button onClick={() => adjustTime(60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838]">+1m</button>
             <div className="relative col-span-1">
               <button onClick={() => setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase')} className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838]"><IconChevronDown /></button>
