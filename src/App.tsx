@@ -401,11 +401,7 @@ function App() {
 
           {/* DASHBOARD PREVIEW CARD */}
           <div className="rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl">
-            <div className="flex items-center justify-between text-[12px]">
-              <div className="flex items-center gap-1.5 text-[#22c55e]">
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-[#22c55e] flex items-center justify-center"><div className="h-1 w-1 bg-[#22c55e] rounded-full"></div></div>
-                <span className="font-bold tracking-tight">stagetimer.io</span>
-              </div>
+            <div className="flex items-center justify-end text-[12px]">
               <span className="font-bold text-[#7eb8ff]">{settings.title || 'Timer 1'}</span>
             </div>
             
@@ -485,12 +481,7 @@ function App() {
             </div>
           </div>
 
-          <div className="mt-auto pt-4">
-            <button type="button" className="flex w-full items-center justify-between rounded-lg bg-[#2d2d2d] px-4 py-3 text-[14px] font-bold text-white shadow-md">
-              <span>Live Connections 1/3</span>
-              <IconChevronDown />
-            </button>
-          </div>
+
         </aside>
 
         {/* Center: Timers panel */}
@@ -582,7 +573,7 @@ function App() {
       {/* Footer */}
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
         <div className="flex items-center gap-4">
-          <span className="hover:text-[#888] cursor-pointer font-medium">stagetimer.io v3.5.9 · Docs</span>
+          <span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span>
           <span>■ 395 ms</span>
         </div>
         <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
