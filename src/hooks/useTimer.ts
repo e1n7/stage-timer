@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: TimerSettings = {
   historyLimit: 10,
   targetDuration: 0, // Default to 0:00 as requested
   mode: 'countdown',
+  fontScale: 1.0,
   segments: [
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -41,6 +42,7 @@ export interface TimerSettings {
   historyLimit: number;
   targetDuration: number;
   mode: TimerMode;
+  fontScale: number;
   segments: ProgressSegment[];
 }
 
