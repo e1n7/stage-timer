@@ -409,8 +409,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2"><h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3><span className="text-[12px] text-[#666]">ⓘ Chimes caveats</span></div>
-            <button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-[#8a8a8a] hover:text-white">Actions <IconChevronDown /></button>
+            <h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
           <div className="space-y-6 pt-2">
