@@ -373,6 +373,7 @@ function App() {
     timeZone,
     cueFinish,
     overUnder,
+    syncState,
   } = useTimer();
 
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
@@ -482,13 +483,18 @@ function App() {
       channel.close();
     } catch { /* ignore */ }
     try {
-      localStorage.setItem('timerState', JSON.stringify({ seconds, isRunning, totalTime: DEFAULT_TIME }));
+      localStorage.setItem('timerState', JSON.stringify(payload));
     } catch { /* ignore */ }
-  }, [seconds, isRunning, DEFAULT_TIME]);
+  }, []);
 
+  // Sync only when running state, total time, or segments change - not every 100ms
   useEffect(() => {
-    syncOutput({ seconds, isRunning, totalTime: DEFAULT_TIME, segments: settings.segments });
-  }, [seconds, isRunning, DEFAULT_TIME, settings.segments, syncOutput]);
+    syncOutput({ 
+      ...syncState,
+      totalTime: DEFAULT_TIME, 
+      segments: settings.segments 
+    });
+  }, [isRunning, DEFAULT_TIME, settings.segments, syncOutput]);
 
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
@@ -496,12 +502,16 @@ function App() {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.onmessage = (event) => {
         if (event.data?.type === 'handshake') {
-          channel?.postMessage({ seconds, isRunning, totalTime: DEFAULT_TIME, segments: settings.segments });
+          channel?.postMessage({ 
+            ...syncState,
+            totalTime: DEFAULT_TIME, 
+            segments: settings.segments 
+          });
         }
       };
     } catch { /* ignore */ }
     return () => channel?.close();
-  }, [seconds, isRunning, DEFAULT_TIME, settings.segments]);
+  }, [isRunning, DEFAULT_TIME, settings.segments]);
 
   const openOutput = () => {
     window.open('/output', '_blank');

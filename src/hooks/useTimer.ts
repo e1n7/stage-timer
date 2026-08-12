@@ -48,6 +48,13 @@ interface LogEntry {
   notes?: string;
 }
 
+export interface SyncState {
+  startTime: number | null;
+  initialSeconds: number;
+  isRunning: boolean;
+  mode: TimerMode;
+}
+
 export const useTimer = () => {
   const [seconds, setSeconds] = useState<number>(() => {
     const saved = localStorage.getItem('timerSeconds');
@@ -63,8 +70,12 @@ export const useTimer = () => {
 
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
-  const startTimeRef = useRef<number | null>(null);
-  const initialSecondsRef = useRef<number>(DEFAULT_TIME);
+  const syncStateRef = useRef<SyncState>({
+    startTime: null,
+    initialSeconds: DEFAULT_TIME,
+    isRunning: false,
+    mode: 'countdown'
+  });
   
   const lastBeepsRef = useRef<{ halfTime: boolean; oneMinute: boolean; reach: boolean }>({
     halfTime: false,
@@ -160,29 +171,37 @@ export const useTimer = () => {
   const startTimer = useCallback(() => {
     setStatus('running');
     setIsRunning(true);
-    startTimeRef.current = Date.now();
-    initialSecondsRef.current = seconds;
+    
+    const startTime = Date.now();
+    syncStateRef.current = {
+      startTime,
+      initialSeconds: seconds,
+      isRunning: true,
+      mode
+    };
 
     if (intervalRef.current) clearInterval(intervalRef.current);
     
     intervalRef.current = window.setInterval(() => {
-      if (!startTimeRef.current) return;
+      const { startTime, initialSeconds, isRunning, mode } = syncStateRef.current;
+      if (!isRunning || startTime === null) return;
       
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const elapsed = (Date.now() - startTime) / 1000;
       
       setSeconds(() => {
         let newTime: number;
 
         if (mode === 'countdown') {
-          newTime = initialSecondsRef.current - elapsed;
+          newTime = initialSeconds - elapsed;
           if (newTime <= 0) {
             newTime = 0;
             setStatus('finished');
             setIsRunning(false);
+            syncStateRef.current.isRunning = false;
             if (intervalRef.current) clearInterval(intervalRef.current);
           }
         } else if (mode === 'countup') {
-          newTime = initialSecondsRef.current + elapsed;
+          newTime = initialSeconds + elapsed;
         } else {
           newTime = Date.now() / 1000;
         }
@@ -201,8 +220,10 @@ export const useTimer = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    startTimeRef.current = null;
-  }, []);
+    syncStateRef.current.isRunning = false;
+    syncStateRef.current.startTime = null;
+    syncStateRef.current.initialSeconds = seconds;
+  }, [seconds]);
 
   const resetTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -212,8 +233,15 @@ export const useTimer = () => {
     setIsRunning(false);
     setStatus('idle');
     setWarningState([]);
-    startTimeRef.current = null;
+    
     const resetTime = mode === 'countdown' ? DEFAULT_TIME : 0;
+    syncStateRef.current = {
+      startTime: null,
+      initialSeconds: resetTime,
+      isRunning: false,
+      mode
+    };
+    
     setSeconds(resetTime);
     localStorage.setItem('timerSeconds', JSON.stringify(resetTime));
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
@@ -221,13 +249,13 @@ export const useTimer = () => {
 
   const setTime = useCallback((newTime: number) => {
     setSeconds(newTime);
-    initialSecondsRef.current = newTime;
-    if (isRunning && startTimeRef.current) {
-      startTimeRef.current = Date.now();
+    syncStateRef.current.initialSeconds = newTime;
+    if (syncStateRef.current.isRunning) {
+      syncStateRef.current.startTime = Date.now();
     }
     if (newTime > 0) setStatus('idle');
     localStorage.setItem('timerSeconds', JSON.stringify(newTime));
-  }, [isRunning]);
+  }, []);
 
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -288,6 +316,7 @@ export const useTimer = () => {
     clearLog,
     formatDuration,
     formatLogDate,
-    DEFAULT_TIME
+    DEFAULT_TIME,
+    syncState: syncStateRef.current
   };
 };
