@@ -719,7 +719,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       onClick={onActivate} 
       onMouseEnter={() => setIsHovered(true)} 
       onMouseLeave={() => setIsHovered(false)} 
-      className={`flex items-center gap-4 rounded-lg px-6 py-3.5 text-white shadow-lg transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
       <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
@@ -746,7 +746,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className="flex-1 text-center text-[32px] font-bold tracking-tight tabular-nums transition-colors text-white hover:text-[#4a9eff] cursor-pointer"
+        className="flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors text-white hover:text-[#4a9eff] cursor-pointer"
       >
         {currentTime}
       </div>
