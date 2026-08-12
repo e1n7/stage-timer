@@ -294,6 +294,15 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen ? 100 : 1, position: 'relative' as const };
 
   useEffect(() => {
+    const handleGlobalClick = () => {
+      setIsActionsOpen(false);
+      setIsAdjustMenuOpen(false);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  useEffect(() => {
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
       const { targetId, command, payload } = event.data;
@@ -339,11 +348,13 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           Add time
         </div>
         {isAdjustMenuOpen && (
-          <TimeAdjustMenu 
-            direction="increase" 
-            onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
-            onClose={() => setIsAdjustMenuOpen(false)} 
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <TimeAdjustMenu 
+              direction="increase" 
+              onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
+              onClose={() => setIsAdjustMenuOpen(false)} 
+            />
+          </div>
         )}
       </div>
 
@@ -385,13 +396,13 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
         <div className="relative ml-1">
           <button 
             type="button" 
-            onClick={() => setIsActionsOpen(!isActionsOpen)} 
+            onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 
             className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
           >
             <IconMore />
           </button>
           {isActionsOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-2xl">
+            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 bottom-full z-50 mb-2 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-2xl">
               <button onClick={() => { onAddAbove(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"><span>↑</span> Add timer above</button>
               <button onClick={() => { onAddBelow(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"><span>↓</span> Add timer below</button>
               <button onClick={() => { onDuplicate(); setIsActionsOpen(false); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">Duplicate</button>
@@ -425,6 +436,17 @@ function App() {
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setIsRoomMenuOpen(false);
+      setIsTimersMenuOpen(false);
+      setIsTimeZoneMenuOpen(false);
+      setOpenAdjustMenu(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
@@ -589,9 +611,9 @@ function App() {
         <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-64" placeholder="Unnamed" />
         <div className="flex items-center gap-2">
           <div className="relative">
-            <button type="button" onClick={() => setIsRoomMenuOpen(!isRoomMenuOpen)} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
             {isRoomMenuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+              <div onClick={(e) => e.stopPropagation()} className="absolute right-0 bottom-full z-50 mb-2 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
                 {rooms.map((room) => (
                   <div key={room.id} onClick={() => loadRoom(room)} className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer">
@@ -686,8 +708,8 @@ function App() {
           )}
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
-              <button type="button" onClick={() => setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease')} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
-              {openAdjustMenu === 'decrease' && (<TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} />)}
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+              {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()}><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
             <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
@@ -695,8 +717,8 @@ function App() {
             <button onClick={goToNextTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Next timer"><IconSkipForward /></button>
             <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative">
-              <button type="button" onClick={() => setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase')} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
-              {openAdjustMenu === 'increase' && (<TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} />)}
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+              {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()}><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
           </div>
           <div className="mt-6 flex flex-col items-center">
@@ -707,7 +729,7 @@ function App() {
                 <button 
                   type="button"
                   className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] transition-all hover:bg-[#2d2d2d] hover:text-white"
-                  onClick={() => setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen)}
+                  onClick={(e) => { e.stopPropagation(); setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen); }}
                   title="Click to change timezone"
                 >
                   <span>{timeZone}</span>
@@ -734,16 +756,16 @@ function App() {
         </aside>
 
         <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">
-          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button><div className="relative">
+          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>            <div className="relative">
                 <button 
                   type="button" 
-                  onClick={() => setIsTimersMenuOpen(!isTimersMenuOpen)}
+                  onClick={(e) => { e.stopPropagation(); setIsTimersMenuOpen(!isTimersMenuOpen); }}
                   className={`flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white hover:bg-[#383838] transition-colors ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore />
                 </button>
                 {isTimersMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+                  <div onClick={(e) => e.stopPropagation()} className="absolute right-0 bottom-full z-50 mb-2 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                     <button 
                       onClick={deleteAllTimers}
                       className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10"
