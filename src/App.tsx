@@ -597,13 +597,15 @@ function App() {
               <IconClock />
               <span>{wallClock}</span>
               <div className="relative">
-                <span 
-                  className="text-[#8a8a8a] cursor-pointer hover:text-white transition-colors border-b border-dashed border-[#444] hover:border-white pb-0.5"
+                <button 
+                  type="button"
+                  className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] transition-all hover:bg-[#2d2d2d] hover:text-white"
                   onClick={() => setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen)}
                   title="Click to change timezone"
                 >
-                  {timeZone}
-                </span>
+                  <span>{timeZone}</span>
+                  <IconChevronDown />
+                </button>
                 {isTimeZoneMenuOpen && (
                   <div className="absolute bottom-full left-1/2 z-50 mb-2 max-h-64 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
                     <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Select Timezone</div>
