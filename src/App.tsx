@@ -412,6 +412,7 @@ function App() {
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -601,14 +602,22 @@ function App() {
               <div className="mt-4 flex items-center gap-4 text-[13px]">
                 <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
-                  <div className="h-2 w-2 rounded-full bg-[#444]"></div>
+                  <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>
-                    {currentTime}.{Math.floor((displaySeconds % 1) * 10)}
+                    {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>
               </div>
               <div 
                 className="relative mt-4 group cursor-pointer"
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const percentage = Math.max(0, Math.min(1, x / rect.width));
+                  const targetDuration = activeTimerState?.settings.targetDuration || 600;
+                  setHoverTime(targetDuration * (1 - percentage));
+                }}
+                onMouseLeave={() => setHoverTime(null)}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
@@ -618,11 +627,11 @@ function App() {
                   sendControl('SET', targetTime);
                 }}
               >
-                <div className="grid grid-cols-4 gap-[1px] overflow-hidden rounded-t-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
-                  {[1, 0.75, 0.5, 0.25].map((factor, i) => {
+                <div className="grid grid-cols-8 gap-[1px] overflow-hidden rounded-t-sm border border-[#2a2a2a] text-[10px] bg-[#2a2a2a]">
+                  {[1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125].map((factor, i) => {
                     const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
                     return (
-                      <div key={i} className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a] last:border-r-0">
+                      <div key={i} className="bg-[#1c1c1c] p-1.5 text-left text-[#666] border-r border-[#2a2a2a] last:border-r-0 truncate">
                         {formatClock(targetTime)}
                       </div>
                     );
@@ -640,6 +649,16 @@ function App() {
                 >
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-2 bg-[#fa5252] rounded-b-[2px]" />
                 </div>
+
+                {/* Hover Playhead Marker */}
+                {hoverTime !== null && (
+                  <div 
+                    className="absolute top-0 bottom-0 w-[1px] bg-white/40 pointer-events-none z-0"
+                    style={{ 
+                      left: `${Math.max(0, Math.min(100, (1 - (hoverTime / (activeTimerState?.settings.targetDuration || 600))) * 100))}%`
+                    }}
+                  />
+                )}
               </div>
             </>
           )}
