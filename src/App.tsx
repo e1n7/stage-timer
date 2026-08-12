@@ -858,6 +858,7 @@ function App() {
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
+  const [messageMaximizeId, setMessageMaximizeId] = useState<string | null>(null);
   const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
@@ -1151,7 +1152,7 @@ function App() {
         ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageFlashId]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageFlashId, messageMaximizeId]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -1197,16 +1198,30 @@ function App() {
   const toggleMessageBold = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: !m.bold } : m));
   const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: !m.uppercase } : m));
   const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
-  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFlash: boolean } => {
+  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFlash: boolean; messageMaximize: boolean } => {
     const active = messageFlashId ? messages.find(m => m.id === messageFlashId) : null;
     const visible = !messageFlashId ? messages.find(m => m.text && m.text.trim()) : null;
     const msg = active || visible || null;
     return msg
-      ? { messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFlash: !!messageFlashId }
-      : { messageText: '', messageColor: '#ffffff', messageBold: false, messageUppercase: false, messageFlash: false };
+      ? { messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFlash: !!messageFlashId, messageMaximize: !!messageMaximizeId && messageMaximizeId === msg.id }
+      : { messageText: '', messageColor: '#ffffff', messageBold: false, messageUppercase: false, messageFlash: false, messageMaximize: false };
+  };
+  const maximizeMessage = (id: string) => {
+    if (messageMaximizeId === id) {
+      setMessageMaximizeId(null);
+      syncOutput({ messageMaximize: false, type: 'force-sync' });
+      return;
+    }
+    setMessageMaximizeId(id);
+    const msg = messages.find(m => m.id === id);
+    if (msg) {
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageMaximize: true, type: 'force-sync' });
+    }
   };
   const showMessage = (id: string) => {
     if (messageFlashId === id) { setMessageFlashId(null); return; }
+    setMessageMaximizeId(null);
+    syncOutput({ messageMaximize: false, type: 'force-sync' });
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
@@ -1597,15 +1612,25 @@ function App() {
                 </div>
               </div>
               {/* Show / Flash row */}
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => showMessage(msg.id)}
-                  className={`flex items-center gap-2 rounded-md border px-4 py-1.5 text-[13px] font-bold transition-colors ${messageFlashId === msg.id ? 'border-[#4a9eff] bg-[#4a9eff]/15 text-[#4a9eff]' : 'border-[#444] bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
-                >
-                  <span className={`inline-block h-2.5 w-2.5 rounded-full ${messageFlashId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
-                  Show
-                </button>
+              <div className="mt-4 flex justify-end">
+                <div className="flex overflow-hidden rounded-md border border-[#444]">
+                  <button
+                    type="button"
+                    onClick={() => showMessage(msg.id)}
+                    className={`flex items-center gap-2 px-4 py-1.5 text-[13px] font-bold transition-colors ${messageFlashId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+                  >
+                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${messageFlashId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
+                    Show
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => maximizeMessage(msg.id)}
+                    className={`flex items-center justify-center border-l border-[#444] px-3 py-1.5 text-[13px] text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
+                    title="Maximize message (hide timer)"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
           ))}</div>

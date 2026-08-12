@@ -32,6 +32,7 @@ export const TimerOutput = () => {
   const [messageUppercase, setMessageUppercase] = useState<boolean>(false);
   const [messageVisible, setMessageVisible] = useState<boolean>(false);
   const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
+  const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -94,6 +95,16 @@ export const TimerOutput = () => {
           setMessageBold(!!data.messageBold);
           setMessageUppercase(!!data.messageUppercase);
           setMessageVisible(true);
+        }
+      }
+      if ('messageMaximize' in data) {
+        const maxOn = !!data.messageMaximize;
+        setMessageMaximize(maxOn);
+        if (maxOn && data.messageText) {
+          setMessageText(data.messageText);
+          setMessageColor(data.messageColor || '#ffffff');
+          setMessageBold(!!data.messageBold);
+          setMessageUppercase(!!data.messageUppercase);
         }
       }
 
@@ -222,6 +233,23 @@ export const TimerOutput = () => {
 
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
+      ) : messageMaximize && messageText ? (
+        <div className="flex h-full w-full items-center justify-center p-[4vh]">
+          <div
+            className="text-center break-words"
+            style={{
+              color: messageColor,
+              fontSize: 'min(11vw, 10vh)',
+              fontWeight: messageBold ? 800 : 700,
+              textTransform: messageUppercase ? 'uppercase' : 'none',
+              lineHeight: 1.25,
+              textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
+              letterSpacing: '0.03em'
+            }}
+          >
+            {messageText}
+          </div>
+        </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[0vh]">
           <div className="flex flex-1 items-center justify-center w-full">
