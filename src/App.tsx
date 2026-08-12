@@ -460,6 +460,7 @@ function App() {
   }, []);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
   const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -613,14 +614,15 @@ function App() {
   };
 
   const handleFlash = () => {
-    // Flash 3 times
+    setIsFlashing(true);
     let count = 0;
     const interval = setInterval(() => {
       setIsFlash(prev => !prev);
       count++;
-      if (count >= 6) { // 3 on/off cycles
+      if (count >= 6) {
         clearInterval(interval);
         setIsFlash(false);
+        setIsFlashing(false);
       }
     }, 150);
   };
@@ -706,6 +708,7 @@ function App() {
               className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
+                opacity: (isFlashing && !isFlash) ? 0 : 1,
                 textShadow: isFlash ? `0 0 30px ${getDashboardGlowColor()}` : 'none'
               }}
             >
@@ -724,6 +727,7 @@ function App() {
                     className="font-mono text-[15px]" 
                     style={{ 
                       color: getDashboardTextColor(), 
+                      opacity: (isFlashing && !isFlash) ? 0 : 1,
                       textShadow: isFlash ? `0 0 10px ${getDashboardGlowColor()}` : 'none'
                     }}
                   >

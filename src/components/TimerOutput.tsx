@@ -22,6 +22,7 @@ export const TimerOutput = () => {
   const [totalTime, setTotalTime] = useState<number>(DEFAULT_TIME);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [flash, setFlash] = useState<boolean>(false);
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
@@ -46,6 +47,7 @@ export const TimerOutput = () => {
       
       if ('blackout' in data) setBlackout(!!data.blackout);
       if ('flash' in data && data.flash) {
+        setIsFlashing(true);
         let count = 0;
         const interval = setInterval(() => {
           setFlash(prev => !prev);
@@ -53,6 +55,7 @@ export const TimerOutput = () => {
           if (count >= 6) {
             clearInterval(interval);
             setFlash(false);
+            setIsFlashing(false);
           }
         }, 150);
       }
@@ -191,6 +194,7 @@ export const TimerOutput = () => {
               fontSize: 'min(35vw, 50vh)', 
               lineHeight: 0.9, 
               fontFamily: 'Inter, system-ui, sans-serif',
+              opacity: (isFlashing && !flash) ? 0 : 1,
               textShadow: flash ? `0 0 60px ${getGlowColor()}` : 'none'
             }}
           >
