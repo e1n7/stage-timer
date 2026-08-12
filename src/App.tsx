@@ -285,6 +285,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const currentTime = formatClock(seconds);
 
@@ -330,15 +331,29 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       </div>
 
       {/* Add time label */}
-      <div className="w-24 text-[13px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity">Add time</div>
+      <div className="relative">
+        <div 
+          onClick={(e) => { e.stopPropagation(); setIsAdjustMenuOpen(!isAdjustMenuOpen); }}
+          className="w-20 text-[13px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
+        >
+          Add time
+        </div>
+        {isAdjustMenuOpen && (
+          <TimeAdjustMenu 
+            direction="increase" 
+            onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
+            onClose={() => setIsAdjustMenuOpen(false)} 
+          />
+        )}
+      </div>
 
       {/* Timer Display */}
-      <div className="flex-1 text-center text-[36px] font-bold tracking-tight tabular-nums">
+      <div className="flex-1 text-center text-[42px] font-bold tracking-tight tabular-nums">
         {currentTime}
       </div>
 
       {/* Title */}
-      <div className="w-32 text-[15px] font-medium truncate opacity-90">
+      <div className="w-32 text-right text-[15px] font-medium truncate opacity-90 pr-2">
         {settings.title || `Timer ${index + 1}`}
       </div>
 
