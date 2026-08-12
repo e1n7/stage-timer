@@ -449,8 +449,30 @@ function App() {
   }, []);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
+  const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevIsRunningRef = useRef(false);
+
+  // Follow Active Timer Logic: Auto-advance to next timer when current one finishes
+  useEffect(() => {
+    if (isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && activeTimerState?.seconds <= 0) {
+      const currentIndex = timerIds.indexOf(activeTimerId);
+      if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
+        const nextId = timerIds[currentIndex + 1];
+        setActiveTimerId(nextId);
+        // Delay slightly to allow the next timer to become active before starting
+        setTimeout(() => {
+          try {
+            const channel = new BroadcastChannel(CONTROL_CHANNEL);
+            channel.postMessage({ targetId: nextId, command: 'START' });
+            channel.close();
+          } catch (err) { console.error('Failed to auto-start next timer:', err); }
+        }, 300);
+      }
+    }
+    prevIsRunningRef.current = activeTimerState?.isRunning || false;
+  }, [activeTimerState?.isRunning, activeTimerState?.seconds, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
@@ -765,7 +787,17 @@ function App() {
                   <IconMore />
                 </button>
                 {isTimersMenuOpen && (
-                  <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+                  <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+                    <button 
+                      onClick={() => setIsFollowEnabled(!isFollowEnabled)}
+                      className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
+                    >
+                      <span>Follow active timer</span>
+                      <div className={`h-4 w-4 rounded border ${isFollowEnabled ? 'bg-[#22c55e] border-[#22c55e]' : 'border-[#555]'}`}>
+                        {isFollowEnabled && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </div>
+                    </button>
+                    <div className="my-1 border-t border-[#333]" />
                     <button 
                       onClick={deleteAllTimers}
                       className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10"
