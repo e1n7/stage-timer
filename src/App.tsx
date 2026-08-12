@@ -561,6 +561,13 @@ function App() {
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
+  const goToNextTimer = () => {
+    if (timerIds.length <= 1) return;
+    const currentIndex = timerIds.indexOf(activeTimerId);
+    const nextIndex = (currentIndex + 1) % timerIds.length;
+    setActiveTimerId(timerIds[nextIndex]);
+  };
+
   const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '--:--';
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
@@ -683,9 +690,9 @@ function App() {
               {openAdjustMenu === 'decrease' && (<TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} />)}
             </div>
             <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
-            <button onClick={() => sendControl('ADJUST', -5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors"><IconSkipBack /></button>
+            <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
             <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors">{activeTimerState?.isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}</button>
-            <button onClick={() => sendControl('ADJUST', 5)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors"><IconSkipForward /></button>
+            <button onClick={goToNextTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Next timer"><IconSkipForward /></button>
             <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative">
               <button type="button" onClick={() => setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase')} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
