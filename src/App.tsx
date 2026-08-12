@@ -132,6 +132,12 @@ const StartTimeInput = ({ value, onChange, selectedTimeZone }: { value: number |
   );
 };
 
+const clampDigits = (val: string, max: number) => {
+  const digits = val.replace(/[^0-9]/g, '');
+  const num = digits === '' ? 0 : Math.min(max, parseInt(digits, 10));
+  return num;
+};
+
 const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
   const m = Math.floor(value / 60);
   const s = value % 60;
@@ -146,10 +152,15 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
     <div className="flex items-center gap-3">
       <div className="flex flex-col items-center gap-1">
         <input 
-          type="number" 
+          type="text" 
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
           value={pad(m)} 
-          onChange={(e) => update(Math.min(99, Math.max(0, parseInt(e.target.value) || 0)), s)}
-          onFocus={(e) => e.target.select()}
+          onChange={(e) => update(clampDigits(e.target.value, 99), s)}
+          onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 99))}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onFocus={(e) => { e.target.select(); }}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Min</span>
@@ -157,10 +168,15 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
-          type="number" 
+          type="text" 
+          inputMode="numeric"
+          autoComplete="off"
+          spellCheck={false}
           value={pad(s)} 
-          onChange={(e) => update(m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
-          onFocus={(e) => e.target.select()}
+          onChange={(e) => update(m, clampDigits(e.target.value, 59))}
+          onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 59))}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onFocus={(e) => { e.target.select(); }}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Sec</span>
