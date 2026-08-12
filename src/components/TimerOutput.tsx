@@ -140,7 +140,6 @@ export const TimerOutput = () => {
   }, [isRunning]);
 
   const getTextColor = () => {
-    if (flash) return '#000000';
     if (isEmpty) return '#000000'; // Invisible or black in empty state
     const rounded = Math.floor(seconds);
     if (rounded <= 0) return '#fa5252';
@@ -162,7 +161,7 @@ export const TimerOutput = () => {
   return (
     <div 
       className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300" 
-      style={{ backgroundColor: flash ? '#ffffff' : '#0a0a0a' }}
+      style={{ backgroundColor: '#0a0a0a' }}
     >
       <button onClick={toggleFullscreen} className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0" aria-label="Toggle Fullscreen" />
       {blackout || isEmpty ? (
@@ -170,12 +169,13 @@ export const TimerOutput = () => {
       ) : (
         <div className="flex w-full flex-col items-center px-[8vw]">
           <div 
-            className="text-center font-bold tabular-nums tracking-tighter transition-colors duration-300" 
+            className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
             style={{ 
               color: getTextColor(), 
               fontSize: 'min(35vw, 50vh)', 
               lineHeight: 0.9, 
-              fontFamily: 'Inter, system-ui, sans-serif'
+              fontFamily: 'Inter, system-ui, sans-serif',
+              opacity: flash ? 0 : 1
             }}
           >
             {formatClock(seconds)}

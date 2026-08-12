@@ -656,10 +656,10 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 ${isFlash ? 'bg-white' : ''}`}>
+          <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
-            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
+            <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-opacity duration-75" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : '#ffffff', opacity: isFlash ? 0 : 1 }}>{currentTime}</div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
           </div>
 
@@ -669,7 +669,7 @@ function App() {
                 <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
-                  <span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>
+                  <span className="font-mono text-[15px]" style={{ color: '#fff', opacity: isFlash ? 0 : 1 }}>
                     {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>
