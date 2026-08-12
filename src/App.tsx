@@ -202,14 +202,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
 
         <div className="my-8 border-t border-[#333]" />
 
-        <div className="grid grid-cols-2 gap-12">
-          <div className="space-y-4">
-            <h3 className="text-[14px] font-bold text-white">Start</h3>
-            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none"><option>Manual</option></select>
-            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Time ⓘ</span><div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]"><span>Select time</span><IconClock /></div></div>
-            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Date ⓘ</span><div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]"><span>Select date</span><IconCalendar /></div></div>
-            <p className="text-[11px] text-[#666]">No start time given. Triggered manually.</p>
-          </div>
+        <div className="grid grid-cols-1 gap-12">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Duration</h3>
             <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none"><option>Duration</option></select>
