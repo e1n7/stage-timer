@@ -340,23 +340,23 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       onClick={onActivate} 
       onMouseEnter={() => setIsHovered(true)} 
       onMouseLeave={() => setIsHovered(false)} 
-      className={`flex items-center gap-4 rounded-xl px-8 py-5 text-white shadow-xl transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex items-center gap-4 rounded-lg px-6 py-3.5 text-white shadow-lg transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
-      <div {...attributes} {...listeners} className="flex w-10 items-center justify-center text-[18px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
-        {isHovered || isDragging ? <span className="text-[28px] font-light leading-none">=</span> : index + 1}
+      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
+        {isHovered || isDragging ? <span className="text-[24px] font-light leading-none">=</span> : index + 1}
       </div>
 
       {/* Add time label */}
       <div className="relative">
         <div 
           onClick={(e) => { e.stopPropagation(); setIsAdjustMenuOpen(!isAdjustMenuOpen); }}
-          className="w-24 text-[14px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
+          className="w-20 text-[13px] font-medium opacity-50 border-b border-dotted border-white/30 hover:opacity-100 transition-opacity cursor-pointer"
         >
           Add time
         </div>
         {isAdjustMenuOpen && (
-          <div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-2">
+          <div onClick={(e) => e.stopPropagation()} className="absolute top-full left-0 z-50 mt-1">
             <TimeAdjustMenu 
               direction="increase" 
               onSelect={(secs) => setTime(Math.max(0, seconds + secs))} 
@@ -369,48 +369,48 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
       {/* Timer Display */}
       <div 
         onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }}
-        className="flex-1 text-center text-[48px] font-bold tracking-tight tabular-nums hover:text-[#4a9eff] transition-colors cursor-pointer"
+        className="flex-1 text-center text-[32px] font-bold tracking-tight tabular-nums hover:text-[#4a9eff] transition-colors cursor-pointer"
       >
         {currentTime}
       </div>
 
       {/* Title */}
-      <div className="w-40 text-right text-[17px] font-bold truncate opacity-90 pr-4">
+      <div className="w-32 text-right text-[15px] font-bold truncate opacity-90 pr-2">
         {settings.title || `Timer ${index + 1}`}
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         <button 
           type="button" 
           onClick={resetTimer} 
-          className={`flex h-11 w-12 items-center justify-center rounded-lg border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
           title="Reset to assigned time"
         >
-          <IconSkipBack size={18} />
+          <IconSkipBack size={16} />
         </button>
         <button 
           type="button" 
           onClick={() => setIsSettingsOpen(true)} 
-          className={`flex h-11 w-12 items-center justify-center rounded-lg border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
-          <IconSettings size={18} />
+          <IconSettings size={16} />
         </button>
         <button 
           type="button" 
           onClick={isRunning ? pauseTimer : startTimer} 
-          className="flex h-11 w-14 items-center justify-center rounded-lg bg-[#16a34a] hover:bg-[#15803d] shadow-lg transition-colors"
+          className="flex h-9 w-12 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
         >
-          {isRunning ? <IconPause size={20} /> : <IconPlay size={20} />}
+          {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
         
-        <div className="relative ml-2">
+        <div className="relative ml-1">
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 
-            className="flex h-11 w-10 items-center justify-center text-white/40 hover:text-white transition-colors"
+            className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
           >
-            <IconMore size={20} />
+            <IconMore size={18} />
           </button>
           {isActionsOpen && (
             <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
