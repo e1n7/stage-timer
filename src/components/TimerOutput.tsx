@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
 
 const CHANNEL_NAME = 'stage-timer-sync';
-const DEFAULT_TIME = 5 * 60; // 5 minutes
+const DEFAULT_TIME = 0;
 
 const formatClock = (seconds: number) => {
   const total = Math.max(0, Math.floor(seconds));
@@ -24,53 +24,54 @@ export const TimerOutput = () => {
   const [flash, setFlash] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
   const [segments, setSegments] = useState<ProgressSegment[]>([
-    { threshold: 60, color: '#f08c00' }, // Warning: Orange
-    { threshold: 10, color: '#fa5252' }  // Danger: Red
+    { threshold: 60, color: '#f08c00' },
+    { threshold: 10, color: '#fa5252' }
   ]);
 
   const syncStateRef = useRef({
     startTime: null as number | null,
     initialSeconds: DEFAULT_TIME,
-    mode: 'countdown' as 'countdown' | 'countup' | 'time'
+    mode: 'countdown' as 'countdown' | 'countup' | 'time',
+    lastUpdated: 0,
+    isRunning: false
   });
 
   useEffect(() => {
     let channel: BroadcastChannel | null = null;
-    let timerInterval: number | null = null;
 
     const updateFromData = (data: any) => {
       if (!data || typeof data !== 'object') return;
       
-      if ('totalTime' in data) setTotalTime(data.totalTime);
-      if ('segments' in data) setSegments(data.segments);
-      
-      // Blackout & Flash Sync
       if ('blackout' in data) setBlackout(!!data.blackout);
       if ('flash' in data && data.flash) {
         setFlash(true);
         setTimeout(() => setFlash(false), 600);
       }
 
-      // Core sync logic: use startTime as the single reference point
+      if ('totalTime' in data) setTotalTime(data.totalTime);
+      if ('segments' in data) setSegments(data.segments);
+
       if ('startTime' in data || 'initialSeconds' in data || 'isRunning' in data) {
-        const newIsRunning = !!data.isRunning;
-        setIsRunning(newIsRunning);
-        
-        syncStateRef.current = {
-          startTime: data.startTime,
-          initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
-          mode: data.mode ?? 'countdown'
-        };
-        
-        // Initial jump to correct time
-        if (newIsRunning && data.startTime) {
-          const elapsed = (Date.now() - data.startTime) / 1000;
-          const next = data.mode === 'countdown' 
-            ? Math.max(0, data.initialSeconds - elapsed)
-            : data.initialSeconds + elapsed;
-          setSeconds(Math.round(next * 10) / 10);
-        } else {
-          setSeconds(data.initialSeconds ?? DEFAULT_TIME);
+        if (data.type === 'force-sync' || (data.lastUpdated || 0) >= syncStateRef.current.lastUpdated) {
+          const newIsRunning = !!data.isRunning;
+          setIsRunning(newIsRunning);
+          syncStateRef.current = {
+            startTime: data.startTime,
+            initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
+            mode: data.mode ?? 'countdown',
+            lastUpdated: data.lastUpdated || Date.now(),
+            isRunning: newIsRunning
+          };
+          
+          if (newIsRunning && data.startTime) {
+            const elapsed = (Date.now() - data.startTime) / 1000;
+            const next = data.mode === 'countdown' 
+              ? Math.max(0, data.initialSeconds - elapsed)
+              : data.initialSeconds + elapsed;
+            setSeconds(Math.round(next * 10) / 10);
+          } else {
+            setSeconds(data.initialSeconds ?? DEFAULT_TIME);
+          }
         }
       }
     };
@@ -79,18 +80,30 @@ export const TimerOutput = () => {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.onmessage = (event) => updateFromData(event.data);
       channel.postMessage({ type: 'handshake' });
-    } catch {
+    } catch { /* ignore */ }
+
+    const storageSync = () => {
       const stored = localStorage.getItem('timerState');
       if (stored) {
         try {
           updateFromData(JSON.parse(stored));
         } catch { /* ignore */ }
       }
-    }
+    };
+    
+    window.addEventListener('storage', storageSync);
+    storageSync();
 
-    timerInterval = window.setInterval(() => {
-      const { startTime, initialSeconds, mode } = syncStateRef.current;
-      if (isRunning && startTime !== null) {
+    return () => {
+      channel?.close();
+      window.removeEventListener('storage', storageSync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      const { isRunning: syncIsRunning, startTime, initialSeconds, mode } = syncStateRef.current;
+      if (syncIsRunning && startTime !== null) {
         const elapsed = (Date.now() - startTime) / 1000;
         setSeconds(() => {
           let next: number;
@@ -104,17 +117,17 @@ export const TimerOutput = () => {
             return Date.now() / 1000;
           }
         });
+      } else {
+        setSeconds(initialSeconds);
       }
-    }, 100);
-
-    return () => {
-      channel?.close();
-      if (timerInterval) clearInterval(timerInterval);
     };
+
+    const interval = setInterval(tick, 100);
+    return () => clearInterval(interval);
   }, [isRunning]);
 
   const getTextColor = () => {
-    if (flash) return '#000000'; // Black text during white flash
+    if (flash) return '#000000';
     const rounded = Math.floor(seconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -135,12 +148,9 @@ export const TimerOutput = () => {
   return (
     <div 
       className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300" 
-      style={{ 
-        backgroundColor: flash ? '#ffffff' : '#0a0a0a'
-      }}
+      style={{ backgroundColor: flash ? '#ffffff' : '#0a0a0a' }}
     >
       <button onClick={toggleFullscreen} className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0" aria-label="Toggle Fullscreen" />
-      
       {blackout ? (
         <div className="h-full w-full bg-black" />
       ) : (

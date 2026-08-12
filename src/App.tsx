@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -31,8 +31,6 @@ const formatClock = (seconds: number) => {
 };
 
 const CHANNEL_NAME = 'stage-timer-sync';
-const DECREASE_OPTIONS = [-2, -5, -10, -20, -30];
-const INCREASE_OPTIONS = [2, 5, 10, 20, 30];
 
 // SVG Icons
 const IconChevronDown = () => (
@@ -87,33 +85,6 @@ const IconSquare = () => (
   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
 );
 
-interface TimeAdjustMenuProps {
-  direction: 'decrease' | 'increase';
-  onSelect: (minutes: number) => void;
-}
-
-const TimeAdjustMenu = ({ direction, onSelect }: TimeAdjustMenuProps) => {
-  const options = direction === 'decrease' ? DECREASE_OPTIONS : INCREASE_OPTIONS;
-
-  return (
-    <div className={`absolute bottom-full z-20 mb-2 w-28 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl ${direction === 'decrease' ? 'left-0' : 'right-0'}`}>
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-[#777]">
-        {direction === 'decrease' ? 'Subtract time' : 'Add time'}
-      </div>
-      {options.map((minutes) => (
-        <button
-          key={minutes}
-          type="button"
-          onClick={() => onSelect(minutes)}
-          className="block w-full rounded px-2 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]"
-        >
-          {direction === 'decrease' ? `${minutes}m` : `+${minutes}m`}
-        </button>
-      ))}
-    </div>
-  );
-};
-
 interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -140,9 +111,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-6 shadow-2xl custom-scrollbar">
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-6 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
         <div className="mb-6 flex items-center justify-between border-b border-[#333] pb-4">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
@@ -151,210 +121,59 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
           <button onClick={onClose} className="text-xl text-[#8a8a8a] hover:text-white">✕</button>
         </div>
 
-        {/* Basic Info */}
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Title</label>
-            <input 
-              type="text" 
-              value={settings.title || 'Timer 1'}
-              onChange={(e) => updateSettings({ title: e.target.value })}
-              className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none"
-            />
+            <input type="text" value={settings.title || 'Timer 1'} onChange={(e) => updateSettings({ title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
           <div className="flex gap-4">
             <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Speaker</label>
-            <input 
-              type="text" 
-              placeholder="Speaker (optional)"
-              value={settings.speaker || ''}
-              onChange={(e) => updateSettings({ speaker: e.target.value })}
-              className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none"
-            />
+            <input type="text" placeholder="Speaker (optional)" value={settings.speaker || ''} onChange={(e) => updateSettings({ speaker: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
           <div className="flex gap-4">
             <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Notes</label>
-            <textarea 
-              placeholder="Notes (optional)"
-              value={settings.notes || ''}
-              onChange={(e) => updateSettings({ notes: e.target.value })}
-              className="flex-1 h-24 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none resize-none"
-            />
+            <textarea placeholder="Notes (optional)" value={settings.notes || ''} onChange={(e) => updateSettings({ notes: e.target.value })} className="flex-1 h-24 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none resize-none" />
           </div>
-          <div className="flex gap-4">
-            <label className="w-20 text-[13px] text-[#8a8a8a] pt-1">Labels</label>
-            <button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-white hover:bg-[#383838]">
-              + Add label
-            </button>
-          </div>
+          <div className="flex gap-4"><label className="w-20 text-[13px] text-[#8a8a8a] pt-1">Labels</label><button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-white hover:bg-[#383838]">+ Add label</button></div>
         </div>
 
         <div className="my-8 border-t border-[#333]" />
 
-        {/* Start & Duration */}
         <div className="grid grid-cols-2 gap-12">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Start</h3>
-            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none">
-              <option>Manual</option>
-            </select>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-[#8a8a8a]">Time ⓘ</span>
-              <div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]">
-                <span>Select time</span>
-                <IconClock />
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-[#8a8a8a]">Date ⓘ</span>
-              <div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]">
-                <span>Select date</span>
-                <IconCalendar />
-              </div>
-            </div>
+            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none"><option>Manual</option></select>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Time ⓘ</span><div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]"><span>Select time</span><IconClock /></div></div>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Date ⓘ</span><div className="flex flex-1 items-center justify-between rounded border border-[#333] bg-[#2d2d2d] px-3 py-1.5 text-[13px] text-[#8a8a8a]"><span>Select date</span><IconCalendar /></div></div>
             <p className="text-[11px] text-[#666]">No start time given. Triggered manually.</p>
           </div>
-
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Duration</h3>
-            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none">
-              <option>Duration</option>
-            </select>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
-              <div className="flex flex-1 items-center justify-center gap-2 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] font-mono text-white">
-                <span>00</span> : <span>10</span> : <span>00</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
-              <select className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none">
-                <option>Countdown</option>
-              </select>
-            </div>
-            <div className="flex justify-end">
-              <button className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button>
-            </div>
+            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none"><option>Duration</option></select>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span><div className="flex flex-1 items-center justify-center gap-2 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] font-mono text-white"><span>00</span> : <span>10</span> : <span>00</span></div></div>
+            <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-[#8a8a8a]">Appearance</span><select className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"><option>Countdown</option></select></div>
+            <div className="flex justify-end"><button className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button></div>
             <p className="text-[11px] text-[#666]">Counting down from 10 mins.</p>
           </div>
         </div>
 
         <div className="my-8 border-t border-[#333]" />
 
-        {/* Wrap-up times & actions */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3>
-              <span className="text-[12px] text-[#666]">ⓘ Chimes caveats</span>
-            </div>
-            <button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-[#8a8a8a] hover:text-white">
-              Actions <IconChevronDown />
-            </button>
+            <div className="flex items-center gap-2"><h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3><span className="text-[12px] text-[#666]">ⓘ Chimes caveats</span></div>
+            <button className="rounded border border-[#333] bg-[#2d2d2d] px-3 py-1 text-[12px] text-[#8a8a8a] hover:text-white">Actions <IconChevronDown /></button>
           </div>
-
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]">
-            <div className="flex h-full w-full">
-              <div className="h-full w-[80%] bg-[#22c55e]" />
-              <div className="h-full w-[15%] bg-[#f08c00]" />
-              <div className="h-full w-[5%] bg-[#fa5252]" />
-            </div>
-          </div>
-
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
           <div className="space-y-6 pt-2">
-            {/* Start */}
-            <div className="flex items-center gap-4">
-              <div className="h-3 w-3 rounded-full bg-[#22c55e]" />
-              <span className="w-16 text-[13px] text-[#8a8a8a]">Start</span>
-              <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>None</option>
-              </select>
-              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
-              <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>Flash ×0 ▾</option>
-              </select>
-            </div>
-
-            {/* Yellow */}
-            <div className="flex items-center gap-4">
-              <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
-              <span className="w-16 text-[13px] text-white">Yellow</span>
-              <input 
-                type="text" 
-                value={formatMMSS(yellowSegment.threshold)}
-                onChange={(e) => {
-                  const val = parseMMSS(e.target.value);
-                  const newSegments = settings.segments.map((s: any) => 
-                    s.color === '#f08c00' ? { ...s, threshold: val } : s
-                  );
-                  updateSettings({ segments: newSegments });
-                }}
-                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none"
-              />
-              <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>None</option>
-              </select>
-              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
-              <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>Flash ×0 ▾</option>
-              </select>
-            </div>
-
-            {/* Red */}
-            <div className="flex items-center gap-4">
-              <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
-              <span className="w-16 text-[13px] text-white">Red</span>
-              <input 
-                type="text" 
-                value={formatMMSS(redSegment.threshold)}
-                onChange={(e) => {
-                  const val = parseMMSS(e.target.value);
-                  const newSegments = settings.segments.map((s: any) => 
-                    s.color === '#fa5252' ? { ...s, threshold: val } : s
-                  );
-                  updateSettings({ segments: newSegments });
-                }}
-                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none"
-              />
-              <select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>None</option>
-              </select>
-              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
-              <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>Flash ×0 ▾</option>
-              </select>
-            </div>
-
-            {/* 0:00 */}
-            <div className="flex items-center gap-4">
-              <div className="h-3 w-3 rounded-full bg-[#666]" />
-              <span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span>
-              <select className="ml-[108px] w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>None</option>
-              </select>
-              <button className="text-[#8a8a8a]"><IconSpeaker /></button>
-              <select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]">
-                <option>Flash ×0 ▾</option>
-              </select>
-            </div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#22c55e]" /><span className="w-16 text-[13px] text-[#8a8a8a]">Start</span><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#f08c00]" /><span className="w-16 text-[13px] text-white">Yellow</span><input type="text" value={formatMMSS(yellowSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = settings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); updateSettings({ segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#fa5252]" /><span className="w-16 text-[13px] text-white">Red</span><input type="text" value={formatMMSS(redSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = settings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); updateSettings({ segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#666]" /><span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span><select className="ml-[108px] w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-12 flex gap-4">
-          <button 
-            onClick={onClose}
-            className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={onClose}
-            className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]"
-          >
-            Confirm
-          </button>
-        </div>
+        <div className="mt-12 flex gap-4"><button onClick={onClose} className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]">Cancel</button><button onClick={onClose} className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]">Confirm</button></div>
       </div>
     </div>
   );
@@ -385,70 +204,29 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync }: TimerRowProps) =>
   const [isHovered, setIsHovered] = useState(false);
   const currentTime = formatClock(seconds);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : 1,
-    position: 'relative' as const,
-  };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 10 : 1, position: 'relative' as const };
 
-  // Sync to parent when active
   useEffect(() => {
     if (isActive) {
-      onSync({
-        seconds,
-        isRunning,
-        settings,
-        syncState,
-        DEFAULT_TIME
-      });
+      onSync({ seconds, isRunning, settings, syncState, DEFAULT_TIME });
     }
   }, [isActive, seconds, isRunning, settings, syncState, DEFAULT_TIME, onSync]);
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style}
-      onClick={onActivate}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`flex items-center gap-4 rounded-lg px-6 py-5 text-white shadow-2xl transition-all cursor-pointer ${isActive ? 'bg-[#2546c9]' : 'bg-[#2d2d2d] hover:bg-[#383838]'} ${isDragging ? 'opacity-50' : ''}`}
-    >
-      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[18px] font-bold opacity-80 cursor-grab active:cursor-grabbing -ml-2">
-        {isHovered || isDragging ? (
-          <span className="text-[28px] font-light leading-none tracking-tighter">=</span>
-        ) : (
-          index + 1
-        )}
-      </div>
+    <div ref={setNodeRef} style={style} onClick={onActivate} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`flex items-center gap-4 rounded-lg px-6 py-5 text-white shadow-2xl transition-all cursor-pointer ${isActive ? 'bg-[#2546c9]' : 'bg-[#2d2d2d] hover:bg-[#383838]'} ${isDragging ? 'opacity-50' : ''}`}>
+      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[18px] font-bold opacity-80 cursor-grab active:cursor-grabbing -ml-2">{isHovered || isDragging ? <span className="text-[28px] font-light leading-none tracking-tighter">=</span> : index + 1}</div>
       <div className="text-[15px] font-bold opacity-60 border-b border-dotted border-white/40">Add time</div>
       <div className="mx-auto text-center text-[32px] font-bold tracking-tight tabular-nums">{currentTime}</div>
       <div className="text-[17px] font-bold truncate max-w-[150px]">{settings.title || `Timer ${index + 1}`}</div>
-      
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         <button type="button" onClick={resetTimer} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipBack /></button>
         <button type="button" onClick={() => setIsSettingsOpen(true)} className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSettings /></button>
-        <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-10 w-14 items-center justify-center rounded bg-[#228b3a] hover:bg-[#2aa346] shadow-lg transition-colors">
-          {isRunning ? <IconPause /> : <IconPlay />}
-        </button>
+        <button type="button" onClick={isRunning ? pauseTimer : startTimer} className="flex h-10 w-14 items-center justify-center rounded bg-[#228b3a] hover:bg-[#2aa346] shadow-lg transition-colors">{isRunning ? <IconPause /> : <IconPlay />}</button>
         <button type="button" className="flex h-10 w-11 items-center justify-center rounded border border-white/20 bg-white/10 hover:bg-white/20"><IconSkipForward /></button>
       </div>
-
-      <TimerSettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-        settings={settings}
-        updateSettings={updateSettings}
-      />
+      <TimerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} updateSettings={updateSettings} />
     </div>
   );
 };
@@ -458,11 +236,7 @@ interface Room {
   name: string;
   timerIds: string[];
   activeTimerId: string;
-  messages: Array<{
-    id: string;
-    text: string;
-    color: string;
-  }>;
+  messages: Array<{ id: string; text: string; color: string; }>;
 }
 
 function App() {
@@ -470,21 +244,14 @@ function App() {
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', ['default']);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', 'default');
-  const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [
-    { id: '1', text: '', color: '#ffffff' }
-  ]);
-
+  const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
-  const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -511,47 +278,6 @@ function App() {
     setIsRoomMenuOpen(false);
   }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
 
-  const exportLibrary = () => {
-    const exportData = {
-      rooms: [...rooms, {
-        id: Date.now().toString(),
-        name: currentRoomName,
-        timerIds,
-        activeTimerId,
-        messages
-      }],
-      activeRoomName: currentRoomName,
-      exportedAt: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importLibrary = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const imported = JSON.parse(event.target?.result as string);
-        if (imported.rooms && Array.isArray(imported.rooms)) {
-          setRooms(imported.rooms);
-          if (imported.activeRoomName) {
-            const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName);
-            if (activeRoom) loadRoom(activeRoom);
-          }
-        }
-      } catch (err) { console.error(err); }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
     try {
       const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -563,7 +289,7 @@ function App() {
     } catch { /* ignore */ }
   }, []);
 
-  // Sync active timer to output
+  // Real-time sync for active timer
   useEffect(() => {
     if (activeTimerState) {
       syncOutput({ 
@@ -576,12 +302,21 @@ function App() {
     }
   }, [activeTimerState, syncOutput, isBlackout, isFlash]);
 
-  const handleFlash = () => {
-    setIsFlash(true);
-    setTimeout(() => setIsFlash(false), 600);
+  const openOutput = () => {
+    if (activeTimerState) {
+      syncOutput({ 
+        ...activeTimerState.syncState,
+        totalTime: activeTimerState.DEFAULT_TIME, 
+        segments: activeTimerState.settings.segments,
+        blackout: isBlackout,
+        flash: isFlash,
+        type: 'force-sync'
+      });
+    }
+    window.open('/output', '_blank');
   };
 
-  const openOutput = () => window.open('/output', '_blank');
+  const handleFlash = () => { setIsFlash(true); setTimeout(() => setIsFlash(false), 600); };
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
@@ -589,20 +324,12 @@ function App() {
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'Timer 1', segments: [] };
 
-  // Wall clock and other functional values (from any useTimer instance, but let's use a dedicated one or the active one)
   const { wallClock, timeZone, cueFinish, overUnder } = useTimer('global-helper');
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased">
-      {/* Top bar */}
       <header className="flex items-center justify-between px-3 py-2 border-b border-[#333]">
-        <input 
-          type="text"
-          value={currentRoomName}
-          onChange={(e) => setCurrentRoomName(e.target.value)}
-          className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-64"
-          placeholder="Unnamed"
-        />
+        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-64" placeholder="Unnamed" />
         <div className="flex items-center gap-2">
           <div className="relative">
             <button type="button" onClick={() => setIsRoomMenuOpen(!isRoomMenuOpen)} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
@@ -615,148 +342,46 @@ function App() {
                     <button onClick={(e) => { e.stopPropagation(); setRooms(rooms.filter(r => r.id !== room.id)); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
                 ))}
-                <div className="mt-1 border-t border-[#333] pt-1">
-                  <button onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button>
-                </div>
+                <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
               </div>
             )}
           </div>
-          <input type="file" ref={fileInputRef} onChange={importLibrary} accept=".json" className="hidden" />
+          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { setRooms(imported.rooms); if (imported.activeRoomName) { const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName); if (activeRoom) loadRoom(activeRoom); } } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
-          <button type="button" onClick={exportLibrary} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+          <button type="button" onClick={() => { const exportData = { rooms: [...rooms, { id: Date.now().toString(), name: currentRoomName, timerIds, activeTimerId, messages }], activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Dashboard panel */}
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[17px] font-bold text-white">Dashboard</h2>
-            <button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button>
-          </div>
-
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 ${isFlash ? 'bg-white' : ''}`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
             <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />
-            <div className="mt-4 flex items-center gap-4 text-[13px]">
-              <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
-              <div className="flex items-center gap-2 text-white">
-                <div className="h-2 w-2 rounded-full bg-[#444]"></div>
-                <span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
-              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.DEFAULT_TIME || 0)}</div>
-              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div>
-              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div>
-              <div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div>
-            </div>
+            <div className="mt-4 flex items-center gap-4 text-[13px]"><span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span><div className="flex items-center gap-2 text-white"><div className="h-2 w-2 rounded-full bg-[#444]"></div><span className="font-mono text-[15px]" style={{ color: isFlash ? '#000' : '#fff' }}>{currentTime}.{Math.floor((displaySeconds % 1) * 10)}</span></div></div>
+            <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]"><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">{formatClock(activeTimerState?.DEFAULT_TIME || 0)}</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">7:30</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a]">5:00</div><div className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a]">2:30</div></div>
             <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.DEFAULT_TIME || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
           </div>
-
-          <div className="mt-4 grid grid-cols-7 gap-2">
-            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className="text-[#22c55e]" /></button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] opacity-50"><IconSkipForward /></button>
-            <button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button>
-            <button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button>
-          </div>
-
-          <div className="mt-6 flex flex-col items-center">
-            <div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-            <div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div>
-            <div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div>
-          </div>
+          <div className="mt-4 grid grid-cols-7 gap-2"><button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">-1m</button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconSkipBack /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconPlay className="text-[#22c55e]" /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] opacity-50"><IconSkipForward /></button><button className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold">+1m</button><button className="flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d]"><IconChevronDown /></button></div>
+          <div className="mt-6 flex flex-col items-center"><div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div></div>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{cueFinish}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{overUnder}</span></div></div>
         </aside>
 
-        {/* Center: Timers panel */}
         <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-[20px] font-bold text-white">Timers</h2>
-              <span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                type="button" 
-                onClick={() => setIsBlackout(!isBlackout)}
-                className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}
-              >
-                <IconCircle /> Blackout
-              </button>
-              <button 
-                type="button" 
-                onClick={handleFlash}
-                className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"
-              >
-                <IconFlash /> Flash
-              </button>
-              <button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white"><IconMore /></button>
-            </div>
-          </div>
-
-          <DndContext 
-            sensors={sensors} 
-            collisionDetection={closestCenter} 
-            onDragEnd={handleDragEnd}
-            modifiers={[restrictToVerticalAxis]}
-          >
-            <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
-              <div className="space-y-4">
-                {timerIds.map((id, index) => (
-                  <TimerRow 
-                    key={id} 
-                    id={id} 
-                    index={index} 
-                    isActive={activeTimerId === id}
-                    onActivate={() => setActiveTimerId(id)}
-                    onSync={setActiveTimerState}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={addTimer}
-              className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg"
-            >
-              + Add Timer
-            </button>
-          </div>
+          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button><button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white"><IconMore /></button></div></div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} />))}</div></SortableContext></DndContext>
+          <div className="mt-8 flex justify-center"><button type="button" onClick={addTimer} className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg">+ Add Timer</button></div>
         </main>
 
-        {/* Right: Messages panel */}
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-4"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div>
-            <button type="button" onClick={handleFlash} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
-          </div>
-          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
-            {messages.map((msg) => (
-              <div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
-                <div className="flex gap-3"><span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span><input type="text" value={msg.text} onChange={(e) => updateMessage(msg.id, e.target.value)} placeholder="Enter message ..." className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]" /></div>
-                <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2"><div className="flex gap-4">{['A', 'A', 'A', 'B', 'āA'].map((tag, i) => (<button key={i} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff', borderColor: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>))}</div></div>
-                <div className="mt-4 flex justify-end gap-2"><button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button><button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button></div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 space-y-4">
-            <button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button>
-            <div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div>
-          </div>
+          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div><button type="button" onClick={handleFlash} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button></div>
+          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg) => (<div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg"><div className="flex gap-3"><span className="text-[14px] font-bold text-[#8a8a8a] pt-1">1</span><input type="text" value={msg.text} onChange={(e) => updateMessage(msg.id, e.target.value)} placeholder="Enter message ..." className="flex-1 bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]" /></div><div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2"><div className="flex gap-4">{['A', 'A', 'A', 'B', 'āA'].map((tag, i) => (<button key={i} type="button" className="pb-1 text-[15px] font-bold transition-all border-b-2" style={{ color: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff', borderColor: i === 1 ? '#22c55e' : i === 2 ? '#fa5252' : '#ffffff' }}>{tag}</button>))}</div></div><div className="mt-4 flex justify-end gap-2"><button type="button" className="rounded-md border border-[#444] bg-[#1c1c1c] px-5 py-1.5 text-[13px] font-bold text-white hover:bg-[#252525]">Show</button><button type="button" className="flex items-center justify-center rounded-md border border-[#444] bg-[#1c1c1c] px-3 py-1.5 text-[13px] text-white"><IconMaximize /></button></div></div>))}</div>
+          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button><div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div></div>
         </aside>
       </div>
 
-      {/* Footer */}
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
         <div className="flex items-center gap-4"><span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span><span><IconSquare /> 395 ms</span></div>
         <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12"><span>0:00</span><div className="group relative flex-1"><div className="absolute inset-0 flex items-center"><div className="h-1 w-full rounded-full bg-[#333]"></div></div><div className="relative flex h-4 items-center"><div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform"></div></div></div><span>-10:00</span></div>
