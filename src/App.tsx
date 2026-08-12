@@ -302,6 +302,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
           case 'PAUSE': pauseTimer(); break;
           case 'RESET': resetTimer(); break;
           case 'ADJUST': setTime(Math.max(0, seconds + payload)); break;
+          case 'SET': setTime(payload); break;
         }
       }
     };
@@ -536,6 +537,25 @@ function App() {
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter" style={{ color: !activeTimerId ? '#333' : displaySeconds <= 0 ? '#fa5252' : isFlash ? '#000000' : '#ffffff' }}>{currentTime}</div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
+            {activeTimerId && (
+              <>
+                <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
+                  {[1, 0.75, 0.5, 0.25].map((factor, i) => {
+                    const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
+                    return (
+                      <div 
+                        key={i}
+                        onClick={() => sendControl('SET', targetTime)}
+                        className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a] last:border-r-0 hover:bg-[#252525] hover:text-white transition-colors cursor-pointer"
+                      >
+                        {formatClock(targetTime)}
+                      </div>
+                    );
+                  })}
+                </div>
+                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
+              </>
+            )}
           </div>
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
