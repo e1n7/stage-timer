@@ -205,7 +205,6 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
         <div className="grid grid-cols-1 gap-12">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Duration</h3>
-            <select className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:outline-none"><option>Duration</option></select>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
               <input 
