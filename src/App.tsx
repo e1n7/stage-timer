@@ -26,6 +26,7 @@ function App() {
     resetTimer,
     settings,
     updateSettings,
+    colorClass,
   } = useTimer();
 
   const currentTime = formatClock(seconds);
@@ -143,11 +144,15 @@ function App() {
           </div>
 
           <div className="rounded-md border border-[#333] bg-[#141414] p-3">
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="font-bold text-[#22c55e]">⌂ stagetimer.io</span>
+            <div className="flex items-center justify-end text-[12px]">
               <span className="font-bold text-[#7eb8ff]">Timer 1</span>
             </div>
-            <div className="digit mt-2 text-center text-[84px] font-bold leading-none tracking-[-0.02em] text-white">{currentTime}</div>
+            <div 
+              className="digit mt-2 text-center text-[84px] font-bold leading-none tracking-tighter transition-colors duration-300"
+              style={{ color: colorClass }}
+            >
+              {currentTime}
+            </div>
 
             <ProgressBar 
               currentSeconds={seconds} 
@@ -441,7 +446,7 @@ function App() {
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-3 py-2 text-[11px] text-[#8a8a8a]">
         <div className="flex items-center gap-2">
-          <span className="text-[#555]">stagetimer.io · v3.5.9 · Docs · ■ 783 ms</span>
+          <span className="text-[#555]">v3.5.9 · ■ 783 ms</span>
         </div>
 
         <div className="flex items-center gap-2">

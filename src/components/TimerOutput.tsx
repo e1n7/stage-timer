@@ -95,13 +95,30 @@ export const TimerOutput = () => {
     return '#ffffff';
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   return (
     <div
-      className="flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]"
+      className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a]"
       style={{
         transition: 'background-color 0.6s ease',
       }}
     >
+      {/* Invisible Fullscreen Button */}
+      <button 
+        onClick={toggleFullscreen}
+        className="absolute right-0 top-0 h-20 w-20 cursor-default opacity-0"
+        aria-label="Toggle Fullscreen"
+      />
+
       {blackout ? (
         <div className="h-full w-full bg-black" />
       ) : (
