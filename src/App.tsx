@@ -284,7 +284,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
       <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-6">
           <h3 className="text-[16px] font-bold text-white mb-6">Duration</h3>
@@ -379,7 +379,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen ? 100 : 1, position: 'relative' as const };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
 
   useEffect(() => {
     const handleGlobalClick = () => {
