@@ -560,21 +560,40 @@ function App() {
                   </span>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-4 gap-[1px] overflow-hidden rounded-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
-                {[1, 0.75, 0.5, 0.25].map((factor, i) => {
-                  const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
-                  return (
-                    <div 
-                      key={i}
-                      onClick={() => sendControl('SET', targetTime)}
-                      className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a] last:border-r-0 hover:bg-[#252525] hover:text-white transition-colors cursor-pointer"
-                    >
-                      {formatClock(targetTime)}
-                    </div>
-                  );
-                })}
+              <div 
+                className="relative mt-4 group cursor-pointer"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const percentage = Math.max(0, Math.min(1, x / rect.width));
+                  const targetDuration = activeTimerState?.settings.targetDuration || 600;
+                  const targetTime = targetDuration * (1 - percentage);
+                  sendControl('SET', targetTime);
+                }}
+              >
+                <div className="grid grid-cols-4 gap-[1px] overflow-hidden rounded-t-sm border border-[#2a2a2a] text-[11px] bg-[#2a2a2a]">
+                  {[1, 0.75, 0.5, 0.25].map((factor, i) => {
+                    const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
+                    return (
+                      <div key={i} className="bg-[#1c1c1c] p-2 text-left text-[#8a8a8a] border-r border-[#2a2a2a] last:border-r-0">
+                        {formatClock(targetTime)}
+                      </div>
+                    );
+                  })}
+                </div>
+                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="border-x border-b border-[#2a2a2a] rounded-b-sm" />
+                
+                {/* Red Playhead Marker */}
+                <div 
+                  className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-10"
+                  style={{ 
+                    left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / (activeTimerState?.settings.targetDuration || 600))) * 100))}%`,
+                    transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
+                  }}
+                >
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-2 bg-[#fa5252] rounded-b-[2px]" />
+                </div>
               </div>
-              <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="mt-1 border-none rounded-b-sm" />
             </>
           )}
           <div className="mt-4 grid grid-cols-7 gap-2">
