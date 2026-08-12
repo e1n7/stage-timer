@@ -359,6 +359,7 @@ function App() {
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
@@ -390,10 +391,22 @@ function App() {
   };
 
   const deleteTimer = (id: string) => {
-    if (timerIds.length <= 1) return;
     const newIds = timerIds.filter(tid => tid !== id);
-    setTimerIds(newIds);
-    if (activeTimerId === id) setActiveTimerId(newIds[0]);
+    if (newIds.length === 0) {
+      const freshId = `timer_${Date.now()}`;
+      setTimerIds([freshId]);
+      setActiveTimerId(freshId);
+    } else {
+      setTimerIds(newIds);
+      if (activeTimerId === id) setActiveTimerId(newIds[0]);
+    }
+  };
+
+  const deleteAllTimers = () => {
+    const freshId = `timer_${Date.now()}`;
+    setTimerIds([freshId]);
+    setActiveTimerId(freshId);
+    setIsTimersMenuOpen(false);
   };
 
   const duplicateTimer = (id: string, index: number) => {
@@ -532,7 +545,25 @@ function App() {
         </aside>
 
         <main className="flex flex-1 flex-col px-8 py-4 bg-[#141414] overflow-y-auto custom-scrollbar">
-          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button><button type="button" className="flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white"><IconMore /></button></div></div>
+          <div className="mb-6 flex items-center justify-between"><div className="flex items-center gap-4"><h2 className="text-[20px] font-bold text-white">Timers</h2><span className="text-[14px] text-[#8a8a8a] cursor-pointer">Select</span></div><div className="flex items-center gap-2"><button type="button" onClick={() => setIsBlackout(!isBlackout)} className={`flex h-9 items-center gap-2 rounded-md border px-4 text-[13px] transition-colors ${isBlackout ? 'bg-white text-black border-white' : 'bg-[#2d2d2d] text-white border-[#444]'}`}><IconCircle /> Blackout</button><button type="button" onClick={handleFlash} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button><div className="relative">
+                <button 
+                  type="button" 
+                  onClick={() => setIsTimersMenuOpen(!isTimersMenuOpen)}
+                  className={`flex h-9 items-center justify-center rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white hover:bg-[#383838] transition-colors ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                >
+                  <IconMore />
+                </button>
+                {isTimersMenuOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
+                    <button 
+                      onClick={deleteAllTimers}
+                      className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10"
+                    >
+                      Delete all timers
+                    </button>
+                  </div>
+                )}
+              </div></div></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (<TimerRow key={id} id={id} index={index} isActive={activeTimerId === id} onActivate={() => setActiveTimerId(id)} onSync={setActiveTimerState} onAddAbove={() => addTimer(index)} onAddBelow={() => addTimer(index + 1)} onDuplicate={() => duplicateTimer(id, index)} onDelete={() => deleteTimer(id)} />))}</div></SortableContext></DndContext>
           <div className="mt-8 flex justify-center"><button type="button" onClick={() => addTimer()} className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-8 py-3 text-[15px] font-bold text-white hover:bg-[#383838] transition-all shadow-lg">+ Add Timer</button></div>
         </main>
