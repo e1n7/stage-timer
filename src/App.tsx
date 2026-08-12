@@ -315,7 +315,7 @@ const TimerRow = ({ id, index, isActive, onActivate, onSync, onAddAbove, onAddBe
   }, [isActive, seconds, isRunning, settings, syncState, DEFAULT_TIME, onSync]);
 
   return (
-    <div ref={setNodeRef} style={style} onClick={onActivate} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`flex items-center gap-4 rounded-lg px-6 py-5 text-white shadow-2xl transition-all cursor-pointer ${isRunning ? 'bg-[#fa5252]' : isActive ? 'bg-[#2546c9]' : 'bg-[#2d2d2d] hover:bg-[#383838]'} ${isDragging ? 'opacity-50' : ''}`}>
+    <div ref={setNodeRef} style={style} onClick={onActivate} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} className={`flex items-center gap-4 rounded-lg px-6 py-5 text-white shadow-2xl transition-all cursor-pointer ${isRunning ? 'bg-[#991b1b]' : isActive ? 'bg-[#2546c9]' : 'bg-[#2d2d2d] hover:bg-[#383838]'} ${isDragging ? 'opacity-50' : ''}`}>
       <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[18px] font-bold opacity-80 cursor-grab active:cursor-grabbing -ml-2">{isHovered || isDragging ? <span className="text-[28px] font-light leading-none tracking-tighter">=</span> : index + 1}</div>
       <div className="text-[15px] font-bold opacity-60 border-b border-dotted border-white/40">Add time</div>
       <div className="mx-auto text-center text-[32px] font-bold tracking-tight tabular-nums">{currentTime}</div>
