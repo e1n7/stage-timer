@@ -71,6 +71,7 @@ export const useTimer = (id: string = 'default') => {
   
   const [settings, setSettings] = useLocalStorage<TimerSettings>(settingsKey, DEFAULT_SETTINGS);
   const [log, setLog] = useLocalStorage<LogEntry[]>(logKey, []);
+  const [selectedTimeZone, setSelectedTimeZone] = useLocalStorage<string>('stage-timer-global-timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [now, setNow] = useState(new Date());
 
   const [syncState, setSyncState] = useState<SyncState>(() => {
@@ -230,12 +231,12 @@ export const useTimer = (id: string = 'default') => {
 
   const clearLog = useCallback(() => setLog([]), [setLog]);
 
-  const wallClock = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone.replace('_', ' ');
-  const timeZoneAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
+  const wallClock = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
+  const timeZone = selectedTimeZone.replace('_', ' ');
+  const timeZoneAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
 
   const cueFinishDate = new Date(now.getTime() + seconds * 1000);
-  const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: selectedTimeZone });
   const overUnder = seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
 
   return {
@@ -245,6 +246,8 @@ export const useTimer = (id: string = 'default') => {
     settings,
     wallClock,
     timeZone: `${timeZone} (${timeZoneAbbr})`,
+    selectedTimeZone,
+    setSelectedTimeZone,
     cueFinish,
     overUnder,
     setTime,

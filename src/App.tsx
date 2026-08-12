@@ -361,6 +361,7 @@ function App() {
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
+  const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
@@ -501,7 +502,16 @@ function App() {
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
 
-  const { wallClock, timeZone, cueFinish, overUnder } = useTimer('global-helper');
+  const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone, cueFinish, overUnder } = useTimer('global-helper');
+
+  const TIMEZONES = [
+    'UTC', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
+    'America/Anchorage', 'America/Argentina/Buenos_Aires', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Mexico_City', 'America/New_York', 'America/Phoenix', 'America/Sao_Paulo',
+    'Asia/Bangkok', 'Asia/Dubai', 'Asia/Hong_Kong', 'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Kolkata', 'Asia/Manila', 'Asia/Seoul', 'Asia/Shanghai', 'Asia/Singapore', 'Asia/Tokyo',
+    'Australia/Adelaide', 'Australia/Brisbane', 'Australia/Melbourne', 'Australia/Perth', 'Australia/Sydney',
+    'Europe/Amsterdam', 'Europe/Berlin', 'Europe/Brussels', 'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Paris', 'Europe/Rome', 'Europe/Zurich',
+    'Pacific/Auckland', 'Pacific/Honolulu', 'Pacific/Tahiti'
+  ];
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased">
@@ -582,7 +592,34 @@ function App() {
               {openAdjustMenu === 'increase' && (<TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} />)}
             </div>
           </div>
-          <div className="mt-6 flex flex-col items-center"><div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]"><IconClock /><span>{wallClock}</span><span className="text-[#8a8a8a]">{timeZone}</span></div></div>
+          <div className="mt-6 flex flex-col items-center">
+            <div className="flex items-center gap-2 text-[14px] font-medium text-[#c9c9c9]">
+              <IconClock />
+              <span>{wallClock}</span>
+              <div className="relative">
+                <span 
+                  className="text-[#8a8a8a] cursor-pointer hover:text-white transition-colors"
+                  onClick={() => setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen)}
+                >
+                  {timeZone}
+                </span>
+                {isTimeZoneMenuOpen && (
+                  <div className="absolute bottom-full left-1/2 z-50 mb-2 max-h-64 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
+                    <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Select Timezone</div>
+                    {TIMEZONES.map((tz) => (
+                      <div 
+                        key={tz} 
+                        onClick={() => { setSelectedTimeZone(tz); setIsTimeZoneMenuOpen(false); }}
+                        className={`rounded px-2 py-1.5 text-left text-[12px] hover:bg-[#383838] cursor-pointer ${selectedTimeZone === tz ? 'text-[#22c55e] bg-[#2d2d2d]' : 'text-white'}`}
+                      >
+                        {tz.replace('_', ' ')}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? cueFinish : '--:--'}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? overUnder : '--:--'}</span></div></div>
         </aside>
 
