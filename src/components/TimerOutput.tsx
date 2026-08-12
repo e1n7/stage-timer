@@ -33,6 +33,8 @@ export const TimerOutput = () => {
   const [messageVisible, setMessageVisible] = useState<boolean>(false);
   const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
   const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
+  const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
+  const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -83,6 +85,8 @@ export const TimerOutput = () => {
         setMessageColor(data.messageColor || '#ffffff');
         setMessageBold(!!data.messageBold);
         setMessageUppercase(!!data.messageUppercase);
+        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
         // Persistent show: stays on screen until toggled off
         if ('messageShown' in data) {
           setMessageVisible(hasMsg && !!data.messageShown);
@@ -99,6 +103,8 @@ export const TimerOutput = () => {
           setMessageColor(data.messageColor || '#ffffff');
           setMessageBold(!!data.messageBold);
           setMessageUppercase(!!data.messageUppercase);
+          if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+          if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
         }
       }
       if ('messageMaximize' in data) {
@@ -109,6 +115,8 @@ export const TimerOutput = () => {
           setMessageColor(data.messageColor || '#ffffff');
           setMessageBold(!!data.messageBold);
           setMessageUppercase(!!data.messageUppercase);
+          if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+          if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
         }
       }
 
@@ -248,7 +256,9 @@ export const TimerOutput = () => {
               textTransform: messageUppercase ? 'uppercase' : 'none',
               lineHeight: 1.25,
               textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
-              letterSpacing: '0.03em'
+              letterSpacing: '0.03em',
+              transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
+              transformOrigin: 'center'
             }}
           >
             {messageText}
@@ -288,7 +298,9 @@ export const TimerOutput = () => {
                   fontWeight: messageBold ? 800 : 600,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
                   textShadow: `0 2px 12px rgba(0,0,0,0.6), 0 0 30px ${messageColor}55`,
-                  letterSpacing: '0.04em'
+                  letterSpacing: '0.04em',
+                  transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
+                  transformOrigin: 'center'
                 }}
               >
                 {messageText}

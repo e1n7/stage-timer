@@ -1183,6 +1183,13 @@ function App() {
 
   const handleFlash = () => {
     setIsFlashing(true);
+    // Also flash the currently shown message (timer digits + message blink together)
+    if (messageShownId) {
+      const msg = messages.find(m => m.id === messageShownId);
+      if (msg) {
+        syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, type: 'force-sync' });
+      }
+    }
     let count = 0;
     const interval = setInterval(() => {
       setIsFlash(prev => !prev);
@@ -1191,17 +1198,29 @@ function App() {
         clearInterval(interval);
         setIsFlash(false);
         setIsFlashing(false);
+        syncOutput({ messageFlash: false, type: 'force-sync' });
       }
     }, 150);
   };
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const updateMessageColor = (id: string, color: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, color } : m));
-  const toggleMessageBold = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: !m.bold } : m));
-  const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: !m.uppercase } : m));
+  const toggleMessageBold = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: !m.bold, text: m.text || '' } : m));
+  const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => {
+    if (m.id !== id) return m;
+    return { ...m, uppercase: !m.uppercase, text: m.uppercase ? (m.text || '').toLowerCase() : (m.text || '').toUpperCase() };
+  }));
+  const updateMessageFontSize = (id: string, key: 'fontHeight' | 'fontWidth', value: number) => setMessages(prev => prev.map(m => m.id === id ? { ...m, [key]: value } : m));
+  const getMessageFontSize = (msg: any, key: 'fontHeight' | 'fontWidth') => {
+    const v = msg[key];
+    if (typeof v === 'number' && v > 0) return v;
+    return key === 'fontHeight' ? 1.0 : 1.0;
+  };
   const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
-  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
-    // Maximized message takes precedence over the shown message
-    const activeId = (messageMaximizeId && messages.some(m => m.id === messageMaximizeId)) ? messageMaximizeId : messageShownId;
+  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFontHeight: number; messageFontWidth: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
+    // Active message priority: maximized > currently flashing > shown
+    const activeId = (messageMaximizeId && messages.some(m => m.id === messageMaximizeId)) ? messageMaximizeId
+      : (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
+      : messageShownId;
     const msg = activeId ? (messages.find(m => m.id === activeId) || null) : null;
     const shownText = msg ? msg.text || '' : '';
     return {
@@ -1209,8 +1228,10 @@ function App() {
       messageColor: msg?.color || '#ffffff',
       messageBold: !!msg?.bold,
       messageUppercase: !!msg?.uppercase,
-      messageShown: !!messageShownId || !!messageMaximizeId,
-      messageFlash: false,
+      messageFontHeight: msg ? getMessageFontSize(msg, 'fontHeight') : 1.0,
+      messageFontWidth: msg ? getMessageFontSize(msg, 'fontWidth') : 1.0,
+      messageShown: !!messageShownId || !!messageMaximizeId || !!messageFlashId,
+      messageFlash: !!messageFlashId,
       messageMaximize: !!messageMaximizeId
     };
   };
@@ -1223,7 +1244,7 @@ function App() {
     setMessageMaximizeId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageMaximize: true, messageShown: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageMaximize: true, messageShown: true, type: 'force-sync' });
     }
   };
   const showMessage = (id: string) => {
@@ -1240,7 +1261,7 @@ function App() {
     setMessageShownId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageShown: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageShown: true, type: 'force-sync' });
     }
   };
   const flashMessage = (id: string) => {
@@ -1248,7 +1269,7 @@ function App() {
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFlash: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, type: 'force-sync' });
     }
     setIsFlashing(true);
     let count = 0;
@@ -1273,7 +1294,7 @@ function App() {
     next.splice(toIdx, 0, moved);
     return next;
   });
-  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
+  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff', bold: false, uppercase: false, fontHeight: 1.0, fontWidth: 1.0 }]);
 
   const goToNextTimer = () => {
     if (timerIds.length <= 1) return;
@@ -1367,6 +1388,22 @@ function App() {
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
+            {getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout && (
+              <div className="mt-3 flex items-center justify-center">
+                <div
+                  className="max-h-[60px] overflow-hidden px-2 py-1 text-center text-[16px] leading-tight break-words"
+                  style={{
+                    color: getActiveMessage().messageColor,
+                    fontWeight: getActiveMessage().messageBold ? 700 : 400,
+                    textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
+                    opacity: (isFlashing && !isFlash) ? 0.2 : 1,
+                    textShadow: isFlash ? `0 0 12px ${getActiveMessage().messageColor}` : 'none'
+                  }}
+                >
+                  {getActiveMessage().messageText}
+                </div>
+              </div>
+            )}
           </div>
 
           {activeTimerId && (
@@ -1568,80 +1605,111 @@ function App() {
         </main>
 
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
-          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[13px] text-[#8a8a8a] hover:text-[#c9c9c9] cursor-pointer">Select</span></div><button type="button" onClick={() => { if (messageShownId) flashMessage(messageShownId); }} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button></div>
-          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => (
-            <div key={msg.id} className="group relative rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg transition-opacity">
+          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><span className="text-[13px] text-[#8a8a8a] hover:text-[#c9c9c9] cursor-pointer">Select</span></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); handleFlash(); } }} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button></div>
+          <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
+            const mFontH = getMessageFontSize(msg, 'fontHeight');
+            const mFontW = getMessageFontSize(msg, 'fontWidth');
+            return (
+            <div key={msg.id} className="group relative rounded-lg border border-[#333] bg-[#2d2d2d] px-3 py-2 shadow-md transition-opacity">
               {draggingMsgId === msg.id && <div className="absolute inset-0 z-20 rounded-lg bg-[#4a9eff]/10 pointer-events-none" />}
-              <div className="flex gap-3">
-                {/* Drag handle (visible on hover) */}
-                <button
-                  type="button"
-                  draggable
-                  onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', msg.id); setDraggingMsgId(msg.id); }}
-                  onDragEnd={() => setDraggingMsgId(null)}
-                  onDragOver={(e) => { if (draggingMsgId && draggingMsgId !== msg.id) e.preventDefault(); }}
-                  onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId) moveMessage(fromId, msg.id); setDraggingMsgId(null); }}
-                  className="flex items-center justify-center px-1 pt-1 text-[#555] hover:text-[#8a8a8a] cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Drag to reorder"
-                >
-                  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
-                </button>
-                <span className="text-[14px] font-bold text-[#8a8a8a] pt-1">{idx + 1}</span>
-                <textarea
-                  value={msg.text}
-                  onChange={(e) => updateMessage(msg.id, e.target.value)}
-                  placeholder="Enter message ..."
-                  rows={2}
-                  className="flex-1 resize-none bg-[#1c1c1c] border border-[#444] rounded-md p-2.5 text-[14px] text-white outline-none focus:border-[#555]"
-                />
-                {/* Delete button (visible on hover) */}
-                <button
-                  type="button"
-                  onClick={() => deleteMessage(msg.id)}
-                  className="flex items-center justify-center px-1 pt-1 text-[#666] hover:text-[#fa5252] opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete message"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                </button>
-              </div>
-              {/* Toolbar */}
-              <div className="mt-4 flex items-center justify-between border-b border-[#444] pb-2">
-                <div className="flex items-center gap-4">
-                  {/* White */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff' }}>A</button>
-                  {/* Green */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#22c55e' }}>A</button>
-                  {/* Red */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-1 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#fa5252' }}>A</button>
-                  {/* Bold */}
-                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-1 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff', fontWeight: 700 }}>B</button>
-                  {/* Uppercase */}
-                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-1 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: '#ffffff', fontWeight: 700 }}>āA</button>
+              {/* Whole card is the drag surface */}
+              <div
+                draggable
+                onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', msg.id); setDraggingMsgId(msg.id); }}
+                onDragEnd={() => setDraggingMsgId(null)}
+                onDragOver={(e) => { if (draggingMsgId && draggingMsgId !== msg.id) e.preventDefault(); }}
+                onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId) moveMessage(fromId, msg.id); setDraggingMsgId(null); }}
+                className="flex flex-col gap-1.5"
+              >
+                {/* Row 1: number + live preview textarea + drag grip + delete */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" title="Drag to reorder">{idx + 1}</span>
+                  <textarea
+                    value={msg.text}
+                    onChange={(e) => updateMessage(msg.id, e.target.value)}
+                    placeholder="Enter message ..."
+                    rows={1}
+                    draggable={false}
+                    className="min-h-[32px] max-h-[72px] flex-1 resize-y rounded-md border border-[#444] bg-[#1c1c1c] px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-[#555]"
+                    style={{
+                      color: msg.color,
+                      fontWeight: msg.bold ? 700 : 400,
+                      textTransform: msg.uppercase ? 'uppercase' : 'none',
+                      transform: `scale(${mFontW}, ${mFontH})`,
+                      transformOrigin: 'left center'
+                    }}
+                  />
+                  {/* Drag grip + delete (visible on hover) */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="px-1 text-[#555] hover:text-[#8a8a8a] cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                      <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => deleteMessage(msg.id)}
+                      className="flex items-center justify-center text-[#666] hover:text-[#fa5252]"
+                      title="Delete message"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              {/* Show / Flash row */}
-              <div className="mt-4 flex justify-end">
-                <div className="flex overflow-hidden rounded-md border border-[#444]">
-                  <button
-                    type="button"
-                    onClick={() => showMessage(msg.id)}
-                    className={`flex items-center gap-2 px-4 py-1.5 text-[13px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
-                  >
-                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
-                    Show
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => maximizeMessage(msg.id)}
-                    className={`flex items-center justify-center border-l border-[#444] px-3 py-1.5 text-[13px] text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
-                    title="Maximize message (hide timer)"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                  </button>
+                {/* Row 2: color swatches (text-colored) + bold + uppercase + font sliders */}
+                <div className="flex items-center gap-2">
+                  {/* White swatch */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  {/* Green swatch */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  {/* Red swatch */}
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  {/* Bold */}
+                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color, fontWeight: 700 }}>B</button>
+                  {/* Uppercase */}
+                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color, fontWeight: 700 }}>āA</button>
+                  {/* Message font height slider */}
+                  <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
+                    <span className="text-[10px] uppercase text-[#666]">H</span>
+                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontH} onChange={(e) => updateMessageFontSize(msg.id, 'fontHeight', parseFloat(e.target.value))} className="w-14 accent-[#4a9eff]" title="Message height (Output only)" />
+                    <span className="w-7 font-mono text-[10px] text-[#8a8a8a]">{mFontH.toFixed(1)}</span>
+                  </div>
+                  {/* Message font width slider */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase text-[#666]">W</span>
+                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontW} onChange={(e) => updateMessageFontSize(msg.id, 'fontWidth', parseFloat(e.target.value))} className="w-14 accent-[#4a9eff]" title="Message width (Output only)" />
+                    <span className="w-7 font-mono text-[10px] text-[#8a8a8a]">{mFontW.toFixed(1)}</span>
+                  </div>
+                  {/* Show / Flash / Maximize control */}
+                  <div className="ml-auto flex items-center overflow-hidden rounded-md border border-[#444]">
+                    <button
+                      type="button"
+                      onClick={() => flashMessage(msg.id)}
+                      className="flex items-center justify-center px-2 py-1 text-white transition-colors hover:bg-[#252525]"
+                      title="Flash timer and message"
+                    >
+                      <IconFlash size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => showMessage(msg.id)}
+                      className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+                      title="Show message persistently on Output"
+                    >
+                      <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
+                      Show
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => maximizeMessage(msg.id)}
+                      className={`flex items-center justify-center border-l border-[#444] px-2 py-1 text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
+                      title="Maximize message (hide timer)"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          ))}</div>
+          );})}</div>
           <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button><div className="text-center text-[13px] text-[#666] cursor-pointer hover:text-[#888]">Submit questions link</div></div>
         </aside>
       </div>
