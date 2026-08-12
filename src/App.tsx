@@ -582,6 +582,14 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
       const { targetId, command, payload } = event.data;
+      
+      // Global commands
+      if (command === 'PAUSE_ALL_EXCEPT' && payload !== id) {
+        pauseTimer();
+        return;
+      }
+
+      // Targeted commands
       if (targetId === id) {
         switch (command) {
           case 'START': startTimer(); break;
@@ -601,7 +609,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }
     };
     return () => channel.close();
-  }, [id, startTimer, pauseTimer, resetTimer, setTime, seconds]);
+  }, [id, startTimer, pauseTimer, resetTimer, setTime, seconds, updateSettings]);
 
   useEffect(() => {
     if (isActive) {
@@ -666,7 +674,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         </button>
         <button 
           type="button" 
-          onClick={isRunning ? pauseTimer : startTimer} 
+          onClick={() => {
+            if (!isRunning) {
+              onActivate();
+              const channel = new BroadcastChannel(CONTROL_CHANNEL);
+              channel.postMessage({ command: 'PAUSE_ALL_EXCEPT', payload: id });
+              channel.close();
+              startTimer();
+            } else {
+              pauseTimer();
+            }
+          }}
           className="flex h-9 w-12 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
