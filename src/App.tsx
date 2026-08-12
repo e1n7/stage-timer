@@ -358,8 +358,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-6 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-6 flex items-center justify-between border-b border-[#333] pb-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between border-b border-[#333] pb-3">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
             <h2 className="text-lg font-bold text-white">Settings for {localSettings.title || 'Timer 1'}</h2>
@@ -369,19 +369,19 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
         <div className="space-y-4">
           <div className="flex gap-4">
-            <label className="w-20 text-[13px] text-[#8a8a8a] pt-2">Title</label>
-            <input type="text" value={localSettings.title || 'Timer 1'} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] text-white focus:border-[#444] focus:outline-none" />
+            <label className="w-20 text-[13px] text-[#8a8a8a]">Title</label>
+            <input type="text" value={localSettings.title || 'Timer 1'} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
 
         </div>
 
-        <div className="my-8 border-t border-[#333]" />
+        <div className="my-4 border-t border-[#333]" />
 
-        <div className="grid grid-cols-1 gap-12">
+        <div className="grid grid-cols-1 gap-8">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold text-white">Timing</h3>
             
-            <div className="flex items-start justify-between gap-6 py-2 border-b border-[#333] pb-6">
+            <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
               <span className="text-[12px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
@@ -461,14 +461,14 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           </div>
         </div>
 
-        <div className="my-8 border-t border-[#333]" />
+        <div className="my-4 border-t border-[#333]" />
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
-          <div className="space-y-6 pt-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#22c55e]" />
               <span className="w-16 text-[13px] text-[#8a8a8a]">Start</span>
@@ -535,10 +535,10 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
       <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-6">
-          <h3 className="text-[16px] font-bold text-white mb-6">Timing</h3>
+          <h3 className="text-[16px] font-bold text-white mb-4">Timing</h3>
           
-          <div className="space-y-6">
-            <div className="flex items-start justify-between gap-6 py-2 border-b border-[#333] pb-6">
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
               <span className="text-[13px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
@@ -1259,7 +1259,7 @@ function App() {
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
-              className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-all duration-75" 
+              className="digit mt-2 text-center text-[72px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
                 opacity: (isFlashing && !isFlash) ? 0 : 1,
@@ -1400,14 +1400,14 @@ function App() {
               <button 
                 type="button" 
                 onClick={() => setIsBlackout(!isBlackout)} 
-                className={`flex h-10 items-center gap-2 rounded-lg border px-5 text-[14px] font-bold transition-all ${isBlackout ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-[#2d2d2d] text-white border-[#444] hover:bg-[#383838]'}`}
+                className={`flex h-8 items-center gap-2 rounded-lg border px-4 text-[13px] font-bold transition-all ${isBlackout ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-[#2d2d2d] text-white border-[#444] hover:bg-[#383838]'}`}
               >
                 <IconCircle /> Blackout
               </button>
               <button 
                 type="button" 
                 onClick={handleFlash} 
-                className="flex h-10 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-5 text-[14px] font-bold text-white hover:bg-[#383838] transition-all"
+                className="flex h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold text-white hover:bg-[#383838] transition-all"
               >
                 <IconFlash /> Flash
               </button>
@@ -1415,7 +1415,7 @@ function App() {
                 <button 
                   type="button" 
                   onClick={(e) => { e.stopPropagation(); setIsTimersMenuOpen(!isTimersMenuOpen); }}
-                  className={`flex h-10 w-11 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                  className={`flex h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore size={20} />
                 </button>
@@ -1455,7 +1455,7 @@ function App() {
             <button 
               type="button" 
               onClick={() => addTimer()} 
-              className="flex items-center gap-2 rounded-xl border border-[#444] bg-[#262626] px-10 py-4 text-[16px] font-bold text-white hover:bg-[#2d2d2d] hover:border-[#555] transition-all shadow-xl active:scale-95"
+              className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#262626] px-6 py-2 text-[14px] font-bold text-white hover:bg-[#2d2d2d] hover:border-[#555] transition-all shadow-md active:scale-95"
             >
               + Add Timer
             </button>
