@@ -229,7 +229,10 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex justify-end">
               <button 
                 type="button"
-                onClick={() => onApplyToAll?.({ targetDuration: settings.targetDuration, mode: settings.mode })}
+                onClick={() => {
+                  onApplyToAll?.({ targetDuration: settings.targetDuration, mode: settings.mode });
+                  onClose();
+                }}
                 className="text-[11px] text-[#4a9eff] hover:underline"
               >
                 Apply to all
@@ -315,7 +318,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex justify-end">
               <button 
                 type="button"
-                onClick={() => onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode })}
+                onClick={() => {
+                  updateSettings(localSettings);
+                  onApplyToAll?.({ targetDuration: localSettings.targetDuration, mode: localSettings.mode });
+                  onClose();
+                }}
                 className="text-[12px] text-[#4a9eff] hover:underline"
               >
                 Apply to all
@@ -610,12 +617,18 @@ function App() {
   const applyToAllSettings = (sharedSettings: any) => {
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
-      if (stored) {
-        const settings = JSON.parse(stored);
-        localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...sharedSettings }));
-      }
+      const settings = stored ? JSON.parse(stored) : {
+        title: 'Timer',
+        targetDuration: 0,
+        mode: 'countdown',
+        segments: [
+          { threshold: 60, color: '#f08c00' },
+          { threshold: 10, color: '#fa5252' }
+        ]
+      };
+      localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...sharedSettings }));
     });
-    // Force a reload by triggering a BroadcastChannel message or state update
+    // Force a reload by triggering a BroadcastChannel message
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     timerIds.forEach(id => {
       channel.postMessage({ targetId: id, command: 'RELOAD_SETTINGS' });
