@@ -49,7 +49,7 @@ interface LogEntry {
 }
 
 export const useTimer = () => {
-  const [seconds, setSeconds] = useState<number>(DEFAULT_TIME);
+  const [seconds, setSeconds] = useLocalStorage<number>('timerSeconds', DEFAULT_TIME);
   const [mode, setMode] = useState<TimerMode>('countdown');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'finished'>('idle');

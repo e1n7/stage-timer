@@ -16,6 +16,14 @@ const CHANNEL_NAME = 'stage-timer-sync';
 const DECREASE_OPTIONS = [-2, -5, -10, -20, -30];
 const INCREASE_OPTIONS = [2, 5, 10, 20, 30];
 
+// Robust Base64 for Unicode
+const encodeData = (obj: any) => {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+};
+const decodeData = (str: string) => {
+  return JSON.parse(decodeURIComponent(escape(atob(str))));
+};
+
 // SVG Icons
 const IconChevronDown = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>
@@ -64,6 +72,9 @@ const IconMaximize = () => (
 );
 const IconSquare = () => (
   <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+);
+const IconCheck = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
 );
 
 interface TimeAdjustMenuProps {
@@ -373,10 +384,11 @@ function App() {
   } = useTimer();
 
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
-  const [currentRoomName, setCurrentRoomName] = useState('Unnamed');
+  const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [
     { id: '1', text: '', color: '#ffffff' }
   ]);
@@ -388,11 +400,30 @@ function App() {
     const data = params.get('data');
     if (data) {
       try {
-        const decoded = JSON.parse(atob(data));
+        const decoded = decodeData(data);
         if (decoded.roomName) setCurrentRoomName(decoded.roomName);
         if (decoded.seconds !== undefined) setTime(decoded.seconds);
         if (decoded.settings) updateSettings(decoded.settings);
         if (decoded.messages) setMessages(decoded.messages);
+        
+        // Auto-save this room to the new device's local list
+        const newRoom: Room = {
+          id: Date.now().toString(),
+          name: decoded.roomName || 'Imported Room',
+          timers: [{ id: '1', seconds: decoded.seconds || 0, settings: decoded.settings || {} }],
+          messages: decoded.messages || []
+        };
+        
+        setRooms(prev => {
+          const existing = prev.findIndex(r => r.name === newRoom.name);
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = newRoom;
+            return updated;
+          }
+          return [...prev, newRoom];
+        });
+
         // Clear URL to avoid re-loading on refresh
         window.history.replaceState({}, '', window.location.pathname);
       } catch (e) {
@@ -402,6 +433,7 @@ function App() {
   }, []);
 
   const saveRoom = () => {
+    setSaveStatus('saving');
     const roomData = {
       roomName: currentRoomName,
       seconds,
@@ -427,12 +459,13 @@ function App() {
     }
 
     // 2. Generate shareable link
-    const encoded = btoa(JSON.stringify(roomData));
+    const encoded = encodeData(roomData);
     const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
     
     // Copy to clipboard
     navigator.clipboard.writeText(url).then(() => {
-      alert('Room saved! Shareable link copied to clipboard.');
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     });
   };
 
@@ -560,9 +593,11 @@ function App() {
           <button 
             type="button" 
             onClick={saveRoom}
-            className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white shadow-sm hover:bg-[#383838]"
+            disabled={saveStatus !== 'idle'}
+            className={`flex h-9 items-center gap-2 rounded-md border border-[#444] px-4 text-[13px] text-white shadow-sm transition-all ${saveStatus === 'success' ? 'bg-[#228b3a] border-[#228b3a]' : 'bg-[#2d2d2d] hover:bg-[#383838]'}`}
           >
-            <IconLock className="mr-1" /> Save
+            {saveStatus === 'success' ? <IconCheck /> : <IconLock className="mr-1" />}
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'success' ? 'Saved & Copied!' : 'Save'}
           </button>
         </div>
       </header>
@@ -714,7 +749,7 @@ function App() {
             <button type="button" onClick={() => syncOutput({ flash: true })} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconFlash /> Flash</button>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto custom-scrollbar pr-1">
             {messages.map((msg) => (
               <div key={msg.id} className="rounded-lg border border-[#333] bg-[#2d2d2d] p-4 shadow-lg">
                 <div className="flex gap-3">
