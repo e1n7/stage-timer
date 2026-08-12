@@ -122,14 +122,15 @@ export const useTimer = (id: string = 'default') => {
     audioRef.current = { beep };
   }, [settings.audioVolume]);
 
-  const formatTime = useCallback((secs: number): string => {
-    const total = Math.max(0, Math.floor(secs));
+  const formatTime = useCallback((secs: number, allowNegative = false): string => {
+    const neg = allowNegative && secs < 0;
+    const total = Math.max(0, Math.floor(Math.abs(secs)));
     const hours = Math.floor(total / 3600);
     const minutes = Math.floor((total % 3600) / 60);
     const s = total % 60;
     const padNum = (num: number): string => num.toString().padStart(2, '0');
-    if (hours > 0) return `${hours}:${padNum(minutes)}:${padNum(s)}`;
-    return `${padNum(minutes)}:${padNum(s)}`;
+    const base = hours > 0 ? `${hours}:${padNum(minutes)}:${padNum(s)}` : `${padNum(minutes)}:${padNum(s)}`;
+    return neg ? `-${base}` : base;
   }, []);
 
   const formatDuration = useCallback((secs: number): string => {
@@ -177,10 +178,7 @@ export const useTimer = (id: string = 'default') => {
       } else {
         const elapsed = (Date.now() - startTime) / 1000;
         if (mode === 'countdown') {
-          currentSeconds = Math.max(0, initialSeconds - elapsed);
-          if (currentSeconds === 0) {
-            setSyncState(prev => ({ ...prev, isRunning: false, startTime: null, initialSeconds: 0, lastUpdated: Date.now() }));
-          }
+          currentSeconds = initialSeconds - elapsed;
         } else if (mode === 'countup') {
           currentSeconds = initialSeconds + elapsed;
         } else {
@@ -248,7 +246,7 @@ export const useTimer = (id: string = 'default') => {
   const timeZoneOffset = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
 
   const cueFinishDate = new Date(now.getTime() + seconds * 1000);
-  const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: selectedTimeZone });
+  const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
   const overUnder = seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
 
   return {

@@ -4,17 +4,16 @@ import { ProgressBar, ProgressSegment } from './ProgressBar';
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
 
-const formatClock = (seconds: number) => {
-  const total = Math.max(0, Math.floor(seconds));
+const formatClock = (seconds: number, allowNegative = false) => {
+  const neg = allowNegative && seconds < 0;
+  const total = Math.max(0, Math.floor(Math.abs(seconds)));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
   
-  if (hours > 0) {
-    return `${hours}:${pad(minutes)}:${pad(secs)}`;
-  }
-  return `${pad(minutes)}:${pad(secs)}`;
+  const base = hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${pad(minutes)}:${pad(secs)}`;
+  return neg ? `-${base}` : base;
 };
 
 export const TimerOutput = () => {
@@ -88,7 +87,7 @@ export const TimerOutput = () => {
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
             const next = data.mode === 'countdown' 
-              ? Math.max(0, data.initialSeconds - elapsed)
+              ? data.initialSeconds - elapsed
               : data.initialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
           } else {
@@ -136,7 +135,7 @@ export const TimerOutput = () => {
           let next: number;
           if (mode === 'countdown') {
             next = initialSeconds - elapsed;
-            return next <= 0 ? 0 : Math.round(next * 10) / 10;
+            return Math.round(next * 10) / 10;
           } else if (mode === 'countup') {
             next = initialSeconds + elapsed;
             return Math.round(next * 10) / 10;
@@ -200,6 +199,11 @@ export const TimerOutput = () => {
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[0vh]">
           <div className="flex flex-1 items-center justify-center w-full">
+            {seconds < 0 && (
+              <div className="absolute left-1/2 top-[6vh] z-10 -translate-x-1/2">
+                <span className="inline-block rounded bg-[#fa5252]/20 px-4 py-2 text-[3vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
+              </div>
+            )}
             <div 
               className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
               style={{ 
@@ -213,7 +217,7 @@ export const TimerOutput = () => {
                 transformOrigin: 'center'
               }}
             >
-              {formatClock(seconds)}
+              {seconds < 0 ? formatClock(seconds, true) : formatClock(seconds)}
             </div>
           </div>
           <div className="w-full pb-[2vh]">

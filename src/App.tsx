@@ -185,17 +185,16 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
   );
 };
 
-const formatClock = (seconds: number) => {
-  const total = Math.max(0, Math.floor(seconds));
+const formatClock = (seconds: number, allowNegative = false) => {
+  const neg = allowNegative && seconds < 0;
+  const total = Math.max(0, Math.floor(Math.abs(seconds)));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
   
-  if (hours > 0) {
-    return `${hours}:${pad(minutes)}:${pad(secs)}`;
-  }
-  return `${pad(minutes)}:${pad(secs)}`;
+  const base = hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${pad(minutes)}:${pad(secs)}`;
+  return neg ? `-${base}` : base;
 };
 
 const CHANNEL_NAME = 'stage-timer-sync';
@@ -745,9 +744,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className="flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors text-white hover:text-[#4a9eff] cursor-pointer"
+        className={`flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
       >
-        {currentTime}
+        {seconds < 0 && settings.mode === 'countdown' ? formatClock(seconds, true) : currentTime}
       </div>
 
       {/* Title */}
@@ -865,7 +864,19 @@ function App() {
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
 
-  const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone, cueFinish, overUnder } = useTimer('global-helper');
+  const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone } = useTimer('global-helper');
+
+  const cueFinish = useMemo(() => {
+    if (!activeTimerState) return '--:--';
+    const now = new Date();
+    return new Date(now.getTime() + activeTimerState.seconds * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
+  }, [activeTimerState, selectedTimeZone]);
+
+  const overUnder = useMemo(() => {
+    if (!activeTimerState) return '--:--';
+    const s = activeTimerState.seconds;
+    return s < 0 ? `+${formatClock(Math.abs(s), true)}` : `-${formatClock(s)}`;
+  }, [activeTimerState]);
 
   const schedule = useMemo(() => {
     const result: Record<string, { start: number | null }> = {};
@@ -1253,6 +1264,11 @@ function App() {
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
+            {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
+              <div className="flex items-center justify-center pt-1">
+                <span className="inline-block rounded bg-[#fa5252]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
+              </div>
+            )}
             <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
               className="digit mt-2 text-center text-[72px] font-bold leading-none tracking-tighter transition-all duration-75" 
@@ -1264,7 +1280,7 @@ function App() {
                 transformOrigin: 'center'
               }}
             >
-              {currentTime}
+              {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? formatClock(displaySeconds, true) : currentTime}
             </div>
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
           </div>
@@ -1282,7 +1298,7 @@ function App() {
                       textShadow: '0 0 4px rgba(255, 255, 255, 0.3)'
                     }}
                   >
-                    {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
+                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? formatClock(displaySeconds, true) : currentTime)}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>
               </div>
@@ -1386,7 +1402,16 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-4 text-center"><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? cueFinish : '--:--'}</span></div><div className="flex flex-col items-center"><span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span><span className="mt-1 text-[15px] font-bold text-white">{activeTimerId ? overUnder : '--:--'}</span></div></div>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-center">
+            <div className="flex flex-col items-center">
+              <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Cue finish</span>
+              <span className={`mt-1 text-[17px] font-bold tabular-nums ${displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? 'text-[#fa5252]' : 'text-white'}`}>{activeTimerId ? cueFinish : '--:--'}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[12px] uppercase tracking-wider text-[#8a8a8a]">Over/Under</span>
+              <span className={`mt-1 text-[17px] font-bold tabular-nums ${overUnder.startsWith('+') ? 'text-[#fa5252]' : 'text-[#22c55e]'}`}>{activeTimerId ? overUnder : '--:--'}</span>
+            </div>
+          </div>
         </aside>
 
         <main className="flex flex-1 flex-col px-10 py-6 bg-[#141414] overflow-y-auto custom-scrollbar">
