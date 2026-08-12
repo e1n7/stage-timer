@@ -233,7 +233,7 @@ export const useTimer = (id: string = 'default') => {
 
   const wallClock = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
   const timeZone = selectedTimeZone.replace('_', ' ');
-  const timeZoneAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
+  const timeZoneOffset = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
 
   const cueFinishDate = new Date(now.getTime() + seconds * 1000);
   const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: selectedTimeZone });
@@ -245,7 +245,7 @@ export const useTimer = (id: string = 'default') => {
     status: syncState.isRunning ? 'running' : (syncState.initialSeconds !== seconds ? 'paused' : 'idle'),
     settings,
     wallClock,
-    timeZone: `${timeZone} (${timeZoneAbbr})`,
+    timeZone: `${timeZone} (${timeZoneOffset})`,
     selectedTimeZone,
     setSelectedTimeZone,
     cueFinish,

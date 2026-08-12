@@ -598,8 +598,9 @@ function App() {
               <span>{wallClock}</span>
               <div className="relative">
                 <span 
-                  className="text-[#8a8a8a] cursor-pointer hover:text-white transition-colors"
+                  className="text-[#8a8a8a] cursor-pointer hover:text-white transition-colors border-b border-dashed border-[#444] hover:border-white pb-0.5"
                   onClick={() => setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen)}
+                  title="Click to change timezone"
                 >
                   {timeZone}
                 </span>
