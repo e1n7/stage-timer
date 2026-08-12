@@ -413,10 +413,42 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
           <div className="space-y-6 pt-2">
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#22c55e]" /><span className="w-16 text-[13px] text-[#8a8a8a]">Start</span><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#f08c00]" /><span className="w-16 text-[13px] text-white">Yellow</span><input type="text" value={formatMMSS(yellowSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = localSettings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); setLocalSettings({ ...localSettings, segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#fa5252]" /><span className="w-16 text-[13px] text-white">Red</span><input type="text" value={formatMMSS(redSegment.threshold)} onChange={(e) => { const val = parseMMSS(e.target.value); const newSegments = localSettings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); setLocalSettings({ ...localSettings, segments: newSegments }); }} className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" /><select className="w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-white focus:outline-none"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
-            <div className="flex items-center gap-4"><div className="h-3 w-3 rounded-full bg-[#666]" /><span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span><select className="ml-[108px] w-32 rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>None</option></select><button className="text-[#8a8a8a]"><IconSpeaker /></button><select className="rounded border border-[#333] bg-[#141414] px-2 py-1 text-[12px] text-[#8a8a8a]"><option>Flash ×0 ▾</option></select></div>
+            <div className="flex items-center gap-4">
+              <div className="h-3 w-3 rounded-full bg-[#22c55e]" />
+              <span className="w-16 text-[13px] text-[#8a8a8a]">Start</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
+              <span className="w-16 text-[13px] text-white">Yellow</span>
+              <input 
+                type="text" 
+                value={formatMMSS(yellowSegment.threshold)} 
+                onChange={(e) => { 
+                  const val = parseMMSS(e.target.value); 
+                  const newSegments = localSettings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); 
+                  setLocalSettings({ ...localSettings, segments: newSegments }); 
+                }} 
+                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" 
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
+              <span className="w-16 text-[13px] text-white">Red</span>
+              <input 
+                type="text" 
+                value={formatMMSS(redSegment.threshold)} 
+                onChange={(e) => { 
+                  const val = parseMMSS(e.target.value); 
+                  const newSegments = localSettings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); 
+                  setLocalSettings({ ...localSettings, segments: newSegments }); 
+                }} 
+                className="w-24 rounded border border-[#333] bg-[#141414] px-2 py-1 text-center font-mono text-[14px] text-white focus:outline-none" 
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-3 w-3 rounded-full bg-[#666]" />
+              <span className="w-16 text-[13px] text-[#8a8a8a]">0:00</span>
+            </div>
           </div>
         </div>
 
