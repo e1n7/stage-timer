@@ -612,7 +612,18 @@ function App() {
     window.open('/output', '_blank');
   };
 
-  const handleFlash = () => { setIsFlash(true); setTimeout(() => setIsFlash(false), 600); };
+  const handleFlash = () => {
+    // Flash 3 times
+    let count = 0;
+    const interval = setInterval(() => {
+      setIsFlash(prev => !prev);
+      count++;
+      if (count >= 6) { // 3 on/off cycles
+        clearInterval(interval);
+        setIsFlash(false);
+      }
+    }, 150);
+  };
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff' }]);
 
@@ -695,8 +706,7 @@ function App() {
               className="digit mt-2 text-center text-[110px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
-                opacity: isFlash ? 0 : 1,
-                textShadow: activeTimerId ? `0 0 20px ${getDashboardGlowColor()}` : 'none'
+                textShadow: isFlash ? `0 0 30px ${getDashboardGlowColor()}` : 'none'
               }}
             >
               {currentTime}
@@ -714,8 +724,7 @@ function App() {
                     className="font-mono text-[15px]" 
                     style={{ 
                       color: getDashboardTextColor(), 
-                      opacity: isFlash ? 0 : 1,
-                      textShadow: `0 0 8px ${getDashboardGlowColor()}`
+                      textShadow: isFlash ? `0 0 10px ${getDashboardGlowColor()}` : 'none'
                     }}
                   >
                     {hoverTime !== null ? formatClock(hoverTime) : currentTime}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}

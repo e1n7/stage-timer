@@ -46,8 +46,15 @@ export const TimerOutput = () => {
       
       if ('blackout' in data) setBlackout(!!data.blackout);
       if ('flash' in data && data.flash) {
-        setFlash(true);
-        setTimeout(() => setFlash(false), 600);
+        let count = 0;
+        const interval = setInterval(() => {
+          setFlash(prev => !prev);
+          count++;
+          if (count >= 6) {
+            clearInterval(interval);
+            setFlash(false);
+          }
+        }, 150);
       }
 
       if ('isEmpty' in data) {
@@ -184,8 +191,7 @@ export const TimerOutput = () => {
               fontSize: 'min(35vw, 50vh)', 
               lineHeight: 0.9, 
               fontFamily: 'Inter, system-ui, sans-serif',
-              opacity: flash ? 0 : 1,
-              textShadow: `0 0 40px ${getGlowColor()}`
+              textShadow: flash ? `0 0 60px ${getGlowColor()}` : 'none'
             }}
           >
             {formatClock(seconds)}
