@@ -227,7 +227,6 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings }: Timer
               </select>
             </div>
             <div className="flex justify-end"><button className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button></div>
-            <p className="text-[11px] text-[#666]">Counting down from {Math.floor((settings.targetDuration || 0) / 60)} mins.</p>
           </div>
         </div>
 
