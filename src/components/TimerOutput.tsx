@@ -244,7 +244,7 @@ export const TimerOutput = () => {
               className="text-center"
               style={{
                 color: messageColor,
-                fontSize: `min(${Math.max(6, 32 - (messageText.length / 3))}vh, 12vw)`,
+                fontSize: `min(${Math.max(4, 24 - (messageText.length / 5))}vh, 9vw)`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 lineHeight: 1.1,
@@ -254,11 +254,8 @@ export const TimerOutput = () => {
                 transformOrigin: 'center',
                 whiteSpace: 'normal',
                 wordBreak: 'break-word',
-                maxWidth: '95vw',
-                maxHeight: '95vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                maxWidth: '90vw',
+                maxHeight: '90vh'
               }}
             >
               {messageText}
@@ -296,7 +293,7 @@ export const TimerOutput = () => {
                 style={{
                   opacity: messageFlashing ? 1 : 1,
                   color: messageColor,
-                  fontSize: `min(${Math.max(4, 12 - (messageText.length / 10))}vh, 10vw)`,
+                  fontSize: `min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw)`,
                   fontWeight: messageBold ? 900 : 400,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
                   lineHeight: 1.1,
@@ -306,7 +303,7 @@ export const TimerOutput = () => {
                   transformOrigin: 'center',
                   whiteSpace: 'normal',
                   wordBreak: 'break-word',
-                  maxWidth: '90vw'
+                  maxWidth: '85vw'
                 }}
               >
                 {messageText}
