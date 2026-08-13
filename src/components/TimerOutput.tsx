@@ -242,12 +242,12 @@ export const TimerOutput = () => {
             className="text-center break-words"
             style={{
               color: messageColor,
-              fontSize: 'min(11vw, 10vh)',
-              fontWeight: messageBold ? 800 : 700,
+              fontSize: 'min(80vw, 40vh)',
+              fontWeight: messageBold ? 900 : 400,
               textTransform: messageUppercase ? 'uppercase' : 'none',
-              lineHeight: 1.25,
+              lineHeight: 1,
               textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
-              letterSpacing: '0.03em',
+              letterSpacing: '0.01em',
               transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
               transformOrigin: 'center'
             }}
@@ -287,12 +287,12 @@ export const TimerOutput = () => {
                 style={{
                   opacity: messageFlashing ? 1 : 1,
                   color: messageColor,
-                  fontSize: 'min(7vw, 7.5vh)',
-                  fontWeight: messageBold ? 800 : 700,
+                  fontSize: 'min(20vw, 15vh)',
+                  fontWeight: messageBold ? 900 : 400,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
-                  lineHeight: 1.2,
+                  lineHeight: 1.1,
                   textShadow: `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
-                  letterSpacing: '0.03em',
+                  letterSpacing: '0.02em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                   transformOrigin: 'center'
                 }}
