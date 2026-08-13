@@ -1542,7 +1542,7 @@ function App() {
                   className="text-center leading-tight break-words max-h-full max-w-full"
                   style={{
                     color: getActiveMessage().messageColor,
-                    fontSize: 'min(70px, 30vh)',
+                    fontSize: `min(${Math.max(20, 70 - (getActiveMessage().messageText.length * 1.5))}px, 30vh)`,
                     fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
                     lineHeight: 1,

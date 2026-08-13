@@ -242,7 +242,7 @@ export const TimerOutput = () => {
               className="text-center"
               style={{
                 color: messageColor,
-                fontSize: '35vh',
+                fontSize: `min(${Math.max(8, 38 - (messageText.length / 2.5))}vh, 90vw)`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 lineHeight: 1,
@@ -252,7 +252,9 @@ export const TimerOutput = () => {
                 transformOrigin: 'center',
                 whiteSpace: 'normal',
                 wordBreak: 'break-word',
-                maxWidth: '90vw'
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                overflow: 'hidden'
               }}
             >
               {messageText}
