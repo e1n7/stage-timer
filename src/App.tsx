@@ -1490,7 +1490,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-6 shadow-xl transition-all duration-300 min-h-[220px]`}>
+          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 min-h-[180px]`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-full w-full items-center justify-center px-4 py-8">
@@ -1521,7 +1521,7 @@ function App() {
                 )}
                 <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
                 <div 
-                  className="digit flex w-full items-center justify-center text-center text-[100px] font-bold leading-none tracking-tighter transition-all duration-75 mb-6" 
+                  className="digit flex w-full items-center justify-center text-center text-[100px] font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
                   style={{ 
                     color: getDashboardTextColor(), 
                     opacity: (isFlashing && !isFlash) ? 0 : 1,
@@ -1532,7 +1532,7 @@ function App() {
                 >
                   {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
                 </div>
-                {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-8" className="rounded-md" />}
+                {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-5" className="rounded-sm" />}
               </div>
             )}
           </div>
@@ -1574,7 +1574,7 @@ function App() {
                     {[1, 6/7, 5/7, 4/7, 3/7, 2/7, 1/7].map((factor, i) => {
                       const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
                       return (
-                        <div key={i} className="bg-[#1a1a1a] px-2 py-4 text-left text-[11px] leading-none text-[#555] border-r border-[#333] last:border-r-0 font-mono truncate h-12">
+                        <div key={i} className="bg-[#1a1a1a] px-2 py-2 text-left text-[10px] leading-none text-[#555] border-r border-[#333] last:border-r-0 font-mono truncate h-9">
                           {formatClock(targetTime)}
                         </div>
                       );
