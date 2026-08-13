@@ -14,16 +14,15 @@ interface ProgressBarProps {
 }
 
 /**
- * A countdown progress bar whose colored fill grows from the LEFT edge and
- * shrinks toward the right as time runs out (matching a "fill bar" reading).
+ * Countdown progress bar that reads GREEN -> ORANGE -> RED from LEFT to RIGHT,
+ * and diminishes from the GREEN (left) side as time runs out:
  *
- * Layout:
- * - Left edge = most remaining time (green), then warning colors (orange,
- *   red) at the RIGHT end of the colored fill, in order toward zero.
- * - The dark area on the right represents elapsed time.
- * - As the countdown runs, the whole fill visibly shrinks from right to left,
- *   so the bar always reads green-first at the left with the warning sliver
- *   at the leading (right) edge of the fill.
+ *   Full time : [GREEN ..................|ORANGE|RED]   (left edge = full time)
+ *   Near zero :                              [RED]
+ *
+ * The rightmost edge is always the "zero" end (red). As the countdown runs,
+ * the colored fill shrinks rightward — the green portion disappears first —
+ * until only the red zone remains at the right end, then the bar empties.
  */
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentSeconds,
@@ -36,21 +35,24 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // Percentage of time REMAINING — the colored portion width.
   const remainingPercent = (Math.min(Math.max(currentSeconds, 0), safeTotal) / safeTotal) * 100;
 
-  // Build the colored zones across the FULL timeline [0, totalSeconds],
-  // ordered left-to-right as: green (from total down to the largest warning
-  // threshold), then warning zones in descending threshold order, ending
-  // with red at the far right (zero). The visible fill is the leftmost
-  // `remainingPercent`, so it always starts green at the left and the
-  // orange/red sliver sits at the right end of the fill.
+  // The colored track spans the full bar width, ordered left-to-right:
+  // green first (full time), then warning zones in descending threshold
+  // order, ending with red at the far right (zero).
   const zones: { width: number; color: string }[] = [];
 
   const descendingSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
+
+  // Build zones anchored at the RIGHT edge so red always ends at the bar's
+  // right side and green always starts at the left:
+  //   green = from (total - greenWidthStart) ... largest threshold
+  // is computed right-to-left below by accumulating widths from the right.
+  const zoneWidths: { width: number; color: string }[] = [];
 
   let lastThreshold = safeTotal;
 
   // Green zone from total down to the largest warning threshold.
   if (descendingSegments.length > 0) {
-    zones.push({
+    zoneWidths.unshift({
       width: ((lastThreshold - descendingSegments[0].threshold) / safeTotal) * 100,
       color: '#22c55e'
     });
@@ -60,7 +62,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // Warning zones moving toward zero, largest threshold first.
   for (const seg of descendingSegments) {
     if (seg.threshold < lastThreshold) {
-      zones.push({
+      zoneWidths.unshift({
         width: ((lastThreshold - seg.threshold) / safeTotal) * 100,
         color: seg.color
       });
@@ -68,25 +70,28 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     }
   }
 
-  // Red zone from the smallest threshold down to zero.
+  // Red zone from the smallest threshold down to zero (rightmost).
   if (lastThreshold > 0) {
-    zones.push({
+    zoneWidths.unshift({
       width: (lastThreshold / safeTotal) * 100,
       color: '#fa5252'
     });
   }
 
-  // Overtime: nothing remaining — fill the whole bar red.
+  zones.push(...zoneWidths);
+
+  // Overtime: nothing remaining — full bar red.
   const overtime = currentSeconds < 0;
-  if (overtime) {
-    zones.length = 0;
-    zones.push({ width: 100, color: '#fa5252' });
-  }
 
   return (
     <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
-      {/* The full colored timeline: green on the left -> warning colors on the right */}
-      <div className="flex h-full w-full">
+      {/* The full colored timeline: green on the left -> red on the right.
+          The visible portion is anchored to the RIGHT (the zero end), so the
+          fill visibly diminishes from the left (green disappears first). */}
+      <div
+        className="absolute right-0 top-0 flex h-full"
+        style={{ width: `${Math.min(100, remainingPercent)}%` }}
+      >
         {zones.map((zone, i) => (
           <div
             key={i}
@@ -95,16 +100,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           />
         ))}
       </div>
-
-      {/* The mask that covers the ELAPSED portion on the right side, so the
-          colored remaining-time fill visibly shrinks as the timer counts down */}
-      <div
-        className="absolute inset-0 bg-[#141414] transition-all duration-1000 ease-linear"
-        style={{
-          width: `${100 - remainingPercent}%`,
-          left: `${remainingPercent}%`
-        }}
-      />
     </div>
   );
 };

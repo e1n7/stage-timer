@@ -274,12 +274,6 @@ export const TimerOutput = () => {
             </div>
           )}
           <div className="flex flex-1 w-full flex-col items-center justify-center">
-            {/* Timer title - small, up top like the reference */}
-            {title && !((messageVisible || messageFlashing) && messageText) ? (
-              <div className="mb-[1vh] text-center">
-                <span className="text-[2.4vh] font-bold tracking-wide" style={{ color: '#7eb8ff' }}>{title}</span>
-              </div>
-            ) : null}
             {/* Timer digits - huge, rounded, status-colored like the reference */}
             <div 
               className="text-center font-bold tabular-nums transition-all duration-75" 
@@ -321,7 +315,7 @@ export const TimerOutput = () => {
           </div>
           {(messageVisible || messageFlashing) && messageText ? null : (
           <div className="w-full">
-            <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-3" className="rounded-none" />
+            <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-5" className="rounded-none" />
           </div>
           )}
         </div>
