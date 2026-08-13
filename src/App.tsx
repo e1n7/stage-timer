@@ -1479,7 +1479,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[150px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] px-4 py-3 shadow-xl transition-all duration-300`}>
+          <div className={`relative flex h-[110px] w-[240px] flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] px-4 py-[12px] shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-[190px] w-full items-center justify-center px-4">
@@ -1508,9 +1508,9 @@ function App() {
                 <span className="inline-block rounded bg-[#fa5252]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
               </div>
             )}
-            <div className="flex items-center justify-center text-[11px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
+            <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
-              className="digit mt-1 flex w-full items-center justify-center text-center text-[64px] font-bold leading-none tracking-tight transition-all duration-75" 
+              className="digit mt-0.5 flex w-full items-center justify-center text-center text-[36px] font-bold leading-none tracking-tight transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
                 opacity: (isFlashing && !isFlash) ? 0 : 1,
@@ -1565,7 +1565,7 @@ function App() {
                   {[1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125].map((factor, i) => {
                     const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
                     return (
-                      <div key={i} className="bg-[#1c1c1c] p-1.5 text-left text-[#666] border-r border-[#2a2a2a] last:border-r-0 truncate">
+                      <div key={i} className="bg-[#1c1c1c] p-1 text-left text-[10px] leading-none text-[#666] border-r border-[#2a2a2a] last:border-r-0 truncate">
                         {formatClock(targetTime)}
                       </div>
                     );
