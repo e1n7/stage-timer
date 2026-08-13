@@ -1667,9 +1667,7 @@ function App() {
                     style={{
                       color: msg.color,
                       fontWeight: msg.bold ? 700 : 400,
-                      textTransform: msg.uppercase ? 'uppercase' : 'none',
-                      transform: `scale(${mFontW}, ${mFontH})`,
-                      transformOrigin: 'left center'
+                      textTransform: msg.uppercase ? 'uppercase' : 'none'
                     }}
                   />
                   {/* Drag grip + delete (always visible) */}
