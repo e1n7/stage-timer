@@ -1303,7 +1303,8 @@ function App() {
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
         title: activeTimerState.settings.title || '',
         blackout: isBlackout,
-        flash: isFlash,
+        // Only send the flash signal via explicit flash triggers, not continuous sync
+        flash: false, 
         isEmpty: false,
         ...getActiveMessage()
       });
@@ -1311,11 +1312,11 @@ function App() {
       syncOutput({ 
         isEmpty: true,
         blackout: isBlackout,
-        flash: isFlash,
+        flash: false,
         ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageShownId, messageFlashId]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, timerIds.length, messages, messageShownId, messageFlashId]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -1347,13 +1348,17 @@ function App() {
 
   const handleFlash = () => {
     setIsFlashing(true);
-    // Also flash the currently shown message (timer digits + message blink together)
-    if (messageShownId) {
-      const msg = messages.find(m => m.id === messageShownId);
-      if (msg) {
-        syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, type: 'force-sync' });
-      }
-    }
+    // Send a single explicit flash signal to the output view
+    syncOutput({ 
+      flash: true, 
+      // If a message is shown, include its details so it flashes too
+      ...(messageShownId ? {
+        ...getActiveMessage(),
+        messageFlash: true
+      } : {}),
+      type: 'force-sync' 
+    });
+
     let count = 0;
     const interval = setInterval(() => {
       setIsFlash(prev => !prev);
@@ -1362,7 +1367,6 @@ function App() {
         clearInterval(interval);
         setIsFlash(false);
         setIsFlashing(false);
-        syncOutput({ messageFlash: false, type: 'force-sync' });
       }
     }, 150);
   };
@@ -1418,7 +1422,17 @@ function App() {
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, messageMaximize: true, type: 'force-sync' });
+      syncOutput({ 
+        messageText: msg.text || '', 
+        messageColor: msg.color || '#ffffff', 
+        messageBold: !!msg.bold, 
+        messageUppercase: !!msg.uppercase, 
+        messageFontHeight: getMessageFontSize(msg, 'fontHeight'), 
+        messageFontWidth: getMessageFontSize(msg, 'fontWidth'), 
+        messageFlash: true, 
+        messageMaximize: true, 
+        type: 'force-sync' 
+      });
     }
     setIsFlashing(true);
     let count = 0;
@@ -1430,7 +1444,6 @@ function App() {
         setIsFlash(false);
         setIsFlashing(false);
         setMessageFlashId(null);
-        syncOutput({ messageFlash: false, type: 'force-sync' });
       }
     }, 150);
   };
@@ -1553,7 +1566,7 @@ function App() {
                     lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.1 : 1,
                     textShadow: isFlashing && isFlash 
-                      ? `0 0 10px #fff, 0 0 20px ${getActiveMessage().messageColor}, 0 0 40px ${getActiveMessage().messageColor}` 
+                      ? `0 0 15px #fff, 0 0 30px ${getActiveMessage().messageColor}, 0 0 50px ${getActiveMessage().messageColor}, 0 0 80px ${getActiveMessage().messageColor}` 
                       : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
                     transition: 'none',
@@ -1580,7 +1593,9 @@ function App() {
                   style={{ 
                     color: getDashboardTextColor(), 
                     opacity: (isFlashing && !isFlash) ? 0 : 1,
-                    textShadow: isFlash ? `0 0 40px ${getDashboardGlowColor()}` : 'none'
+                    textShadow: isFlashing && isFlash 
+                      ? `0 0 15px #fff, 0 0 30px ${getDashboardTextColor()}, 0 0 50px ${getDashboardTextColor()}, 0 0 80px ${getDashboardTextColor()}` 
+                      : 'none'
                   }}
                 >
                   {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
 
 const CHANNEL_NAME = 'stage-timer-sync';
@@ -35,6 +35,23 @@ export const TimerOutput = () => {
   const [messageVisible, setMessageVisible] = useState<boolean>(false);
   const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
   const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
+  const flashIntervalRef = useRef<any>(null);
+
+  const triggerFlash = useCallback(() => {
+    if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
+    setIsFlashing(true);
+    let count = 0;
+    flashIntervalRef.current = setInterval(() => {
+      setFlash(prev => !prev);
+      count++;
+      if (count >= 6) {
+        if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
+        setFlash(false);
+        setIsFlashing(false);
+        setMessageFlashing(false);
+      }
+    }, 150);
+  }, []);
   const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
   const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
   const [title, setTitle] = useState<string>('');
@@ -60,17 +77,7 @@ export const TimerOutput = () => {
 
       if ('blackout' in data) setBlackout(!!data.blackout);
       if ('flash' in data && data.flash) {
-        setIsFlashing(true);
-        let count = 0;
-        const interval = setInterval(() => {
-          setFlash(prev => !prev);
-          count++;
-          if (count >= 6) {
-            clearInterval(interval);
-            setFlash(false);
-            setIsFlashing(false);
-          }
-        }, 150);
+        triggerFlash();
       }
 
       if ('isEmpty' in data) {
@@ -94,29 +101,16 @@ export const TimerOutput = () => {
         if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
       if ('messageShown' in data) setMessageVisible(!!data.messageShown);
-      if ('messageFlash' in data) {
-        if (data.messageFlash) {
-          setMessageFlashing(true);
-          if (data.messageText) setMessageText(data.messageText);
-          if (data.messageColor) setMessageColor(data.messageColor);
-          if ('messageBold' in data) setMessageBold(!!data.messageBold);
-          if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
-          if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
-          if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
-          setMessageMaximize(true);
-          
-          // Trigger 3-blink sequence locally
-          let count = 0;
-          const interval = setInterval(() => {
-            setFlash(prev => !prev);
-            count++;
-            if (count >= 6) {
-              clearInterval(interval);
-              setFlash(false);
-              setMessageFlashing(false);
-            }
-          }, 150);
-        }
+      if ('messageFlash' in data && data.messageFlash) {
+        setMessageFlashing(true);
+        if (data.messageText) setMessageText(data.messageText);
+        if (data.messageColor) setMessageColor(data.messageColor);
+        if ('messageBold' in data) setMessageBold(!!data.messageBold);
+        if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
+        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
+        setMessageMaximize(true);
+        triggerFlash();
       }
       if ('messageMaximize' in data) {
         const maxOn = !!data.messageMaximize;
@@ -297,7 +291,9 @@ export const TimerOutput = () => {
                 fontStretch: 'ultra-expanded',
                 letterSpacing: '0.01em',
                 opacity: (isFlashing && !flash) ? 0 : 1,
-                textShadow: flash ? `0 0 100px ${getGlowColor()}` : 'none',
+                textShadow: isFlashing && flash 
+                  ? `0 0 15px #fff, 0 0 30px ${getTextColor()}, 0 0 50px ${getTextColor()}, 0 0 80px ${getTextColor()}` 
+                  : 'none',
                 transform: `scale(${fontWidth}, ${fontHeight})`,
                 transformOrigin: 'center center'
               }}
