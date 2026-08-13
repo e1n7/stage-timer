@@ -35,6 +35,7 @@ export const TimerOutput = () => {
   const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
   const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
   const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
+  const [title, setTitle] = useState<string>('');
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -77,6 +78,7 @@ export const TimerOutput = () => {
 
       if ('totalTime' in data) setTotalTime(data.totalTime);
       if ('segments' in data) setSegments(data.segments);
+      if ('title' in data) setTitle(data.title || '');
       if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
       if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
       if ('messageText' in data) {
@@ -272,6 +274,12 @@ export const TimerOutput = () => {
             </div>
           )}
           <div className="flex flex-1 w-full flex-col items-center justify-center">
+            {/* Timer title - mirrors dashboard */}
+            {title ? (
+              <div className="mb-[1.5vh] text-center">
+                <span className="text-[3vh] font-bold tracking-wide" style={{ color: '#7eb8ff' }}>{title}</span>
+              </div>
+            ) : null}
             {/* Timer digits - smaller when a message is shown */}
             <div 
               className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
