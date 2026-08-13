@@ -1432,7 +1432,7 @@ function App() {
         setMessageFlashId(null);
         syncOutput({ messageFlash: false, type: 'force-sync' });
       }
-    }, 250);
+    }, 150);
   };
   const moveMessage = (fromId: string, toId: string) => setMessages(prev => {
     const fromIdx = prev.findIndex(m => m.id === fromId);
@@ -1552,8 +1552,11 @@ function App() {
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
                     lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
-                    textShadow: isFlash ? `0 0 20px ${getActiveMessage().messageColor}` : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
+                    textShadow: isFlashing && isFlash 
+                      ? `0 0 15px ${getActiveMessage().messageColor}, 0 0 30px ${getActiveMessage().messageColor}` 
+                      : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
+                    transition: 'all 0.1s ease-in-out',
                     transform: `scale(${getActiveMessage().messageFontWidth}, ${getActiveMessage().messageFontHeight})`,
                     transformOrigin: 'center',
                     whiteSpace: 'pre-wrap',

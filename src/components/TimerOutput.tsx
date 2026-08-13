@@ -94,18 +94,27 @@ export const TimerOutput = () => {
         if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
       if ('messageShown' in data) setMessageVisible(!!data.messageShown);
-      if ('messageFlash' in data) {
-        const flashOn = !!data.messageFlash;
-        setMessageFlashing(flashOn);
-        if (flashOn) {
-          if (data.messageText) setMessageText(data.messageText);
-          if (data.messageColor) setMessageColor(data.messageColor);
-          if ('messageBold' in data) setMessageBold(!!data.messageBold);
-          if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
-          if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
-          if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
-          setMessageMaximize(true);
-        }
+      if ('messageFlash' in data && data.messageFlash) {
+        setMessageFlashing(true);
+        if (data.messageText) setMessageText(data.messageText);
+        if (data.messageColor) setMessageColor(data.messageColor);
+        if ('messageBold' in data) setMessageBold(!!data.messageBold);
+        if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
+        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
+        setMessageMaximize(true);
+        
+        // Trigger 3-blink sequence
+        let count = 0;
+        const interval = setInterval(() => {
+          setFlash(prev => !prev);
+          count++;
+          if (count >= 6) {
+            clearInterval(interval);
+            setFlash(false);
+            setMessageFlashing(false);
+          }
+        }, 150);
       }
       if ('messageMaximize' in data) {
         const maxOn = !!data.messageMaximize;
@@ -249,7 +258,9 @@ export const TimerOutput = () => {
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 lineHeight: 1.1,
-                textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
+                textShadow: messageFlashing && flash 
+                  ? `0 0 20px ${messageColor}, 0 0 40px ${messageColor}, 0 0 60px ${messageColor}` 
+                  : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
                 transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                 transformOrigin: 'center',
@@ -258,7 +269,8 @@ export const TimerOutput = () => {
                 overflowWrap: 'anywhere',
                 maxWidth: '95vw',
                 maxHeight: '92vh',
-                opacity: messageFlashing ? (flash ? 1 : 0) : 1
+                opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
+                transition: 'all 0.1s ease-in-out'
               }}
             >
               {messageText}
@@ -294,13 +306,16 @@ export const TimerOutput = () => {
               <div
                 className="mt-[3vh] w-full text-center transition-opacity duration-75 leading-tight break-words"
                 style={{
-                  opacity: messageFlashing ? (flash ? 1 : 0) : 1,
+                  opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
                   color: messageColor,
                   fontSize: `min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw)`,
                   fontWeight: messageBold ? 900 : 400,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
                   lineHeight: 1.1,
-                  textShadow: `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
+                  textShadow: messageFlashing && flash 
+                    ? `0 0 15px ${messageColor}, 0 0 30px ${messageColor}` 
+                    : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
+                  transition: 'all 0.1s ease-in-out',
                   letterSpacing: '0.02em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                   transformOrigin: 'center',
