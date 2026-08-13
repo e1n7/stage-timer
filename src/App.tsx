@@ -1056,16 +1056,33 @@ function App() {
     } else {
       setTimerIds([...timerIds, newId]);
     }
-    setActiveTimerId(newId);
+    // Keep the currently selected/playing timer active — adding a timer
+    // must never steal the selection. If nothing is selected yet and there
+    // are no timers at all, pick the newly added one as the first active.
+    if (!activeTimerId && timerIds.length === 0) {
+      setActiveTimerId(newId);
+    }
   };
 
   const deleteTimer = (id: string) => {
+    // Remove the timer's own stored state so it leaves no residue,
+    // but never touch any other timer's state — playback of other
+    // timers (including the active one) keeps running.
+    try { localStorage.removeItem(`timerSettings_${id}`); } catch { /* ignore */ }
+    try { localStorage.removeItem(`timerSeconds_${id}`); } catch { /* ignore */ }
+    try { localStorage.removeItem(`timerSync_${id}`); } catch { /* ignore */ }
+    try {
+      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+      channel.postMessage({ targetId: id, command: 'DESTROY' });
+      channel.close();
+    } catch { /* ignore */ }
     const newIds = timerIds.filter(tid => tid !== id);
     setTimerIds(newIds);
     if (newIds.length === 0) {
       setActiveTimerId('');
       setActiveTimerState(null);
     } else if (activeTimerId === id) {
+      // The active timer was deleted — fall back to the first available timer.
       setActiveTimerId(newIds[0]);
     }
   };
@@ -1097,6 +1114,16 @@ function App() {
   };
 
   const deleteAllTimers = () => {
+    try {
+      timerIds.forEach(id => {
+        localStorage.removeItem(`timerSettings_${id}`);
+        localStorage.removeItem(`timerSeconds_${id}`);
+        localStorage.removeItem(`timerSync_${id}`);
+      });
+      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+      timerIds.forEach(id => channel.postMessage({ targetId: id, command: 'DESTROY' }));
+      channel.close();
+    } catch { /* ignore */ }
     setTimerIds([]);
     setActiveTimerId('');
     setActiveTimerState(null);
