@@ -1534,7 +1534,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 min-h-[180px]`}>
+          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 min-h-[180px] overflow-hidden`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-full w-full items-center justify-center px-4 py-8">
@@ -1543,7 +1543,7 @@ function App() {
                   style={{
                     color: getActiveMessage().messageColor,
                     fontSize: `${Math.round(84 * getActiveMessage().messageFontHeight)}px`,
-                    fontWeight: getActiveMessage().messageBold ? 800 : 700,
+                    fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
                     lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
@@ -1859,9 +1859,9 @@ function App() {
                   {/* Red swatch */}
                   <button type="button"                       onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
                   {/* Bold */}
-                  <button type="button"                       onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[14px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Bold text">B</button>
+                  <button type="button"                       onClick={() => toggleMessageBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
                   {/* Uppercase */}
-                  <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[14px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Uppercase text">āA</button>
+                  <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
                   {/* Message font height slider */}
                   <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
                     <span className="text-[10px] uppercase text-[#666]">H</span>
