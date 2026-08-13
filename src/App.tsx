@@ -1716,7 +1716,41 @@ function App() {
 
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
         <div className="flex items-center gap-4"><span className="hover:text-[#888] cursor-pointer font-medium">v3.5.9 · Docs</span><span><IconSquare /> 395 ms</span></div>
-        <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12"><span>0:00</span><div className="group relative flex-1"><div className="absolute inset-0 flex items-center"><div className="h-1 w-full rounded-full bg-[#333]"></div></div><div className="relative flex h-4 items-center"><div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform"></div></div></div><span>-10:00</span></div>
+        {(() => {
+          const durations = timerIds.map(id => {
+            const stored = localStorage.getItem(`timerSettings_${id}`);
+            return stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+          });
+          const total = durations.reduce((a, b) => a + b, 0);
+          const activeIdx = activeTimerId ? timerIds.indexOf(activeTimerId) : -1;
+          let elapsed = 0;
+          for (let i = 0; i < Math.min(activeIdx, timerIds.length); i++) elapsed += durations[i];
+          if (activeIdx >= 0 && total > 0) {
+            const activeDuration = durations[activeIdx] || 0;
+            elapsed += Math.max(0, Math.min(activeDuration, activeDuration - displaySeconds));
+          }
+          const scrubberPct = total > 0 ? Math.min(1, Math.max(0, elapsed / total)) : 0;
+          const endLabel = total === 0 ? '0:00' : '-' + formatClock(total);
+          return (
+            <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
+              <span>0:00</span>
+              <div className="group relative flex-1">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="h-1 w-full rounded-full bg-[#333]"></div>
+                  {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
+                    let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
+                    return <div key={`tick-${i}`} className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
+                  })}
+                  <div className="h-1 rounded-full bg-[#555] transition-all duration-300" style={{ width: `${scrubberPct * 100}%` }}></div>
+                </div>
+                <div className="relative flex h-4 items-center">
+                  <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform absolute -translate-x-1/2" style={{ left: `${scrubberPct * 100}%` }}></div>
+                </div>
+              </div>
+              <span>{endLabel}</span>
+            </div>
+          );
+        })()}
       </footer>
     </div>
   );
