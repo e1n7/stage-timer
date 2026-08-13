@@ -1506,8 +1506,9 @@ function App() {
                   </span>
                 </div>
               </div>
-              <div className="relative mt-2 group cursor-pointer"
+              <div className={`relative mt-2 group ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
                 onMouseMove={(e) => {
+                  if (displaySeconds <= 0) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
@@ -1516,6 +1517,7 @@ function App() {
                 }}
                 onMouseLeave={() => setHoverTime(null)}
                 onClick={(e) => {
+                  if (displaySeconds <= 0) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
