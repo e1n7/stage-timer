@@ -11,7 +11,7 @@ const formatClock = (seconds: number, allowNegative = false) => {
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
-  
+
   const base = `${pad(hours * 60 + minutes)}:${pad(secs)}`;
   return neg ? `-${base}` : base;
 };
@@ -55,7 +55,7 @@ export const TimerOutput = () => {
 
     const updateFromData = (data: any) => {
       if (!data || typeof data !== 'object') return;
-      
+
       if ('blackout' in data) setBlackout(!!data.blackout);
       if ('flash' in data && data.flash) {
         setIsFlashing(true);
@@ -76,8 +76,8 @@ export const TimerOutput = () => {
         syncStateRef.current.isEmpty = !!data.isEmpty;
       }
 
-      if ('totalTime' in data) setTotalTime(data.totalTime);
-      if ('segments' in data) setSegments(data.segments);
+      if ('totalTime' in data) setTotalTime(Math.max(0, Number(data.totalTime) || 0));
+      if ('segments' in data) setSegments(Array.isArray(data.segments) ? data.segments : []);
       if ('title' in data) setTitle(data.title || '');
       if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
       if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
@@ -89,14 +89,9 @@ export const TimerOutput = () => {
         setMessageUppercase(!!data.messageUppercase);
         if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
         if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
-        // Persistent show: stays on screen until toggled off
-        if ('messageShown' in data) {
-          setMessageVisible(hasMsg && !!data.messageShown);
-        }
+        if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
-      if ('messageShown' in data) {
-        setMessageVisible(!!data.messageShown);
-      }
+      if ('messageShown' in data) setMessageVisible(!!data.messageShown);
       if ('messageFlash' in data) {
         const flashOn = !!data.messageFlash;
         setMessageFlashing(flashOn);
@@ -134,10 +129,10 @@ export const TimerOutput = () => {
             lastUpdated: data.lastUpdated || Date.now(),
             isRunning: newIsRunning
           };
-          
+
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
-            const next = data.mode === 'countdown' 
+            const next = data.mode === 'countdown'
               ? data.initialSeconds - elapsed
               : data.initialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
@@ -162,7 +157,7 @@ export const TimerOutput = () => {
         } catch { /* ignore */ }
       }
     };
-    
+
     window.addEventListener('storage', storageSync);
     storageSync();
 
@@ -179,20 +174,13 @@ export const TimerOutput = () => {
         setSeconds(0);
         return;
       }
-      
+
       if (syncIsRunning && startTime !== null) {
         const elapsed = (Date.now() - startTime) / 1000;
         setSeconds(() => {
-          let next: number;
-          if (mode === 'countdown') {
-            next = initialSeconds - elapsed;
-            return Math.round(next * 10) / 10;
-          } else if (mode === 'countup') {
-            next = initialSeconds + elapsed;
-            return Math.round(next * 10) / 10;
-          } else {
-            return Date.now() / 1000;
-          }
+          if (mode === 'countdown') return Math.round((initialSeconds - elapsed) * 10) / 10;
+          if (mode === 'countup') return Math.round((initialSeconds + elapsed) * 10) / 10;
+          return Date.now() / 1000;
         });
       } else {
         setSeconds(initialSeconds);
@@ -203,8 +191,10 @@ export const TimerOutput = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  const currentMode = syncStateRef.current.mode;
+
   const getTextColor = () => {
-    if (isEmpty) return '#000000'; // Invisible or black in empty state
+    if (isEmpty) return '#000000';
     const rounded = Math.floor(seconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -232,14 +222,13 @@ export const TimerOutput = () => {
   };
 
   return (
-    <div 
-      className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300" 
+    <div
+      className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300"
       style={{ backgroundColor: '#0a0a0a' }}
     >
-      {/* Maximize Button - shows on hover over its area */}
-      <button 
-        onClick={toggleFullscreen} 
-        className="absolute right-4 top-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100" 
+      <button
+        onClick={toggleFullscreen}
+        className="absolute right-4 top-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100"
         aria-label="Toggle Fullscreen"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
@@ -267,32 +256,31 @@ export const TimerOutput = () => {
           </div>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[1vh]">
+        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-[1vh] pb-[2vh]">
           {seconds < 0 && (
             <div className="absolute left-1/2 top-[3vh] z-10 -translate-x-1/2">
               <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
             </div>
           )}
-          <div className="flex flex-1 w-full flex-col items-center justify-center">
-            {/* Timer digits - huge, rounded, status-colored like the reference */}
-            <div 
-              className="text-center font-bold tabular-nums transition-all duration-75" 
-              style={{ 
-                color: getTextColor(), 
-                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(80vw, 44vh)' : 'min(98vw, 84vh)', 
-                lineHeight: 1, 
+          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
+            <div
+              className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
+              style={{
+                color: getTextColor(),
+                // Leave room for the progress bar while keeping the digits tall on every screen.
+                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(80vw, 38vh)' : 'min(92vw, 42vh)',
+                lineHeight: 1,
                 fontFamily: 'Inter, system-ui, sans-serif',
                 fontStretch: 'ultra-expanded',
                 letterSpacing: '0.01em',
                 opacity: (isFlashing && !flash) ? 0 : 1,
                 textShadow: flash ? `0 0 100px ${getGlowColor()}` : 'none',
                 transform: `scale(${fontWidth}, ${fontHeight})`,
-                transformOrigin: 'center'
+                transformOrigin: 'center center'
               }}
             >
               {seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)}
             </div>
-            {/* Message display - below the timer */}
             {(messageVisible || messageFlashing) && messageText && (
               <div
                 className="mt-[3vh] text-center transition-opacity duration-150"
@@ -314,9 +302,9 @@ export const TimerOutput = () => {
             )}
           </div>
           {(messageVisible || messageFlashing) && messageText ? null : (
-          <div className="w-full">
-            <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-5" className="rounded-none" />
-          </div>
+            <div className="w-full shrink-0">
+              <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
+            </div>
           )}
         </div>
       )}

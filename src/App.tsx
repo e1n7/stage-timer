@@ -1241,7 +1241,8 @@ function App() {
     if (activeTimerId && activeTimerState) {
       syncOutput({ 
         ...activeTimerState.syncState,
-        totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
+        totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
+        mode: activeTimerState.syncState.mode,
         segments: activeTimerState.settings.segments,
         fontHeight: activeTimerState.settings.fontHeight || 1.6,
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
@@ -1265,7 +1266,8 @@ function App() {
     if (activeTimerId && activeTimerState) {
       syncOutput({ 
         ...activeTimerState.syncState,
-        totalTime: activeTimerState.settings.targetDuration || activeTimerState.DEFAULT_TIME, 
+        totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
+        mode: activeTimerState.syncState.mode,
         segments: activeTimerState.settings.segments,
         fontHeight: activeTimerState.settings.fontHeight || 1.6,
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
@@ -1398,6 +1400,9 @@ function App() {
   const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '--:--';
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
+  // Keep every dashboard progress calculation on the same assigned duration.
+  const activeTotalTime = Math.max(0, Number(activeTimerState?.settings?.targetDuration ?? 0));
+  const activeProgressTotal = Math.max(activeTotalTime, 1);
 
   const getDashboardTextColor = () => {
     if (!activeTimerId) return '#333';
@@ -1519,7 +1524,7 @@ function App() {
             >
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
-            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-3" className="absolute right-0 bottom-0 left-0 rounded-t-none rounded-b-lg rounded-bl-lg" />}
+            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-3" className="absolute right-0 bottom-0 left-0 rounded-t-none rounded-b-lg rounded-bl-lg" />}
             </>
             )}
           </div>
@@ -1547,7 +1552,7 @@ function App() {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
-                  const targetDuration = activeTimerState?.settings.targetDuration || 600;
+                  const targetDuration = activeTotalTime;
                   setHoverTime(targetDuration * (1 - percentage));
                 }}
                 onMouseLeave={() => setHoverTime(null)}
@@ -1556,7 +1561,7 @@ function App() {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
-                  const targetDuration = activeTimerState?.settings.targetDuration || 600;
+                  const targetDuration = activeTotalTime;
                   const targetTime = targetDuration * (1 - percentage);
                   sendControl('SET', targetTime);
                 }}
@@ -1571,13 +1576,13 @@ function App() {
                     );
                   })}
                 </div>
-                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-1.5" className="border-x border-b border-[#2a2a2a] rounded-b-sm" />
+                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-1.5" className="border-x border-b border-[#2a2a2a] rounded-b-sm" />
                 
                 {/* Red Playhead Marker */}
                 <div 
                   className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-10"
                   style={{ 
-                    left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / (activeTimerState?.settings.targetDuration || 600))) * 100))}%`,
+                    left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
                     transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                   }}
                 >
@@ -1589,7 +1594,7 @@ function App() {
                   <div 
                     className="absolute top-0 bottom-0 w-[1px] bg-white/40 pointer-events-none z-0"
                     style={{ 
-                      left: `${Math.max(0, Math.min(100, (1 - (hoverTime / (activeTimerState?.settings.targetDuration || 600))) * 100))}%`
+                      left: `${Math.max(0, Math.min(100, (1 - (hoverTime / activeProgressTotal)) * 100))}%`
                     }}
                   />
                 )}
