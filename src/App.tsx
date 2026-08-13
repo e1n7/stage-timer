@@ -28,40 +28,37 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   const m = Math.floor((value % 3600) / 60);
   const s = value % 60;
 
+  // Accept free total-minutes input (e.g. 60) and normalize into hours/minutes/seconds.
+  const updateFromMinutes = (totalMinutes: number) => {
+    const tm = Math.max(0, parseInt(totalMinutes.toString()) || 0);
+    onChange(tm * 60);
+  };
+
   const update = (newH: number, newM: number, newS: number) => {
     onChange(newH * 3600 + newM * 60 + newS);
   };
 
   const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const totalMinutes = Math.floor(value / 60);
+  const remainingSeconds = value % 60;
 
   return (
     <div className="flex items-center gap-3">
       <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
-          value={pad(h)} 
-          onChange={(e) => update(Math.max(0, parseInt(e.target.value) || 0), m, s)}
+          value={totalMinutes} 
+          onChange={(e) => updateFromMinutes(parseInt(e.target.value) || 0)}
           onFocus={(e) => e.target.select()}
-          className={inputClass}
+          className={`${inputClass} w-20`}
         />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes (60 = 1:00:00)</span>
       </div>
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
-          value={pad(m)} 
-          onChange={(e) => update(h, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)), s)}
-          onFocus={(e) => e.target.select()}
-          className={inputClass}
-        />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes</span>
-      </div>
-      <span className="text-xl font-bold text-[#444] pb-5">:</span>
-      <div className="flex flex-col items-center gap-1">
-        <input 
-          type="number" 
-          value={pad(s)} 
+          value={pad(remainingSeconds)} 
           onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
           onFocus={(e) => e.target.select()}
           className={inputClass}
