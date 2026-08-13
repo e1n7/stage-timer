@@ -14,15 +14,16 @@ interface ProgressBarProps {
 }
 
 /**
- * A flexible progress bar that shows colored segments based on time thresholds
- * and shrinks the remaining-time fill from RIGHT to LEFT as a countdown runs.
+ * A countdown progress bar whose colored fill grows from the LEFT edge and
+ * shrinks toward the right as time runs out (matching a "fill bar" reading).
  *
- * Layout (countdown semantics, seconds remaining as `currentSeconds`):
- * - Full-length colored track: green = from largest threshold up to total,
- *   then orange/red warning zones closest to zero.
- * - A dark mask covers the RIGHT portion representing ELAPSED time, so the
- *   colored remaining portion starts at the left edge and visibly shrinks
- *   toward the right as the timer counts down.
+ * Layout:
+ * - Left edge = most remaining time (green), then warning colors (orange,
+ *   red) at the RIGHT end of the colored fill, in order toward zero.
+ * - The dark area on the right represents elapsed time.
+ * - As the countdown runs, the whole fill visibly shrinks from right to left,
+ *   so the bar always reads green-first at the left with the warning sliver
+ *   at the leading (right) edge of the fill.
  */
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentSeconds,
@@ -35,62 +36,56 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // Percentage of time REMAINING — the colored portion width.
   const remainingPercent = (Math.min(Math.max(currentSeconds, 0), safeTotal) / safeTotal) * 100;
 
-  // Build color zones from 0 to totalSeconds, smallest threshold first.
-  // The mask placed on the right keeps the visual reading consistent:
-  // left edge = most remaining time, colors approach zero at the right.
+  // Build the colored zones across the FULL timeline [0, totalSeconds],
+  // ordered left-to-right as: green (from total down to the largest warning
+  // threshold), then warning zones in descending threshold order, ending
+  // with red at the far right (zero). The visible fill is the leftmost
+  // `remainingPercent`, so it always starts green at the left and the
+  // orange/red sliver sits at the right end of the fill.
   const zones: { width: number; color: string }[] = [];
 
-  // Keep the original full-duration thresholds for reference, but anchor the
-  // visible bar to the REMAINING window [0, currentSeconds] so the leftmost
-  // edge is always green and warning colors only appear near the end.
-  const viewTotal = Math.max(currentSeconds, 0);
+  const descendingSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
 
-  if (viewTotal > 0 && segments.length > 0) {
-    // Scale each warning threshold proportionally to the remaining window.
-    // Example: red at 10s of 600s total => 1.67% of remaining width. This way
-    // the bar always starts green at the left, with orange/red shrinking toward
-    // the right edge as the countdown approaches zero.
-    const scaledSegments = segments
-      .map(seg => ({ ...seg, threshold: Math.max(0, (seg.threshold / safeTotal) * viewTotal) }))
-      .sort((a, b) => b.threshold - a.threshold);
+  let lastThreshold = safeTotal;
 
-    let last = viewTotal;
+  // Green zone from total down to the largest warning threshold.
+  if (descendingSegments.length > 0) {
+    zones.push({
+      width: ((lastThreshold - descendingSegments[0].threshold) / safeTotal) * 100,
+      color: '#22c55e'
+    });
+    lastThreshold = descendingSegments[0].threshold;
+  }
 
-    // Green zone from the remaining window down to the largest scaled threshold.
-    if (scaledSegments.length > 0 && scaledSegments[0].threshold < last) {
+  // Warning zones moving toward zero, largest threshold first.
+  for (const seg of descendingSegments) {
+    if (seg.threshold < lastThreshold) {
       zones.push({
-        width: ((last - scaledSegments[0].threshold) / viewTotal) * 100,
-        color: '#22c55e'
+        width: ((lastThreshold - seg.threshold) / safeTotal) * 100,
+        color: seg.color
       });
-      last = scaledSegments[0].threshold;
+      lastThreshold = seg.threshold;
     }
+  }
 
-    // Warning zones moving toward zero, largest scaled threshold first.
-    for (const seg of scaledSegments) {
-      if (seg.threshold < last) {
-        zones.push({
-          width: ((last - seg.threshold) / viewTotal) * 100,
-          color: seg.color
-        });
-        last = seg.threshold;
-      }
-    }
+  // Red zone from the smallest threshold down to zero.
+  if (lastThreshold > 0) {
+    zones.push({
+      width: (lastThreshold / safeTotal) * 100,
+      color: '#fa5252'
+    });
+  }
 
-    // Red zone from the smallest scaled threshold down to zero.
-    if (last > 0) {
-      zones.push({
-        width: (last / viewTotal) * 100,
-        color: '#fa5252'
-      });
-    }
-  } else {
-    // No time left to display — full bar is red (overtime).
+  // Overtime: nothing remaining — fill the whole bar red.
+  const overtime = currentSeconds < 0;
+  if (overtime) {
+    zones.length = 0;
     zones.push({ width: 100, color: '#fa5252' });
   }
 
   return (
     <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
-      {/* The full colored timeline, green on the left (full time) to warning colors on the right (near zero) */}
+      {/* The full colored timeline: green on the left -> warning colors on the right */}
       <div className="flex h-full w-full">
         {zones.map((zone, i) => (
           <div
