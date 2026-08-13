@@ -24,15 +24,54 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 const pad = (value: number) => value.toString().padStart(2, '0');
 
 const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
-  const h = Math.floor(value / 3600);
-  const m = Math.floor((value % 3600) / 60);
-  const s = value % 60;
+  const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
+  const [mStr, setMStr] = useState(pad(Math.floor((value % 3600) / 60)));
+  const [sStr, setSStr] = useState(pad(value % 60));
+  
   const minRef = useRef<HTMLInputElement>(null);
   const secRef = useRef<HTMLInputElement>(null);
 
-  const update = (newH: number, newM: number, newS: number) => {
-    const total = Math.max(0, newH) * 3600 + Math.max(0, newM) * 60 + Math.max(0, newS);
-    onChange(total);
+  // Sync local state if value prop changes from outside (e.g. Apply to All)
+  useEffect(() => {
+    const h = Math.floor(value / 3600);
+    const m = Math.floor((value % 3600) / 60);
+    const s = value % 60;
+    const currentLocalTotal = (parseInt(hStr) || 0) * 3600 + (parseInt(mStr) || 0) * 60 + (parseInt(sStr) || 0);
+    if (value !== currentLocalTotal) {
+      setHStr(pad(h));
+      setMStr(pad(m));
+      setSStr(pad(s));
+    }
+  }, [value]);
+
+  const handleChange = (type: 'h'|'m'|'s', val: string) => {
+    // Allow up to 2 digits, numbers only
+    const clean = val.replace(/\D/g, '').slice(-2);
+    let nextH = hStr, nextM = mStr, nextS = sStr;
+
+    if (type === 'h') {
+      nextH = clean;
+      setHStr(clean);
+      if (clean.length >= 2) minRef.current?.focus();
+    } else if (type === 'm') {
+      nextM = clean;
+      setMStr(clean);
+      if (clean.length >= 2) secRef.current?.focus();
+    } else {
+      nextS = clean;
+      setSStr(clean);
+    }
+
+    const h = parseInt(nextH) || 0;
+    const m = parseInt(nextM) || 0;
+    const s = parseInt(nextS) || 0;
+    onChange(h * 3600 + m * 60 + s);
+  };
+
+  const handleBlur = () => {
+    setHStr(pad(parseInt(hStr) || 0));
+    setMStr(pad(parseInt(mStr) || 0));
+    setSStr(pad(parseInt(sStr) || 0));
   };
 
   const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors";
@@ -44,13 +83,9 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           type="text" 
           inputMode="numeric"
           autoComplete="off"
-          value={pad(h)} 
-          onChange={(e) => {
-            const val = e.target.value;
-            const num = clampDigits(val, 99);
-            update(num, m, s);
-            if (val.length >= 2) minRef.current?.focus();
-          }}
+          value={hStr} 
+          onChange={(e) => handleChange('h', e.target.value)}
+          onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
@@ -63,13 +98,9 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           type="text" 
           inputMode="numeric"
           autoComplete="off"
-          value={pad(m)} 
-          onChange={(e) => {
-            const val = e.target.value;
-            const num = clampDigits(val, 59);
-            update(h, num, s);
-            if (val.length >= 2) secRef.current?.focus();
-          }}
+          value={mStr} 
+          onChange={(e) => handleChange('m', e.target.value)}
+          onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
@@ -82,8 +113,9 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           type="text" 
           inputMode="numeric"
           autoComplete="off"
-          value={pad(s)} 
-          onChange={(e) => update(h, m, clampDigits(e.target.value, 59))}
+          value={sStr} 
+          onChange={(e) => handleChange('s', e.target.value)}
+          onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
