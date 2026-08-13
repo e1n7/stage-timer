@@ -1675,32 +1675,34 @@ function App() {
                     </button>
                   </div>
                 </div>
-                {/* Row 2: color swatches (always visible in their own colors) + bold + uppercase + font sliders */}
-                <div className="flex items-center gap-2">
+                {/* Row 2: formatting + sliders (wraps) | Show/Maximize pinned right (never covered) */}
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
                   {/* White swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
+                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
                   {/* Green swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
+                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
                   {/* Red swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
+                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
                   {/* Bold */}
-                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Bold text">B</button>
+                  <button type="button"                       onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[14px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Bold text">B</button>
                   {/* Uppercase */}
-                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Uppercase text">āA</button>
+                  <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[14px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Uppercase text">āA</button>
                   {/* Message font height slider */}
                   <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
                     <span className="text-[10px] uppercase text-[#666]">H</span>
-                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontH} onChange={(e) => updateMessageFontSize(msg.id, 'fontHeight', parseFloat(e.target.value))} className="w-14 accent-[#4a9eff]" title="Message height (Output only)" />
-                    <span className="w-7 font-mono text-[10px] text-[#8a8a8a]">{mFontH.toFixed(1)}</span>
+                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontH} onChange={(e) => updateMessageFontSize(msg.id, 'fontHeight', parseFloat(e.target.value))} className="w-12 accent-[#4a9eff]" title="Message height (Output only)" />
+                    <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mFontH.toFixed(1)}</span>
                   </div>
                   {/* Message font width slider */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <span className="text-[10px] uppercase text-[#666]">W</span>
-                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontW} onChange={(e) => updateMessageFontSize(msg.id, 'fontWidth', parseFloat(e.target.value))} className="w-14 accent-[#4a9eff]" title="Message width (Output only)" />
-                    <span className="w-7 font-mono text-[10px] text-[#8a8a8a]">{mFontW.toFixed(1)}</span>
+                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontW} onChange={(e) => updateMessageFontSize(msg.id, 'fontWidth', parseFloat(e.target.value))} className="w-12 accent-[#4a9eff]" title="Message width (Output only)" />
+                    <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mFontW.toFixed(1)}</span>
                   </div>
-                  {/* Show / Flash / Maximize control */}
-                  <div className="ml-auto flex items-center overflow-hidden rounded-md border border-[#444]">
+                  </div>
+                  {/* Show / Flash / Maximize control — shrink-0 so it can never be covered */}
+                  <div className="flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
                     <button
                       type="button"
                       onClick={() => flashMessage(msg.id)}
