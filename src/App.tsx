@@ -1627,8 +1627,11 @@ function App() {
           <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
             const mFontH = getMessageFontSize(msg, 'fontHeight');
             const mFontW = getMessageFontSize(msg, 'fontWidth');
+            const isShown = messageShownId === msg.id;
+            const isMaximized = messageMaximizeId === msg.id;
+            const cardActive = isShown || isMaximized;
             return (
-            <div key={msg.id} className="group relative rounded-lg border border-[#333] bg-[#2d2d2d] px-3 py-2 shadow-md transition-opacity">
+            <div key={msg.id} className={`group relative rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}>
               {draggingMsgId === msg.id && <div className="absolute inset-0 z-20 rounded-lg bg-[#4a9eff]/10 pointer-events-none" />}
               {/* Whole card is the drag surface */}
               <div
@@ -1657,33 +1660,33 @@ function App() {
                       transformOrigin: 'left center'
                     }}
                   />
-                  {/* Drag grip + delete (visible on hover) */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="px-1 text-[#555] hover:text-[#8a8a8a] cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                  {/* Drag grip + delete (always visible) */}
+                  <div className="flex items-center gap-1">
+                    <span className={`px-1 cursor-grab active:cursor-grabbing ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#555] hover:text-[#8a8a8a]'}`} title="Drag to reorder">
                       <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
                     </span>
                     <button
                       type="button"
                       onClick={() => deleteMessage(msg.id)}
-                      className="flex items-center justify-center text-[#666] hover:text-[#fa5252]"
+                      className={`flex items-center justify-center ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#666] hover:text-[#fa5252]'}`}
                       title="Delete message"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                     </button>
                   </div>
                 </div>
-                {/* Row 2: color swatches (text-colored) + bold + uppercase + font sliders */}
+                {/* Row 2: color swatches (always visible in their own colors) + bold + uppercase + font sliders */}
                 <div className="flex items-center gap-2">
                   {/* White swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
                   {/* Green swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
                   {/* Red swatch */}
-                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color }}>A</button>
+                  <button type="button" onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[15px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
                   {/* Bold */}
-                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color, fontWeight: 700 }}>B</button>
+                  <button type="button" onClick={() => toggleMessageBold(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Bold text">B</button>
                   {/* Uppercase */}
-                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#666]'}`} style={{ color: msg.color, fontWeight: 700 }}>āA</button>
+                  <button type="button" onClick={() => toggleMessageUppercase(msg.id)} className={`pb-0.5 text-[15px] transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff', fontWeight: 700 }} title="Uppercase text">āA</button>
                   {/* Message font height slider */}
                   <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
                     <span className="text-[10px] uppercase text-[#666]">H</span>
@@ -1709,7 +1712,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => showMessage(msg.id)}
-                      className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+                      className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
                       title="Show message persistently on Output"
                     >
                       <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
@@ -1718,7 +1721,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => maximizeMessage(msg.id)}
-                      className={`flex items-center justify-center border-l border-[#444] px-2 py-1 text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#4a9eff]/15 text-[#4a9eff]' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
+                      className={`flex items-center justify-center border-l border-[#444] px-2 py-1 text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
                       title="Maximize message (hide timer)"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
