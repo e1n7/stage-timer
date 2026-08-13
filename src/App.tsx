@@ -1754,44 +1754,13 @@ function App() {
           const endLabel = total === 0 ? '0:00' : '-' + formatClock(total);
           // Left label: elapsed position (HH:MM:SS while running), or 0:00 before start
           const leftLabel = total > 0 && activeIdx >= 0 ? formatClock(Math.min(elapsed, total)) : '0:00';
-          // Active timer color zones (same logic as the timer's own progress bar)
-          const activeSettings = activeIdx >= 0 ? JSON.parse(localStorage.getItem(`timerSettings_${timerIds[activeIdx]}`) || '{}') : null;
-          const zones: { leftPct: number; rightPct: number; color: string }[] = [];
-          if (activeSettings && Array.isArray(activeSettings.segments) && activeDuration > 0) {
-            const asc = [...activeSettings.segments].sort((a: any, b: any) => a.threshold - b.threshold);
-            const segPositions = asc.map((s: any) => Math.max(0, Math.min(activeDuration, s.threshold)) / activeDuration);
-            // Zones of the ACTIVE stage slice: map segment thresholds to absolute timeline percent
-            const stageLeft = durations.slice(0, activeIdx).reduce((a: number, b: number) => a + b, 0) / (total || 1);
-            const stageRight = (durations.slice(0, activeIdx).reduce((a: number, b: number) => a + b, 0) + activeDuration) / (total || 1);
-            const stageWidth = stageRight - stageLeft;
-            const colors = asc.map((s: any) => s.color);
-            const baseColor = '#22c55e';
-            const zoneColors = [...colors, baseColor];
-            const boundaries = [0, ...segPositions, 1];
-            for (let i = 0; i < boundaries.length - 1; i++) {
-              const segFrac = boundaries[i + 1] - boundaries[i];
-              if (segFrac <= 0) continue;
-              zones.push({
-                leftPct: (stageLeft + boundaries[i] * stageWidth) * 100,
-                rightPct: (stageLeft + boundaries[i + 1] * stageWidth) * 100,
-                color: zoneColors[i]
-              });
-            }
-          }
           return (
             <div className="flex flex-1 items-center gap-3">
               <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
               <div className="group relative flex-1">
                 <div className="absolute inset-0 flex items-center">
-                  {/* Remaining (unvisited) background — dark gray */}
+                  {/* Plain dark/gray track — no color zones */}
                   <div className="h-1 w-full rounded-full bg-[#333]"></div>
-                  {/* Color-coded progress: only the ELAPSED portion, clipped by a mask at the scrubber */}
-                  <div className="absolute inset-0 overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
-                    {/* Color zones follow the active stage's own color thresholds */}
-                    {zones.map((z, i) => (
-                      <div key={`zone-${i}`} className="absolute h-1 rounded-full transition-all duration-300" style={{ left: `${z.leftPct}%`, width: `${z.rightPct - z.leftPct}%`, backgroundColor: z.color }}></div>
-                    ))}
-                  </div>
                   {/* Thin vertical separators between stages — always visible */}
                   {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
                     let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
