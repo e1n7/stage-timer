@@ -1542,15 +1542,17 @@ function App() {
                   className="text-center leading-tight break-words max-h-full max-w-full"
                   style={{
                     color: getActiveMessage().messageColor,
-                    fontSize: `${Math.round(84 * getActiveMessage().messageFontHeight)}px`,
+                    fontSize: 'min(70px, 30vh)',
                     fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
-                    lineHeight: 1.1,
+                    lineHeight: 1,
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
                     textShadow: isFlash ? `0 0 20px ${getActiveMessage().messageColor}` : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
-                    letterSpacing: '0.02em',
-                    transform: `scaleX(${getActiveMessage().messageFontWidth})`,
-                    transformOrigin: 'center'
+                    letterSpacing: '0.01em',
+                    transform: `scale(${getActiveMessage().messageFontWidth}, ${getActiveMessage().messageFontHeight})`,
+                    transformOrigin: 'center',
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word'
                   }}
                 >
                   {getActiveMessage().messageText}

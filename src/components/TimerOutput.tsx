@@ -238,22 +238,25 @@ export const TimerOutput = () => {
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
         <div className="flex h-full w-full items-center justify-center p-[4vh]">
-          <div
-            className="text-center break-words"
-            style={{
-              color: messageColor,
-              fontSize: 'min(80vw, 40vh)',
-              fontWeight: messageBold ? 900 : 400,
-              textTransform: messageUppercase ? 'uppercase' : 'none',
-              lineHeight: 1,
-              textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
-              letterSpacing: '0.01em',
-              transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
-              transformOrigin: 'center'
-            }}
-          >
-            {messageText}
-          </div>
+            <div
+              className="text-center"
+              style={{
+                color: messageColor,
+                fontSize: '35vh',
+                fontWeight: messageBold ? 900 : 400,
+                textTransform: messageUppercase ? 'uppercase' : 'none',
+                lineHeight: 1,
+                textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
+                letterSpacing: '0.01em',
+                transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
+                transformOrigin: 'center',
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                maxWidth: '90vw'
+              }}
+            >
+              {messageText}
+            </div>
         </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-[1vh] pb-[2vh]">
