@@ -1620,7 +1620,7 @@ function App() {
         </main>
 
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
-          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]" title="Flash the currently shown message on Output"><IconFlash /> Flash</button></div>
+          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
           <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
             const mFontH = getMessageFontSize(msg, 'fontHeight');
             const mFontW = getMessageFontSize(msg, 'fontWidth');
