@@ -274,18 +274,12 @@ export const TimerOutput = () => {
             </div>
           )}
           <div className="flex flex-1 w-full flex-col items-center justify-center">
-            {/* Timer title - mirrors dashboard */}
-            {title ? (
-              <div className="mb-[1.5vh] text-center">
-                <span className="text-[3vh] font-bold tracking-wide" style={{ color: '#7eb8ff' }}>{title}</span>
-              </div>
-            ) : null}
-            {/* Timer digits - smaller when a message is shown */}
+            {/* Timer digits - fills the screen; title lives only on the dashboard */}
             <div 
               className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getTextColor(), 
-                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(75vw, 34vh)' : 'min(98vw, 65vh)', 
+                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(80vw, 44vh)' : 'min(98vw, 84vh)', 
                 lineHeight: 1, 
                 fontFamily: 'Inter, system-ui, sans-serif',
                 opacity: (isFlashing && !flash) ? 0 : 1,
