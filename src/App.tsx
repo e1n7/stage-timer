@@ -882,7 +882,6 @@ function App() {
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
-  const [messageMaximizeId, setMessageMaximizeId] = useState<string | null>(null);
   const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
@@ -1180,7 +1179,7 @@ function App() {
         ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageShownId, messageFlashId, messageMaximizeId]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, isFlash, timerIds.length, messages, messageShownId, messageFlashId]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -1244,9 +1243,8 @@ function App() {
   };
   const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
   const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFontHeight: number; messageFontWidth: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
-    // Active message priority: maximized > currently flashing > shown
-    const activeId = (messageMaximizeId && messages.some(m => m.id === messageMaximizeId)) ? messageMaximizeId
-      : (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
+    // Active message priority: currently flashing > shown
+    const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
       : messageShownId;
     const msg = activeId ? (messages.find(m => m.id === activeId) || null) : null;
     const shownText = msg ? msg.text || '' : '';
@@ -1257,38 +1255,24 @@ function App() {
       messageUppercase: !!msg?.uppercase,
       messageFontHeight: msg ? getMessageFontSize(msg, 'fontHeight') : 1.0,
       messageFontWidth: msg ? getMessageFontSize(msg, 'fontWidth') : 1.0,
-      messageShown: !!messageShownId || !!messageMaximizeId || !!messageFlashId,
+      messageShown: !!messageShownId || !!messageFlashId,
       messageFlash: !!messageFlashId,
-      messageMaximize: !!messageMaximizeId
+      // Show now acts as maximize: message only, no timer on Output
+      messageMaximize: !!messageShownId || !!messageFlashId
     };
-  };
-  const maximizeMessage = (id: string) => {
-    if (messageMaximizeId === id) {
-      setMessageMaximizeId(null);
-      syncOutput({ messageMaximize: false, messageShown: !!messageShownId, type: 'force-sync' });
-      return;
-    }
-    setMessageMaximizeId(id);
-    const msg = messages.find(m => m.id === id);
-    if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageMaximize: true, messageShown: true, type: 'force-sync' });
-    }
   };
   const showMessage = (id: string) => {
     // Toggle: if this message is currently shown, turn it off
     if (messageShownId === id) {
       setMessageShownId(null);
-      syncOutput({ messageText: '', messageShown: false, type: 'force-sync' });
+      syncOutput({ messageText: '', messageShown: false, messageMaximize: false, type: 'force-sync' });
       return;
     }
-    // Switching to a different shown message cancels maximize
-    setMessageMaximizeId(null);
-    syncOutput({ messageMaximize: false, type: 'force-sync' });
-    // Set as the persistent shown message (stays on screen until toggled off)
+    // Show = full message on screen, no timer (on both Dashboard and Output)
     setMessageShownId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageShown: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageShown: true, messageMaximize: true, type: 'force-sync' });
     }
   };
   const flashMessage = (id: string) => {
@@ -1398,6 +1382,28 @@ function App() {
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
+            {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
+              <div className="flex h-[340px] w-full items-center justify-center px-4">
+                <div
+                  className="text-center leading-tight break-words"
+                  style={{
+                    color: getActiveMessage().messageColor,
+                    fontSize: `${Math.round(72 * getActiveMessage().messageFontHeight)}px`,
+                    fontWeight: getActiveMessage().messageBold ? 800 : 700,
+                    textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
+                    lineHeight: 1.15,
+                    opacity: (isFlashing && !isFlash) ? 0.2 : 1,
+                    textShadow: isFlash ? `0 0 20px ${getActiveMessage().messageColor}` : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
+                    letterSpacing: '0.02em',
+                    transform: `scaleX(${getActiveMessage().messageFontWidth})`,
+                    transformOrigin: 'center'
+                  }}
+                >
+                  {getActiveMessage().messageText}
+                </div>
+              </div>
+            ) : (
+              <>
             {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
               <div className="flex items-center justify-center pt-1.5">
                 <span className="inline-block rounded bg-[#fa5252]/15 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
@@ -1414,26 +1420,9 @@ function App() {
             >
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
-            {getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout && (
-              <div className="mt-2 flex items-center justify-center">
-                <div
-                  className="text-center leading-tight break-words"
-                  style={{
-                    color: getActiveMessage().messageColor,
-                    fontSize: `${Math.round(22 * getActiveMessage().messageFontHeight)}px`,
-                    fontWeight: getActiveMessage().messageBold ? 700 : 400,
-                    textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
-                    opacity: (isFlashing && !isFlash) ? 0.2 : 1,
-                    textShadow: isFlash ? `0 0 12px ${getActiveMessage().messageColor}` : 'none',
-                    transform: `scaleX(${getActiveMessage().messageFontWidth})`,
-                    transformOrigin: 'center'
-                  }}
-                >
-                  {getActiveMessage().messageText}
-                </div>
-              </div>
-            )}
             {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
+            </>
+            )}
           </div>
 
           {activeTimerId && (
@@ -1640,8 +1629,7 @@ function App() {
             const mFontH = getMessageFontSize(msg, 'fontHeight');
             const mFontW = getMessageFontSize(msg, 'fontWidth');
             const isShown = messageShownId === msg.id;
-            const isMaximized = messageMaximizeId === msg.id;
-            const cardActive = isShown || isMaximized;
+            const cardActive = isShown;
             return (
             <div key={msg.id} className={`group relative rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}>
               {draggingMsgId === msg.id && <div className="absolute inset-0 z-20 rounded-lg bg-[#4a9eff]/10 pointer-events-none" />}
@@ -1717,18 +1705,10 @@ function App() {
                       type="button"
                       onClick={() => showMessage(msg.id)}
                       className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
-                      title="Show message persistently on Output"
+                      title="Show message on screen (message only, no timer)"
                     >
                       <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
                       Show
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => maximizeMessage(msg.id)}
-                      className={`flex items-center justify-center border-l border-[#444] px-2 py-1 text-white transition-colors ${messageMaximizeId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] hover:bg-[#252525]'}`}
-                      title="Maximize message (hide timer)"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                     </button>
                   </div>
                 </div>
