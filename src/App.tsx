@@ -1377,14 +1377,14 @@ function App() {
     if (m.id !== id) return m;
     return { ...m, uppercase: !m.uppercase, text: m.uppercase ? (m.text || '').toLowerCase() : (m.text || '').toUpperCase() };
   }));
-  const updateMessageFontSize = (id: string, key: 'fontHeight' | 'fontWidth', value: number) => setMessages(prev => prev.map(m => m.id === id ? { ...m, [key]: value } : m));
-  const getMessageFontSize = (msg: any, key: 'fontHeight' | 'fontWidth') => {
-    const v = msg[key];
+  const updateMessageSize = (id: string, value: number) => setMessages(prev => prev.map(m => m.id === id ? { ...m, messageSize: value } : m));
+  const getMessageSize = (msg: any) => {
+    const v = msg.messageSize;
     if (typeof v === 'number' && v > 0) return v;
-    return key === 'fontHeight' ? 1.0 : 1.0;
+    return 1.0;
   };
   const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
-  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageFontHeight: number; messageFontWidth: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
+  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
     // Active message priority: currently flashing > shown
     const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
       : messageShownId;
@@ -1395,8 +1395,7 @@ function App() {
       messageColor: msg?.color || '#ffffff',
       messageBold: !!msg?.bold,
       messageUppercase: !!msg?.uppercase,
-      messageFontHeight: msg ? getMessageFontSize(msg, 'fontHeight') : 1.0,
-      messageFontWidth: msg ? getMessageFontSize(msg, 'fontWidth') : 1.0,
+      messageSize: msg ? getMessageSize(msg) : 1.0,
       messageShown: !!messageShownId || !!messageFlashId,
       messageFlash: !!messageFlashId,
       // Show now acts as maximize: message only, no timer on Output
@@ -1414,7 +1413,7 @@ function App() {
     setMessageShownId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageShown: true, messageMaximize: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageSize: getMessageSize(msg), messageShown: true, messageMaximize: true, type: 'force-sync' });
     }
   };
   const flashMessage = (id: string) => {
@@ -1427,8 +1426,7 @@ function App() {
         messageColor: msg.color || '#ffffff', 
         messageBold: !!msg.bold, 
         messageUppercase: !!msg.uppercase, 
-        messageFontHeight: getMessageFontSize(msg, 'fontHeight'), 
-        messageFontWidth: getMessageFontSize(msg, 'fontWidth'), 
+        messageSize: getMessageSize(msg), 
         messageFlash: true, 
         messageMaximize: true, 
         type: 'force-sync' 
@@ -1456,7 +1454,7 @@ function App() {
     next.splice(toIdx, 0, moved);
     return next;
   });
-  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff', bold: false, uppercase: false, fontHeight: 1.0, fontWidth: 1.0 }]);
+  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
 
   const goToNextTimer = () => {
     if (timerIds.length <= 1) return;
@@ -1570,7 +1568,7 @@ function App() {
                       : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
                     transition: 'none',
-                    transform: `scale(${getActiveMessage().messageFontWidth}, ${getActiveMessage().messageFontHeight})`,
+                    transform: `scale(${getActiveMessage().messageSize})`,
                     transformOrigin: 'center',
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
@@ -1828,8 +1826,7 @@ function App() {
         <aside className="flex w-[380px] flex-col border-l border-[#333] px-4 py-3">
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
           <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
-            const mFontH = getMessageFontSize(msg, 'fontHeight');
-            const mFontW = getMessageFontSize(msg, 'fontWidth');
+            const mSize = getMessageSize(msg);
             const isShown = messageShownId === msg.id;
             const cardActive = isShown;
             return (
@@ -1890,17 +1887,11 @@ function App() {
                   <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
                   {/* Flash this message */}
                   <button type="button" onClick={() => flashMessage(msg.id)} className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-all" title="Flash this message on Output"><IconFlash size={14} /></button>
-                  {/* Message font height slider */}
+                  {/* Message font size slider */}
                   <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
-                    <span className="text-[10px] uppercase text-[#666]">H</span>
-                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontH} onChange={(e) => updateMessageFontSize(msg.id, 'fontHeight', parseFloat(e.target.value))} className="w-12 accent-[#4a9eff]" title="Message height (Output only)" />
-                    <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mFontH.toFixed(1)}</span>
-                  </div>
-                  {/* Message font width slider */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] uppercase text-[#666]">W</span>
-                    <input type="range" min="0.5" max="3.0" step="0.1" value={mFontW} onChange={(e) => updateMessageFontSize(msg.id, 'fontWidth', parseFloat(e.target.value))} className="w-12 accent-[#4a9eff]" title="Message width (Output only)" />
-                    <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mFontW.toFixed(1)}</span>
+                    <span className="text-[10px] uppercase text-[#666]">Size</span>
+                    <input type="range" min="0.5" max="3.0" step="0.1" value={mSize} onChange={(e) => updateMessageSize(msg.id, parseFloat(e.target.value))} className="w-16 accent-[#4a9eff]" title="Message size (Dashboard & Output)" />
+                    <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mSize.toFixed(1)}</span>
                   </div>
                   </div>
                   {/* Show / Flash / Maximize group — pinned far right (shrink-0 so never covered) */}
