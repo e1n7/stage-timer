@@ -241,22 +241,22 @@ export const TimerOutput = () => {
       ) : messageMaximize && messageText ? (
         <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
             <div
-              className="text-center"
+              className="w-full text-center leading-tight break-words"
               style={{
                 color: messageColor,
-                fontSize: `min(${Math.max(3, 18 - (messageText.length / 4))}vh, ${Math.max(4, 75 / Math.max(1, messageText.length / 6))}vw)`,
+                fontSize: `min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw)`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
-                lineHeight: 1.15,
+                lineHeight: 1.1,
                 textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
                 transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                 transformOrigin: 'center',
-                whiteSpace: 'normal',
-                wordBreak: 'break-word',
-                maxWidth: '92vw',
-                maxHeight: '90vh',
-                overflow: 'hidden'
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                overflowWrap: 'anywhere',
+                maxWidth: '95vw',
+                maxHeight: '92vh'
               }}
             >
               {messageText}
@@ -290,7 +290,7 @@ export const TimerOutput = () => {
             </div>
             {(messageVisible || messageFlashing) && messageText && (
               <div
-                className="mt-[3vh] text-center transition-opacity duration-150"
+                className="mt-[3vh] w-full text-center transition-opacity duration-150 leading-tight break-words"
                 style={{
                   opacity: messageFlashing ? 1 : 1,
                   color: messageColor,
@@ -302,9 +302,10 @@ export const TimerOutput = () => {
                   letterSpacing: '0.02em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                   transformOrigin: 'center',
-                  whiteSpace: 'normal',
-                  wordBreak: 'break-word',
-                  maxWidth: '85vw'
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  overflowWrap: 'anywhere',
+                  maxWidth: '90vw'
                 }}
               >
                 {messageText}

@@ -1544,22 +1544,21 @@ function App() {
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-full w-full items-center justify-center px-2 py-2 overflow-hidden">
                 <div
-                  className="text-center leading-tight break-words max-h-full max-w-full"
+                  className="w-full text-center leading-tight break-words max-h-full"
                   style={{
                     color: getActiveMessage().messageColor,
-                    fontSize: `min(${Math.max(14, 50 - (getActiveMessage().messageText.length * 1.2))}px, 22vh)`,
+                    fontSize: `min(${Math.max(14, 60 - (getActiveMessage().messageText.length * 0.8))}px, 160px)`,
                     fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
-                    lineHeight: 1.15,
+                    lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
                     textShadow: isFlash ? `0 0 20px ${getActiveMessage().messageColor}` : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
                     transform: `scale(${getActiveMessage().messageFontWidth}, ${getActiveMessage().messageFontHeight})`,
                     transformOrigin: 'center',
-                    whiteSpace: 'normal',
-                    wordBreak: 'break-word',
-                    maxWidth: '100%',
-                    maxHeight: '100%'
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere'
                   }}
                 >
                   {getActiveMessage().messageText}
