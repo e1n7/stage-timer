@@ -150,6 +150,7 @@ const clampDigits = (val: string, max: number) => {
 const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
   const m = Math.floor(value / 60);
   const s = value % 60;
+  const secRef = useRef<HTMLInputElement>(null);
 
   const update = (newM: number, newS: number) => {
     onChange(newM * 60 + newS);
@@ -166,7 +167,11 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           autoComplete="off"
           spellCheck={false}
           value={pad(m)} 
-          onChange={(e) => update(clampDigits(e.target.value, 99), s)}
+          onChange={(e) => {
+            const val = e.target.value;
+            update(clampDigits(val, 99), s);
+            if (val.length >= 2) secRef.current?.focus();
+          }}
           onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 99))}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           onFocus={(e) => { e.target.select(); }}
@@ -177,6 +182,7 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
+          ref={secRef}
           type="text" 
           inputMode="numeric"
           autoComplete="off"
@@ -184,7 +190,7 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           value={pad(s)} 
           onChange={(e) => update(m, clampDigits(e.target.value, 59))}
           onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 59))}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (e.key === 'Backspace' && e.currentTarget.value === '') { /* handle if needed */ } if (e.key === 'Enter') e.currentTarget.blur(); }}
           onFocus={(e) => { e.target.select(); }}
           className={inputClass}
         />
