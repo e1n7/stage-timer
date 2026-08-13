@@ -1649,9 +1649,9 @@ function App() {
                     value={msg.text}
                     onChange={(e) => updateMessage(msg.id, e.target.value)}
                     placeholder="Enter message ..."
-                    rows={1}
+                    rows={2}
                     draggable={false}
-                    className="min-h-[32px] max-h-[72px] flex-1 resize-y rounded-md border border-[#444] bg-[#1c1c1c] px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-[#555]"
+                    className="min-h-[48px] max-h-[110px] flex-1 resize-y rounded-md border border-[#444] bg-[#1c1c1c] px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-[#555]"
                     style={{
                       color: msg.color,
                       fontWeight: msg.bold ? 700 : 400,
@@ -1701,8 +1701,8 @@ function App() {
                     <span className="w-6 font-mono text-[10px] text-[#8a8a8a]">{mFontW.toFixed(1)}</span>
                   </div>
                   </div>
-                  {/* Show / Flash / Maximize control — shrink-0 so it can never be covered */}
-                  <div className="flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
+                  {/* Show / Flash / Maximize group — pinned far right (shrink-0 so never covered) */}
+                  <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
                     <button
                       type="button"
                       onClick={() => flashMessage(msg.id)}
@@ -1761,8 +1761,14 @@ function App() {
               <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
               <div className="group relative flex-1">
                 <div className="absolute inset-0 flex items-center">
-                  {/* Plain dark/gray track — no color zones */}
-                  <div className="h-1 w-full rounded-full bg-[#333]"></div>
+                  {/* Elapsed portion (dark gray) — clipped at the scrubber */}
+                  <div className="absolute inset-0 overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
+                    <div className="h-1 w-full rounded-full bg-[#666]"></div>
+                  </div>
+                  {/* Remaining portion (white) — clipped after the scrubber */}
+                  <div className="absolute inset-0 overflow-hidden rounded-full" style={{ clipPath: `inset(0 0 0 ${scrubberPct * 100}%)` }}>
+                    <div className="h-1 w-full rounded-full bg-white"></div>
+                  </div>
                   {/* Thin vertical separators between stages — always visible */}
                   {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
                     let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
