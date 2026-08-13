@@ -42,17 +42,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   const descendingSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
 
-  // Build zones anchored at the RIGHT edge so red always ends at the bar's
-  // right side and green always starts at the left:
-  //   green = from (total - greenWidthStart) ... largest threshold
-  // is computed right-to-left below by accumulating widths from the right.
+  // Build zones left-to-right (green first, red last). The fill div is
+  // right-anchored, so the first child (green) sits at the left edge of
+  // the visible fill and red/orange end up at the right end of the fill.
   const zoneWidths: { width: number; color: string }[] = [];
 
   let lastThreshold = safeTotal;
 
   // Green zone from total down to the largest warning threshold.
   if (descendingSegments.length > 0) {
-    zoneWidths.unshift({
+    zoneWidths.push({
       width: ((lastThreshold - descendingSegments[0].threshold) / safeTotal) * 100,
       color: '#22c55e'
     });
@@ -62,7 +61,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // Warning zones moving toward zero, largest threshold first.
   for (const seg of descendingSegments) {
     if (seg.threshold < lastThreshold) {
-      zoneWidths.unshift({
+      zoneWidths.push({
         width: ((lastThreshold - seg.threshold) / safeTotal) * 100,
         color: seg.color
       });
@@ -72,7 +71,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   // Red zone from the smallest threshold down to zero (rightmost).
   if (lastThreshold > 0) {
-    zoneWidths.unshift({
+    zoneWidths.push({
       width: (lastThreshold / safeTotal) * 100,
       color: '#fa5252'
     });
