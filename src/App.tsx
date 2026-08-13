@@ -1428,7 +1428,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[420px] w-full flex-col justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300`}>
+          <div className={`relative flex h-[420px] w-full flex-col justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-[340px] w-full items-center justify-center px-4">
@@ -1453,13 +1453,13 @@ function App() {
             ) : (
               <>
             {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
-              <div className="flex items-center justify-center pt-1.5">
-                <span className="inline-block rounded bg-[#fa5252]/15 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
+              <div className="flex items-center justify-center pt-1">
+                <span className="inline-block rounded bg-[#fa5252]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
               </div>
             )}
-            <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
+            <div className="flex items-center justify-center text-[11px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
-              className="digit mt-2 flex h-[86px] w-full items-center justify-center text-center text-[72px] font-bold leading-none tracking-tighter transition-all duration-75" 
+              className="digit mt-1 flex h-[80px] w-full items-center justify-center text-center text-[64px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
                 opacity: (isFlashing && !isFlash) ? 0 : 1,
@@ -1468,14 +1468,14 @@ function App() {
             >
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
-            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
+            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-4" className="mt-2 rounded-sm" />}
             </>
             )}
           </div>
 
           {activeTimerId && (
             <>
-              <div className="mt-3 flex items-center gap-4 text-[13px]">
+              <div className="mt-2 flex items-center gap-3 text-[12px]">
                 <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
@@ -1490,8 +1490,7 @@ function App() {
                   </span>
                 </div>
               </div>
-              <div 
-                className="relative mt-4 group cursor-pointer"
+              <div className="relative mt-2 group cursor-pointer"
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
