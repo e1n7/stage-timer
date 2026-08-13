@@ -265,18 +265,19 @@ export const TimerOutput = () => {
           </div>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[0vh]">
-          <div className="flex flex-1 items-center justify-center w-full">
-            {seconds < 0 && (
-              <div className="absolute left-1/2 top-[6vh] z-10 -translate-x-1/2">
-                <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4.5vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
-              </div>
-            )}
+        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] py-[1vh]">
+          {seconds < 0 && (
+            <div className="absolute left-1/2 top-[3vh] z-10 -translate-x-1/2">
+              <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
+            </div>
+          )}
+          <div className="flex flex-1 w-full flex-col items-center justify-center">
+            {/* Timer digits - smaller when a message is shown */}
             <div 
               className="text-center font-bold tabular-nums tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getTextColor(), 
-                fontSize: 'min(98vw, 65vh)', 
+                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(75vw, 34vh)' : 'min(98vw, 65vh)', 
                 lineHeight: 1, 
                 fontFamily: 'Inter, system-ui, sans-serif',
                 opacity: (isFlashing && !flash) ? 0 : 1,
@@ -287,18 +288,19 @@ export const TimerOutput = () => {
             >
               {seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)}
             </div>
-            {/* Message display */}
+            {/* Message display - below the timer */}
             {(messageVisible || messageFlashing) && messageText && (
               <div
-                className="absolute bottom-[14vh] left-1/2 z-10 -translate-x-1/2 text-center transition-opacity duration-150"
+                className="mt-[3vh] text-center transition-opacity duration-150"
                 style={{
                   opacity: messageFlashing ? 1 : 1,
                   color: messageColor,
-                  fontSize: 'min(6vw, 5vh)',
-                  fontWeight: messageBold ? 800 : 600,
+                  fontSize: 'min(7vw, 7.5vh)',
+                  fontWeight: messageBold ? 800 : 700,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
-                  textShadow: `0 2px 12px rgba(0,0,0,0.6), 0 0 30px ${messageColor}55`,
-                  letterSpacing: '0.04em',
+                  lineHeight: 1.2,
+                  textShadow: `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
+                  letterSpacing: '0.03em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                   transformOrigin: 'center'
                 }}
@@ -307,7 +309,7 @@ export const TimerOutput = () => {
               </div>
             )}
           </div>
-          <div className="w-full pb-[2vh]">
+          <div className="w-full pb-[1.5vh]">
             <ProgressBar currentSeconds={seconds} totalSeconds={totalTime || 1} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
           </div>
         </div>

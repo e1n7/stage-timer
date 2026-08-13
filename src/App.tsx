@@ -1414,23 +1414,26 @@ function App() {
             >
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
-            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
             {getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout && (
-              <div className="mt-3 flex items-center justify-center">
+              <div className="mt-2 flex items-center justify-center">
                 <div
-                  className="max-h-[60px] overflow-hidden px-2 py-1 text-center text-[16px] leading-tight break-words"
+                  className="text-center leading-tight break-words"
                   style={{
                     color: getActiveMessage().messageColor,
+                    fontSize: `${Math.round(22 * getActiveMessage().messageFontHeight)}px`,
                     fontWeight: getActiveMessage().messageBold ? 700 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
-                    textShadow: isFlash ? `0 0 12px ${getActiveMessage().messageColor}` : 'none'
+                    textShadow: isFlash ? `0 0 12px ${getActiveMessage().messageColor}` : 'none',
+                    transform: `scaleX(${getActiveMessage().messageFontWidth})`,
+                    transformOrigin: 'center'
                   }}
                 >
                   {getActiveMessage().messageText}
                 </div>
               </div>
             )}
+            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-6" className="mt-3 rounded-sm" />}
           </div>
 
           {activeTimerId && (
