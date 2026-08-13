@@ -27,27 +27,31 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   const h = Math.floor(value / 3600);
   const m = Math.floor((value % 3600) / 60);
   const s = value % 60;
+  const minRef = useRef<HTMLInputElement>(null);
+  const secRef = useRef<HTMLInputElement>(null);
 
-  // Hours, minutes, seconds boxes (00:00:00 format). Minutes accepts 60+; display shows total minutes (e.g. 60:00), but typing 1 in Hours keeps the value as 1 hour (3600s).
   const update = (newH: number, newM: number, newS: number) => {
     const total = Math.max(0, newH) * 3600 + Math.max(0, newM) * 60 + Math.max(0, newS);
     onChange(total);
   };
 
-  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
-  // Total minutes for the minutes box (60 min -> shows 60, 1:00:00 -> shows 60 too)
-  const totalMinutes = Math.floor(value / 60);
+  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors";
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex flex-col items-center gap-1">
         <input 
-          type="number" 
+          type="text" 
+          inputMode="numeric"
+          autoComplete="off"
           value={pad(h)} 
-          onChange={(e) => update(parseInt(e.target.value) || 0, m, s)}
+          onChange={(e) => {
+            const val = e.target.value;
+            const num = clampDigits(val, 99);
+            update(num, m, s);
+            if (val.length >= 2) minRef.current?.focus();
+          }}
           onFocus={(e) => e.target.select()}
-          min={0}
-          max={23}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
@@ -55,11 +59,18 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
-          type="number" 
-          value={totalMinutes} 
-          onChange={(e) => { const tm = parseInt(e.target.value) || 0; update(0, tm, s); }}
+          ref={minRef}
+          type="text" 
+          inputMode="numeric"
+          autoComplete="off"
+          value={pad(m)} 
+          onChange={(e) => {
+            const val = e.target.value;
+            const num = clampDigits(val, 59);
+            update(h, num, s);
+            if (val.length >= 2) secRef.current?.focus();
+          }}
           onFocus={(e) => e.target.select()}
-          min={0}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes</span>
@@ -67,12 +78,13 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
-          type="number" 
+          ref={secRef}
+          type="text" 
+          inputMode="numeric"
+          autoComplete="off"
           value={pad(s)} 
-          onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+          onChange={(e) => update(h, m, clampDigits(e.target.value, 59))}
           onFocus={(e) => e.target.select()}
-          min={0}
-          max={59}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Seconds</span>
