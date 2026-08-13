@@ -1569,28 +1569,28 @@ function App() {
                   sendControl('SET', targetTime);
                 }}
               >
-                <div className="grid grid-cols-4 gap-[1px] overflow-hidden rounded-t-md border border-[#333] text-[11px] bg-[#333]">
-                  {[1, 0.75, 0.5, 0.25].map((factor, i) => {
+                <div className="grid grid-cols-8 gap-[1px] overflow-hidden rounded-t-md border border-[#333] text-[9px] bg-[#333]">
+                  {[1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125].map((factor, i) => {
                     const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
                     return (
-                      <div key={i} className="bg-[#1a1a1a] p-3 text-left text-[#666] border-r border-[#333] last:border-r-0 font-mono">
+                      <div key={i} className="bg-[#1a1a1a] p-1.5 text-left text-[#555] border-r border-[#333] last:border-r-0 font-mono truncate">
                         {formatClock(targetTime)}
                       </div>
                     );
                   })}
                 </div>
-                <div className="relative h-10 w-full bg-[#1a1a1a] border-x border-b border-[#333] rounded-b-md overflow-hidden">
-                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-2" className="absolute bottom-0 left-0 right-0" />
+                <div className="relative h-8 w-full bg-[#1a1a1a] border-x border-b border-[#333] rounded-b-md overflow-hidden">
+                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-[4px]" className="absolute bottom-0 left-0 right-0" />
                   
                   {/* Red Playhead Marker */}
                   <div 
-                    className="absolute top-0 bottom-0 w-[3px] bg-[#fa5252] pointer-events-none z-10"
+                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-10"
                     style={{ 
                       left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
                       transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                     }}
                   >
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-3 bg-[#fa5252] rounded-b-[3px]" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-2 bg-[#fa5252] rounded-b-[2px]" />
                   </div>
 
                   {/* Hover Playhead Marker */}
