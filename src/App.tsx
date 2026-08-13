@@ -274,6 +274,9 @@ const IconFlash = ({ className = "", size = 12 }: IconProps) => (
 const IconCircle = ({ size = 8 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
 );
+const IconSelect = ({ size = 16 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/><path d="M12 2v3"/><path d="m7 5 1 1.5"/><path d="m17 5-1 1.5"/></svg>
+);
 const IconMore = ({ className = "", size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><circle cx="12" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
 );
@@ -775,14 +778,25 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
       {/* Controls */}
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <button 
-          type="button" 
-          onClick={resetTimer} 
-          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
-          title="Reset to assigned time"
-        >
-          <IconSkipBack size={16} />
-        </button>
+        {isActive ? (
+          <button 
+            type="button" 
+            onClick={resetTimer} 
+            className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+            title="Reset to assigned time"
+          >
+            <IconSkipBack size={16} />
+          </button>
+        ) : (
+          <button 
+            type="button" 
+            onClick={() => onActivate()}
+            className="flex h-9 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+            title="Select this timer"
+          >
+            <IconSelect size={16} />
+          </button>
+        )}
         <button 
           type="button" 
           onClick={() => setIsSettingsOpen(true)}
