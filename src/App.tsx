@@ -1551,12 +1551,12 @@ function App() {
                     fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
                     lineHeight: 1.1,
-                    opacity: (isFlashing && !isFlash) ? 0.2 : 1,
+                    opacity: (isFlashing && !isFlash) ? 0.1 : 1,
                     textShadow: isFlashing && isFlash 
-                      ? `0 0 15px ${getActiveMessage().messageColor}, 0 0 30px ${getActiveMessage().messageColor}` 
+                      ? `0 0 10px #fff, 0 0 20px ${getActiveMessage().messageColor}, 0 0 40px ${getActiveMessage().messageColor}` 
                       : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
-                    transition: 'all 0.1s ease-in-out',
+                    transition: 'none',
                     transform: `scale(${getActiveMessage().messageFontWidth}, ${getActiveMessage().messageFontHeight})`,
                     transformOrigin: 'center',
                     whiteSpace: 'pre-wrap',

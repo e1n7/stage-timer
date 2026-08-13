@@ -94,27 +94,29 @@ export const TimerOutput = () => {
         if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
       if ('messageShown' in data) setMessageVisible(!!data.messageShown);
-      if ('messageFlash' in data && data.messageFlash) {
-        setMessageFlashing(true);
-        if (data.messageText) setMessageText(data.messageText);
-        if (data.messageColor) setMessageColor(data.messageColor);
-        if ('messageBold' in data) setMessageBold(!!data.messageBold);
-        if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
-        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
-        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
-        setMessageMaximize(true);
-        
-        // Trigger 3-blink sequence
-        let count = 0;
-        const interval = setInterval(() => {
-          setFlash(prev => !prev);
-          count++;
-          if (count >= 6) {
-            clearInterval(interval);
-            setFlash(false);
-            setMessageFlashing(false);
-          }
-        }, 150);
+      if ('messageFlash' in data) {
+        if (data.messageFlash) {
+          setMessageFlashing(true);
+          if (data.messageText) setMessageText(data.messageText);
+          if (data.messageColor) setMessageColor(data.messageColor);
+          if ('messageBold' in data) setMessageBold(!!data.messageBold);
+          if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
+          if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+          if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
+          setMessageMaximize(true);
+          
+          // Trigger 3-blink sequence locally
+          let count = 0;
+          const interval = setInterval(() => {
+            setFlash(prev => !prev);
+            count++;
+            if (count >= 6) {
+              clearInterval(interval);
+              setFlash(false);
+              setMessageFlashing(false);
+            }
+          }, 150);
+        }
       }
       if ('messageMaximize' in data) {
         const maxOn = !!data.messageMaximize;
@@ -259,7 +261,7 @@ export const TimerOutput = () => {
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 lineHeight: 1.1,
                 textShadow: messageFlashing && flash 
-                  ? `0 0 20px ${messageColor}, 0 0 40px ${messageColor}, 0 0 60px ${messageColor}` 
+                  ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                   : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
                 transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
@@ -269,8 +271,8 @@ export const TimerOutput = () => {
                 overflowWrap: 'anywhere',
                 maxWidth: '95vw',
                 maxHeight: '92vh',
-                opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
-                transition: 'all 0.1s ease-in-out'
+                opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
+                transition: 'none'
               }}
             >
               {messageText}
@@ -313,9 +315,9 @@ export const TimerOutput = () => {
                   textTransform: messageUppercase ? 'uppercase' : 'none',
                   lineHeight: 1.1,
                   textShadow: messageFlashing && flash 
-                    ? `0 0 15px ${messageColor}, 0 0 30px ${messageColor}` 
+                    ? `0 0 10px #fff, 0 0 20px ${messageColor}, 0 0 40px ${messageColor}` 
                     : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
-                  transition: 'all 0.1s ease-in-out',
+                  transition: 'none',
                   letterSpacing: '0.02em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                   transformOrigin: 'center',
