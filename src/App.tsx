@@ -1539,7 +1539,17 @@ function App() {
               </div>
             )}
           </div>
-          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { setRooms(imported.rooms); if (imported.activeRoomName) { const activeRoom = imported.rooms.find((r: Room) => r.name === imported.activeRoomName); if (activeRoom) loadRoom(activeRoom); } } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
+          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { 
+  setRooms(prev => {
+    const existingNames = new Set(prev.map(r => r.name));
+    const newRooms = imported.rooms.filter((r: any) => !existingNames.has(r.name));
+    return [...prev, ...newRooms];
+  }); 
+  if (imported.activeRoomName) { 
+    const activeRoom = imported.rooms.find((r: any) => r.name === imported.activeRoomName); 
+    if (activeRoom) loadRoom(activeRoom); 
+  } 
+} } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
