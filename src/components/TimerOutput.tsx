@@ -12,8 +12,10 @@ const formatClock = (seconds: number, allowNegative = false) => {
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
 
-  const base = `${pad(hours * 60 + minutes)}:${pad(secs)}`;
-  return neg ? `-${base}` : base;
+  if (hours > 0) {
+    return `${neg ? '-' : ''}${hours}:${pad(minutes)}:${pad(secs)}`;
+  }
+  return `${neg ? '-' : ''}${pad(minutes)}:${pad(secs)}`;
 };
 
 export const TimerOutput = () => {

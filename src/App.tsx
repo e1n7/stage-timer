@@ -45,26 +45,29 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   }, [value]);
 
   const handleChange = (type: 'h'|'m'|'s', val: string) => {
-    // Allow up to 2 digits, numbers only
-    const clean = val.replace(/\D/g, '').slice(-2);
+    // Allow numbers only. Hours can be many digits, min/sec usually 2.
+    const clean = val.replace(/\D/g, '');
+    const limited = type === 'h' ? clean.slice(0, 3) : clean.slice(0, 2);
+    
     let nextH = hStr, nextM = mStr, nextS = sStr;
 
     if (type === 'h') {
-      nextH = clean;
-      setHStr(clean);
-      if (clean.length >= 2) minRef.current?.focus();
+      nextH = limited;
+      setHStr(limited);
+      if (limited.length >= 2 && val.length > hStr.length) minRef.current?.focus();
     } else if (type === 'm') {
-      nextM = clean;
-      setMStr(clean);
-      if (clean.length >= 2) secRef.current?.focus();
+      nextM = limited;
+      setMStr(limited);
+      if (limited.length >= 2 && val.length > mStr.length) secRef.current?.focus();
     } else {
-      nextS = clean;
-      setSStr(clean);
+      nextS = limited;
+      setSStr(limited);
     }
 
     const h = parseInt(nextH) || 0;
     const m = parseInt(nextM) || 0;
     const s = parseInt(nextS) || 0;
+    // Only trigger onChange if we have a valid number, to avoid jumping during typing
     onChange(h * 3600 + m * 60 + s);
   };
 
@@ -252,8 +255,10 @@ const formatClock = (seconds: number, allowNegative = false) => {
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
   
-  const base = `${pad(hours * 60 + minutes)}:${pad(secs)}`;
-  return neg ? `-${base}` : base;
+  if (hours > 0) {
+    return `${neg ? '-' : ''}${hours}:${pad(minutes)}:${pad(secs)}`;
+  }
+  return `${neg ? '-' : ''}${pad(minutes)}:${pad(secs)}`;
 };
 
 const CHANNEL_NAME = 'stage-timer-sync';
