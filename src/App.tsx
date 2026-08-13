@@ -1776,27 +1776,30 @@ function App() {
             }
           }
           return (
-            <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
-              <span className="tabular-nums text-white">{leftLabel}</span>
+            <div className="flex flex-1 items-center gap-3">
+              <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
               <div className="group relative flex-1">
                 <div className="absolute inset-0 flex items-center">
-                  {/* Remaining (unvisited) background */}
+                  {/* Remaining (unvisited) background — dark gray */}
                   <div className="h-1 w-full rounded-full bg-[#333]"></div>
-                  {/* Color-coded progress within the active stage (follows the timer's own color logic) */}
-                  {zones.map((z, i) => (
-                    <div key={`zone-${i}`} className="absolute h-1 rounded-full transition-all duration-300" style={{ left: `${z.leftPct}%`, width: `${z.rightPct - z.leftPct}%`, backgroundColor: z.color }}></div>
-                  ))}
-                  {/* Thin vertical separators between stages */}
+                  {/* Color-coded progress: only the ELAPSED portion, clipped by a mask at the scrubber */}
+                  <div className="absolute inset-0 overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
+                    {/* Color zones follow the active stage's own color thresholds */}
+                    {zones.map((z, i) => (
+                      <div key={`zone-${i}`} className="absolute h-1 rounded-full transition-all duration-300" style={{ left: `${z.leftPct}%`, width: `${z.rightPct - z.leftPct}%`, backgroundColor: z.color }}></div>
+                    ))}
+                  </div>
+                  {/* Thin vertical separators between stages — always visible */}
                   {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
                     let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
-                    return <div key={`tick-${i}`} className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
+                    return <div key={`tick-${i}`} className="absolute top-1/2 z-10 h-3 w-px -translate-y-1/2 bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
                   })}
                 </div>
                 <div className="relative flex h-4 items-center">
                   <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform duration-300 absolute -translate-x-1/2" style={{ left: `${scrubberPct * 100}%` }}></div>
                 </div>
               </div>
-              <span className="tabular-nums text-white">{endLabel}</span>
+              <span className="tabular-nums shrink-0 text-white">{endLabel}</span>
             </div>
           );
         })()}
