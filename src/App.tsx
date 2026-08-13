@@ -1444,10 +1444,10 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[300px] w-full flex-col justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300`}>
+          <div className={`relative flex h-[240px] w-full flex-col justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
-              <div className="flex h-[240px] w-full items-center justify-center px-4">
+              <div className="flex h-[190px] w-full items-center justify-center px-4">
                 <div
                   className="text-center leading-tight break-words"
                   style={{
@@ -1475,7 +1475,7 @@ function App() {
             )}
             <div className="flex items-center justify-center text-[10px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
-              className="digit mt-0.5 flex h-[64px] w-full items-center justify-center text-center text-[52px] font-bold leading-none tracking-tighter transition-all duration-75" 
+              className="digit mt-0.5 flex h-[52px] w-full items-center justify-center text-center text-[42px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
                 opacity: (isFlashing && !isFlash) ? 0 : 1,
@@ -1484,7 +1484,7 @@ function App() {
             >
               {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
             </div>
-            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-2.5" className="mt-1.5 rounded-sm" />}
+            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTimerState?.settings.targetDuration || 600} segments={displaySettings.segments} height="h-2" className="mt-1 rounded-sm" />}
             </>
             )}
           </div>

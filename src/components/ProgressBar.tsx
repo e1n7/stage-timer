@@ -29,9 +29,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const safeTotal = Math.max(totalSeconds, 1);
   const progressPercent = (Math.max(0, currentSeconds) / safeTotal) * 100;
 
-  // Sort segments by threshold descending (e.g., 60s, then 10s)
-  const sortedSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
-
   // We define the zones from 0 to totalSeconds
   // Zone 1: 0 to T_last (e.g., 0 to 10s) -> Color_last
   // Zone 2: T_last to T_prev (e.g., 10s to 60s) -> Color_prev
@@ -80,12 +77,12 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         ))}
       </div>
 
-      {/* The mask that hides the "elapsed" time from the left */}
+      {/* The mask that covers the "remaining" time on the right, leaving elapsed visible on the left */}
       <div 
         className="absolute inset-0 bg-[#141414] transition-all duration-1000 ease-linear"
         style={{ 
           width: `${100 - progressPercent}%`,
-          left: 0
+          left: `${progressPercent}%`
         }}
       />
     </div>
