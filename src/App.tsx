@@ -1561,6 +1561,7 @@ function App() {
                     fontSize: `min(${Math.max(14, 60 - (getActiveMessage().messageText.length * 0.8))}px, 160px)`,
                     fontWeight: getActiveMessage().messageBold ? 900 : 400,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
+                    fontFamily: 'Inter, system-ui, sans-serif',
                     lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.1 : 1,
                     textShadow: isFlashing && isFlash 

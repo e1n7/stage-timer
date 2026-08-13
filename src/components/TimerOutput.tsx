@@ -249,6 +249,7 @@ export const TimerOutput = () => {
                 fontSize: `calc(min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw) * ${messageSize})`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
+                fontFamily: 'Inter, system-ui, sans-serif',
                 lineHeight: 1.1,
                 textShadow: messageFlashing && flash 
                   ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
@@ -305,6 +306,7 @@ export const TimerOutput = () => {
                   fontSize: `calc(min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw) * ${messageSize})`,
                   fontWeight: messageBold ? 900 : 400,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
+                  fontFamily: 'Inter, system-ui, sans-serif',
                   lineHeight: 1.1,
                   textShadow: messageFlashing && flash 
                     ? `0 0 10px #fff, 0 0 20px ${messageColor}, 0 0 40px ${messageColor}` 
