@@ -1519,7 +1519,9 @@ function App() {
                   style={{ 
                     color: getDashboardTextColor(), 
                     opacity: (isFlashing && !isFlash) ? 0 : 1,
-                    textShadow: isFlash ? `0 0 40px ${getDashboardGlowColor()}` : 'none'
+                    textShadow: isFlash ? `0 0 40px ${getDashboardGlowColor()}` : 'none',
+                    transform: `scale(${displaySettings.fontWidth || 1.0}, ${displaySettings.fontHeight || 1.6})`,
+                    transformOrigin: 'center'
                   }}
                 >
                   {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
