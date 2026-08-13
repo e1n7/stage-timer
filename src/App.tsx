@@ -1568,7 +1568,7 @@ function App() {
                       : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.01em',
                     transition: 'none',
-                    transform: `scale(${getActiveMessage().messageSize})`,
+                    transform: `scale(calc(${getActiveMessage().messageSize} * 0.9), calc(${getActiveMessage().messageSize} * 1.5))`,
                     transformOrigin: 'center',
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',

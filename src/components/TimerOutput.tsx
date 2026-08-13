@@ -254,6 +254,7 @@ export const TimerOutput = () => {
                   ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                   : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
+                transform: `scale(0.9, 1.5)`,
                 transformOrigin: 'center',
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
@@ -310,6 +311,7 @@ export const TimerOutput = () => {
                     : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
                   transition: 'none',
                   letterSpacing: '0.02em',
+                  transform: `scale(0.9, 1.4)`,
                   transformOrigin: 'center',
                   whiteSpace: 'pre-wrap',
                   wordWrap: 'break-word',
