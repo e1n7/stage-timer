@@ -14,10 +14,15 @@ interface ProgressBarProps {
 }
 
 /**
- * A flexible progress bar that shows colored segments based on time thresholds.
- * The bar shrinks from left to right as time progresses (for countdowns),
- * meaning the "safe" (green) part disappears first, then "warning" (orange),
- * and finally "danger" (red).
+ * A flexible progress bar that shows colored segments based on time thresholds
+ * and shrinks the remaining-time fill from RIGHT to LEFT as a countdown runs.
+ *
+ * Layout (countdown semantics, seconds remaining as `currentSeconds`):
+ * - Full-length colored track: green = from largest threshold up to total,
+ *   then orange/red warning zones closest to zero.
+ * - A dark mask covers the RIGHT portion representing ELAPSED time, so the
+ *   colored remaining portion starts at the left edge and visibly shrinks
+ *   toward the right as the timer counts down.
  */
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentSeconds,
@@ -27,20 +32,17 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   height = 'h-4',
 }) => {
   const safeTotal = Math.max(totalSeconds, 1);
-  const progressPercent = (Math.max(0, currentSeconds) / safeTotal) * 100;
+  // Percentage of time REMAINING — the colored portion width.
+  const remainingPercent = (Math.min(Math.max(currentSeconds, 0), safeTotal) / safeTotal) * 100;
 
-  // We define the zones from 0 to totalSeconds
-  // Zone 1: 0 to T_last (e.g., 0 to 10s) -> Color_last
-  // Zone 2: T_last to T_prev (e.g., 10s to 60s) -> Color_prev
-  // ...
-  // Zone N: T_first to Total (e.g., 60s to 300s) -> Default Green
-
+  // Build color zones from 0 to totalSeconds, smallest threshold first.
+  // The mask placed on the right keeps the visual reading consistent:
+  // left edge = most remaining time, colors approach zero at the right.
   const zones: { width: number; color: string }[] = [];
   let lastThreshold = 0;
 
-  // Add segments from smallest threshold to largest
   const ascendingSegments = [...segments].sort((a, b) => a.threshold - b.threshold);
-  
+
   for (const seg of ascendingSegments) {
     if (seg.threshold > lastThreshold) {
       zones.push({
@@ -51,7 +53,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     }
   }
 
-  // Add the remaining "safe" zone if any
+  // Add the remaining "safe" zone from the largest threshold to total.
   if (lastThreshold < safeTotal) {
     zones.push({
       width: ((safeTotal - lastThreshold) / safeTotal) * 100,
@@ -59,16 +61,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     });
   }
 
-  // Reverse zones to display from Green (left) to Red (right)
-  // Green is the largest threshold to Total
-  // Red is 0 to smallest threshold
-  const displayZones = [...zones].reverse();
-
   return (
     <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
-      {/* The full timeline with all colors */}
+      {/* The full colored timeline, green on the left (full time) to warning colors on the right (near zero) */}
       <div className="flex h-full w-full">
-        {displayZones.map((zone, i) => (
+        {zones.map((zone, i) => (
           <div
             key={i}
             style={{ width: `${zone.width}%`, backgroundColor: zone.color }}
@@ -77,12 +74,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         ))}
       </div>
 
-      {/* The mask that covers the "remaining" time on the right, leaving elapsed visible on the left */}
-      <div 
+      {/* The mask that covers the ELAPSED portion on the right side, so the
+          colored remaining-time fill visibly shrinks as the timer counts down */}
+      <div
         className="absolute inset-0 bg-[#141414] transition-all duration-1000 ease-linear"
-        style={{ 
-          width: `${100 - progressPercent}%`,
-          left: `${progressPercent}%`
+        style={{
+          width: `${100 - remainingPercent}%`,
+          left: `${remainingPercent}%`
         }}
       />
     </div>

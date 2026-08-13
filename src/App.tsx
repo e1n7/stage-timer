@@ -1510,7 +1510,7 @@ function App() {
             )}
             <div className="flex items-center justify-center text-[10px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
             <div 
-              className="digit mt-0.5 flex h-[52px] w-full items-center justify-center text-center text-[42px] font-bold leading-none tracking-tighter transition-all duration-75" 
+              className="digit mt-0.5 flex h-[70px] w-full items-center justify-center text-center text-[56px] font-bold leading-none tracking-tighter transition-all duration-75" 
               style={{ 
                 color: getDashboardTextColor(), 
                 opacity: (isFlashing && !isFlash) ? 0 : 1,
