@@ -1484,18 +1484,18 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[110px] w-[240px] flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] px-4 py-[12px] shadow-xl transition-all duration-300`}>
+          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-6 shadow-xl transition-all duration-300 min-h-[220px]`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
-              <div className="flex h-[190px] w-full items-center justify-center px-4">
+              <div className="flex h-full w-full items-center justify-center px-4 py-8">
                 <div
                   className="text-center leading-tight break-words"
                   style={{
                     color: getActiveMessage().messageColor,
-                    fontSize: `${Math.round(72 * getActiveMessage().messageFontHeight)}px`,
+                    fontSize: `${Math.round(84 * getActiveMessage().messageFontHeight)}px`,
                     fontWeight: getActiveMessage().messageBold ? 800 : 700,
                     textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
-                    lineHeight: 1.15,
+                    lineHeight: 1.1,
                     opacity: (isFlashing && !isFlash) ? 0.2 : 1,
                     textShadow: isFlash ? `0 0 20px ${getActiveMessage().messageColor}` : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
                     letterSpacing: '0.02em',
@@ -1507,46 +1507,41 @@ function App() {
                 </div>
               </div>
             ) : (
-              <>
-            {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
-              <div className="flex items-center justify-center pt-0.5">
-                <span className="inline-block rounded bg-[#fa5252]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#fa5252]">Overtime</span>
+              <div className="w-full">
+                {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
+                  <div className="flex items-center justify-center mb-2">
+                    <span className="inline-block rounded bg-[#fa5252]/20 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.2em] text-[#fa5252]">Overtime</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
+                <div 
+                  className="digit flex w-full items-center justify-center text-center text-[100px] font-bold leading-none tracking-tighter transition-all duration-75 mb-6" 
+                  style={{ 
+                    color: getDashboardTextColor(), 
+                    opacity: (isFlashing && !isFlash) ? 0 : 1,
+                    textShadow: isFlash ? `0 0 40px ${getDashboardGlowColor()}` : 'none'
+                  }}
+                >
+                  {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
+                </div>
+                {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-8" className="rounded-md" />}
               </div>
-            )}
-            <div className="flex items-center justify-center text-[12px]"><span className="font-bold text-[#7eb8ff]">{displaySettings.title}</span></div>
-            <div 
-              className="digit mt-0.5 flex w-full items-center justify-center text-center text-[36px] font-bold leading-none tracking-tight transition-all duration-75" 
-              style={{ 
-                color: getDashboardTextColor(), 
-                opacity: (isFlashing && !isFlash) ? 0 : 1,
-                textShadow: isFlash ? `0 0 30px ${getDashboardGlowColor()}` : 'none'
-              }}
-            >
-              {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
-            </div>
-            {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-3" className="absolute right-0 bottom-0 left-0 rounded-t-none rounded-b-lg rounded-bl-lg" />}
-            </>
             )}
           </div>
 
           {activeTimerId && (
             <>
-              <div className="mt-2 flex items-center gap-3 text-[12px]">
-                <span className="inline-block rounded border border-[#333] px-2 py-[2px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
+              <div className="mt-4 flex items-center justify-center gap-4 text-[13px]">
+                <span className="inline-block rounded border border-[#444] px-2 py-[1px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
-                  <span 
-                    className="font-mono text-[15px]" 
-                    style={{ 
-                      color: '#ffffff', 
-                      textShadow: '0 0 4px rgba(255, 255, 255, 0.3)'
-                    }}
-                  >
+                  <span className="font-mono text-[18px] font-bold tracking-tight">
                     {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime)}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
                   </span>
                 </div>
               </div>
-              <div className={`relative mt-2 group ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
+
+              <div className={`relative mt-6 group ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
                 onMouseMove={(e) => {
                   if (displaySeconds <= 0) return;
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1566,38 +1561,40 @@ function App() {
                   sendControl('SET', targetTime);
                 }}
               >
-                <div className="grid grid-cols-8 gap-[1px] overflow-hidden rounded-t-sm border border-[#2a2a2a] text-[10px] bg-[#2a2a2a]">
-                  {[1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125].map((factor, i) => {
+                <div className="grid grid-cols-4 gap-[1px] overflow-hidden rounded-t-md border border-[#333] text-[11px] bg-[#333]">
+                  {[1, 0.75, 0.5, 0.25].map((factor, i) => {
                     const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
                     return (
-                      <div key={i} className="bg-[#1c1c1c] p-1 text-left text-[10px] leading-none text-[#666] border-r border-[#2a2a2a] last:border-r-0 truncate">
+                      <div key={i} className="bg-[#1a1a1a] p-3 text-left text-[#666] border-r border-[#333] last:border-r-0 font-mono">
                         {formatClock(targetTime)}
                       </div>
                     );
                   })}
                 </div>
-                <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-1.5" className="border-x border-b border-[#2a2a2a] rounded-b-sm" />
-                
-                {/* Red Playhead Marker */}
-                <div 
-                  className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-10"
-                  style={{ 
-                    left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
-                    transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
-                  }}
-                >
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-2 bg-[#fa5252] rounded-b-[2px]" />
-                </div>
-
-                {/* Hover Playhead Marker */}
-                {hoverTime !== null && (
+                <div className="relative h-10 w-full bg-[#1a1a1a] border-x border-b border-[#333] rounded-b-md overflow-hidden">
+                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-2" className="absolute bottom-0 left-0 right-0" />
+                  
+                  {/* Red Playhead Marker */}
                   <div 
-                    className="absolute top-0 bottom-0 w-[1px] bg-white/40 pointer-events-none z-0"
+                    className="absolute top-0 bottom-0 w-[3px] bg-[#fa5252] pointer-events-none z-10"
                     style={{ 
-                      left: `${Math.max(0, Math.min(100, (1 - (hoverTime / activeProgressTotal)) * 100))}%`
+                      left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
+                      transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                     }}
-                  />
-                )}
+                  >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-3 bg-[#fa5252] rounded-b-[3px]" />
+                  </div>
+
+                  {/* Hover Playhead Marker */}
+                  {hoverTime !== null && (
+                    <div 
+                      className="absolute top-0 bottom-0 w-[1px] bg-white/50 pointer-events-none z-0"
+                      style={{ 
+                        left: `${Math.max(0, Math.min(100, (1 - (hoverTime / activeProgressTotal)) * 100))}%`
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </>
           )}
