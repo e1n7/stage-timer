@@ -1628,7 +1628,14 @@ function App() {
             <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
             <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors">{activeTimerState?.isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}</button>
-            <button onClick={goToNextTimer} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Next timer"><IconSkipForward /></button>
+            <button 
+              onClick={goToNextTimer} 
+              disabled={timerIds.length <= 1}
+              className={`col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] transition-colors ${timerIds.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`} 
+              title="Next timer"
+            >
+              <IconSkipForward />
+            </button>
             <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative">
               <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
