@@ -688,13 +688,19 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'ADJUST': setTime(Math.max(0, secondsRef.current + payload)); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
+          case 'REFRESH_SETTINGS': {
+            // Refresh visual/settings state WITHOUT touching the current time.
+            // The timer must never restart or jump when only settings change.
             const stored = localStorage.getItem(`timerSettings_${id}`);
             if (stored) {
               const newSettings = JSON.parse(stored);
-              updateSettings(newSettings);
-              setTime(newSettings.targetDuration);
+              const safeSettings = { ...newSettings };
+              // Keep the timer's real current duration; never overwrite it from settings.
+              safeSettings.targetDuration = newSettings.targetDuration;
+              updateSettings(safeSettings);
             }
             break;
+          }
         }
       }
     };
@@ -819,7 +825,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         selectedTimeZone={selectedTimeZone}
         onConfirm={(newSettings) => {
           updateSettings(newSettings);
-          setTime(newSettings.targetDuration);
+          // Only reset the timer time when the actual duration changed.
+          // Pure visual changes (font height/width, appearance) must never restart the timer.
+          if (newSettings.targetDuration !== settings.targetDuration) {
+            setTime(newSettings.targetDuration);
+          }
           onSettingsUpdate();
         }}
       />
@@ -833,7 +843,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         selectedTimeZone={selectedTimeZone}
         onConfirm={(newSettings) => {
           updateSettings(newSettings);
-          setTime(newSettings.targetDuration);
+          // Only reset the timer time when the actual duration changed.
+          // Pure visual changes (font height/width, appearance) must never restart the timer.
+          if (newSettings.targetDuration !== settings.targetDuration) {
+            setTime(newSettings.targetDuration);
+          }
           onSettingsUpdate();
         }}
       />
@@ -1031,6 +1045,10 @@ function App() {
   };
 
   const applyToAllSettings = (sharedSettings: any) => {
+    // Only propagate the visual/appearance keys so a settings change can
+    // never reset any timer's current elapsed/remaining time.
+    const { mode, fontHeight, fontWidth } = sharedSettings || {};
+    const visualOnly = { mode, fontHeight, fontWidth };
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
       const settings = stored ? JSON.parse(stored) : {
@@ -1042,12 +1060,12 @@ function App() {
           { threshold: 10, color: '#fa5252' }
         ]
       };
-      localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...sharedSettings }));
+      localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
     });
-    // Force a reload by triggering a BroadcastChannel message
+    // Force a settings refresh (without resetting time) via BroadcastChannel
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     timerIds.forEach(id => {
-      channel.postMessage({ targetId: id, command: 'RELOAD_SETTINGS' });
+      channel.postMessage({ targetId: id, command: 'REFRESH_SETTINGS' });
     });
     channel.close();
   };
