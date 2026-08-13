@@ -1418,7 +1418,7 @@ function App() {
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, type: 'force-sync' });
+      syncOutput({ messageText: msg.text || '', messageColor: msg.color || '#ffffff', messageBold: !!msg.bold, messageUppercase: !!msg.uppercase, messageFontHeight: getMessageFontSize(msg, 'fontHeight'), messageFontWidth: getMessageFontSize(msg, 'fontWidth'), messageFlash: true, messageMaximize: true, type: 'force-sync' });
     }
     setIsFlashing(true);
     let count = 0;
@@ -1870,6 +1870,8 @@ function App() {
                   <button type="button"                       onClick={() => toggleMessageBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
                   {/* Uppercase */}
                   <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
+                  {/* Flash this message */}
+                  <button type="button" onClick={() => flashMessage(msg.id)} className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-all" title="Flash this message on Output"><IconFlash size={14} /></button>
                   {/* Message font height slider */}
                   <div className="flex items-center gap-1.5 ml-2 border-l border-[#444] pl-2">
                     <span className="text-[10px] uppercase text-[#666]">H</span>

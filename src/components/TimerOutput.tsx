@@ -97,13 +97,14 @@ export const TimerOutput = () => {
       if ('messageFlash' in data) {
         const flashOn = !!data.messageFlash;
         setMessageFlashing(flashOn);
-        if (flashOn && data.messageText) {
-          setMessageText(data.messageText);
-          setMessageColor(data.messageColor || '#ffffff');
-          setMessageBold(!!data.messageBold);
-          setMessageUppercase(!!data.messageUppercase);
+        if (flashOn) {
+          if (data.messageText) setMessageText(data.messageText);
+          if (data.messageColor) setMessageColor(data.messageColor);
+          if ('messageBold' in data) setMessageBold(!!data.messageBold);
+          if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
           if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
           if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
+          setMessageMaximize(true);
         }
       }
       if ('messageMaximize' in data) {
@@ -241,7 +242,7 @@ export const TimerOutput = () => {
       ) : messageMaximize && messageText ? (
         <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
             <div
-              className="w-full text-center leading-tight break-words"
+              className="w-full text-center leading-tight break-words transition-opacity duration-75"
               style={{
                 color: messageColor,
                 fontSize: `min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw)`,
@@ -256,7 +257,8 @@ export const TimerOutput = () => {
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
                 maxWidth: '95vw',
-                maxHeight: '92vh'
+                maxHeight: '92vh',
+                opacity: messageFlashing ? (flash ? 1 : 0) : 1
               }}
             >
               {messageText}
@@ -290,9 +292,9 @@ export const TimerOutput = () => {
             </div>
             {(messageVisible || messageFlashing) && messageText && (
               <div
-                className="mt-[3vh] w-full text-center transition-opacity duration-150 leading-tight break-words"
+                className="mt-[3vh] w-full text-center transition-opacity duration-75 leading-tight break-words"
                 style={{
-                  opacity: messageFlashing ? 1 : 1,
+                  opacity: messageFlashing ? (flash ? 1 : 0) : 1,
                   color: messageColor,
                   fontSize: `min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw)`,
                   fontWeight: messageBold ? 900 : 400,
