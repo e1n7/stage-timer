@@ -1743,29 +1743,60 @@ function App() {
           const activeIdx = activeTimerId ? timerIds.indexOf(activeTimerId) : -1;
           let elapsed = 0;
           for (let i = 0; i < Math.min(activeIdx, timerIds.length); i++) elapsed += durations[i];
+          const activeDuration = activeIdx >= 0 ? (durations[activeIdx] || 0) : 0;
           if (activeIdx >= 0 && total > 0) {
-            const activeDuration = durations[activeIdx] || 0;
             elapsed += Math.max(0, Math.min(activeDuration, activeDuration - displaySeconds));
           }
           const scrubberPct = total > 0 ? Math.min(1, Math.max(0, elapsed / total)) : 0;
           const endLabel = total === 0 ? '0:00' : '-' + formatClock(total);
+          // Left label: elapsed position (HH:MM:SS while running), or 0:00 before start
+          const leftLabel = total > 0 && activeIdx >= 0 ? formatClock(Math.min(elapsed, total)) : '0:00';
+          // Active timer color zones (same logic as the timer's own progress bar)
+          const activeSettings = activeIdx >= 0 ? JSON.parse(localStorage.getItem(`timerSettings_${timerIds[activeIdx]}`) || '{}') : null;
+          const zones: { leftPct: number; rightPct: number; color: string }[] = [];
+          if (activeSettings && Array.isArray(activeSettings.segments) && activeDuration > 0) {
+            const asc = [...activeSettings.segments].sort((a: any, b: any) => a.threshold - b.threshold);
+            const segPositions = asc.map((s: any) => Math.max(0, Math.min(activeDuration, s.threshold)) / activeDuration);
+            // Zones of the ACTIVE stage slice: map segment thresholds to absolute timeline percent
+            const stageLeft = durations.slice(0, activeIdx).reduce((a: number, b: number) => a + b, 0) / (total || 1);
+            const stageRight = (durations.slice(0, activeIdx).reduce((a: number, b: number) => a + b, 0) + activeDuration) / (total || 1);
+            const stageWidth = stageRight - stageLeft;
+            const colors = asc.map((s: any) => s.color);
+            const baseColor = '#22c55e';
+            const zoneColors = [...colors, baseColor];
+            const boundaries = [0, ...segPositions, 1];
+            for (let i = 0; i < boundaries.length - 1; i++) {
+              const segFrac = boundaries[i + 1] - boundaries[i];
+              if (segFrac <= 0) continue;
+              zones.push({
+                leftPct: (stageLeft + boundaries[i] * stageWidth) * 100,
+                rightPct: (stageLeft + boundaries[i + 1] * stageWidth) * 100,
+                color: zoneColors[i]
+              });
+            }
+          }
           return (
             <div className="flex flex-1 max-w-[50%] items-center gap-4 px-12">
-              <span>0:00</span>
+              <span className="tabular-nums text-white">{leftLabel}</span>
               <div className="group relative flex-1">
                 <div className="absolute inset-0 flex items-center">
+                  {/* Remaining (unvisited) background */}
                   <div className="h-1 w-full rounded-full bg-[#333]"></div>
+                  {/* Color-coded progress within the active stage (follows the timer's own color logic) */}
+                  {zones.map((z, i) => (
+                    <div key={`zone-${i}`} className="absolute h-1 rounded-full transition-all duration-300" style={{ left: `${z.leftPct}%`, width: `${z.rightPct - z.leftPct}%`, backgroundColor: z.color }}></div>
+                  ))}
+                  {/* Thin vertical separators between stages */}
                   {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
                     let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
                     return <div key={`tick-${i}`} className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
                   })}
-                  <div className="h-1 rounded-full bg-[#555] transition-all duration-300" style={{ width: `${scrubberPct * 100}%` }}></div>
                 </div>
                 <div className="relative flex h-4 items-center">
-                  <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform absolute -translate-x-1/2" style={{ left: `${scrubberPct * 100}%` }}></div>
+                  <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform duration-300 absolute -translate-x-1/2" style={{ left: `${scrubberPct * 100}%` }}></div>
                 </div>
               </div>
-              <span>{endLabel}</span>
+              <span className="tabular-nums text-white">{endLabel}</span>
             </div>
           );
         })()}
