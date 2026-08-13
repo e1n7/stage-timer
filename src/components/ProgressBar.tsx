@@ -39,25 +39,39 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // The mask placed on the right keeps the visual reading consistent:
   // left edge = most remaining time, colors approach zero at the right.
   const zones: { width: number; color: string }[] = [];
-  let lastThreshold = 0;
 
-  const ascendingSegments = [...segments].sort((a, b) => a.threshold - b.threshold);
+  // Sort descending so the timeline reads left-to-right as
+  // full time -> warning -> near zero:
+  // green (total down to largest threshold), orange, red (rightmost edge).
+  const descendingSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
 
-  for (const seg of ascendingSegments) {
-    if (seg.threshold > lastThreshold) {
+  let lastThreshold = safeTotal;
+
+  // Green zone from total down to the largest warning threshold.
+  if (descendingSegments.length > 0) {
+    zones.push({
+      width: ((lastThreshold - descendingSegments[0].threshold) / safeTotal) * 100,
+      color: '#22c55e'
+    });
+    lastThreshold = descendingSegments[0].threshold;
+  }
+
+  // Warning zones moving toward zero, largest threshold first.
+  for (const seg of descendingSegments) {
+    if (seg.threshold < lastThreshold) {
       zones.push({
-        width: ((seg.threshold - lastThreshold) / safeTotal) * 100,
+        width: ((lastThreshold - seg.threshold) / safeTotal) * 100,
         color: seg.color
       });
       lastThreshold = seg.threshold;
     }
   }
 
-  // Add the remaining "safe" zone from the largest threshold to total.
-  if (lastThreshold < safeTotal) {
+  // Red zone from the smallest threshold down to zero.
+  if (lastThreshold > 0) {
     zones.push({
-      width: ((safeTotal - lastThreshold) / safeTotal) * 100,
-      color: '#22c55e' // Default Green
+      width: (lastThreshold / safeTotal) * 100,
+      color: '#fa5252'
     });
   }
 
