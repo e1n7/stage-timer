@@ -677,6 +677,13 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }
     };
     window.addEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
+    const handleInWindowPauseAll = (event: Event) => {
+      const payload = (event as CustomEvent<string>).detail;
+      if (payload !== id) {
+        pauseTimer();
+      }
+    };
+    window.addEventListener('stage-timer-pause-all-except', handleInWindowPauseAll);
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
       const { targetId, command, payload } = event.data;
@@ -718,6 +725,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     };
     return () => {
       window.removeEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
+      window.removeEventListener('stage-timer-pause-all-except', handleInWindowPauseAll);
       channel.close();
     };
   }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
@@ -1695,7 +1703,22 @@ function App() {
                 scheduledStart={schedule[id]?.start ?? null}
                 formatTime={formatScheduledTime}
                 selectedTimeZone={selectedTimeZone}
-                onActivate={() => setActiveTimerId(id)}
+                onActivate={() => {
+                  // When a different timer is selected, stop the currently
+                  // playing one so only one timer runs at a time, then move
+                  // the selection to the newly chosen timer.
+                  const currentlyRunning = activeTimerState?.isRunning;
+                  if (currentlyRunning && activeTimerId && activeTimerId !== id) {
+                    try {
+                      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+                      channel.postMessage({ targetId: activeTimerId, command: 'PAUSE' });
+                      channel.postMessage({ command: 'PAUSE_ALL_EXCEPT', payload: id });
+                      channel.close();
+                    } catch { /* ignore */ }
+                    window.dispatchEvent(new CustomEvent('stage-timer-pause-all-except', { detail: id }));
+                  }
+                  setActiveTimerId(id);
+                }}
                 onSync={setActiveTimerState}
                 onAddAbove={() => addTimer(index)}
                 onAddBelow={() => addTimer(index + 1)}
