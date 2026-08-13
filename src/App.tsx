@@ -1569,28 +1569,30 @@ function App() {
                   sendControl('SET', targetTime);
                 }}
               >
-                <div className="grid grid-cols-8 gap-[1px] overflow-hidden rounded-t-md border border-[#333] text-[9px] bg-[#333]">
-                  {[1, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125].map((factor, i) => {
-                    const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
-                    return (
-                      <div key={i} className="bg-[#1a1a1a] p-1.5 text-left text-[#555] border-r border-[#333] last:border-r-0 font-mono truncate">
-                        {formatClock(targetTime)}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="relative h-8 w-full bg-[#1a1a1a] border-x border-b border-[#333] rounded-b-md overflow-hidden">
-                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-[4px]" className="absolute bottom-0 left-0 right-0" />
+                <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a]">
+                  <div className="grid grid-cols-7 gap-[1px] bg-[#333]">
+                    {[1, 6/7, 5/7, 4/7, 3/7, 2/7, 1/7].map((factor, i) => {
+                      const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
+                      return (
+                        <div key={i} className="bg-[#1a1a1a] px-2 py-4 text-left text-[11px] leading-none text-[#555] border-r border-[#333] last:border-r-0 font-mono truncate h-12">
+                          {formatClock(targetTime)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-[3px]" className="absolute bottom-0 left-0 right-0" />
                   
                   {/* Red Playhead Marker */}
                   <div 
-                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-10"
+                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-20"
                     style={{ 
                       left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
                       transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                     }}
                   >
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-2 bg-[#fa5252] rounded-b-[2px]" />
+                    {/* The Flag Shape from the image */}
+                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px]" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
                   </div>
 
                   {/* Hover Playhead Marker */}
