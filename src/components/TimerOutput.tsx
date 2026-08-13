@@ -239,23 +239,24 @@ export const TimerOutput = () => {
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
-        <div className="flex h-full w-full items-center justify-center p-[4vh]">
+        <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
             <div
               className="text-center"
               style={{
                 color: messageColor,
-                fontSize: `min(${Math.max(4, 24 - (messageText.length / 5))}vh, 9vw)`,
+                fontSize: `min(${Math.max(3, 18 - (messageText.length / 4))}vh, ${Math.max(4, 75 / Math.max(1, messageText.length / 6))}vw)`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
-                lineHeight: 1.1,
+                lineHeight: 1.15,
                 textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
                 transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                 transformOrigin: 'center',
                 whiteSpace: 'normal',
                 wordBreak: 'break-word',
-                maxWidth: '90vw',
-                maxHeight: '90vh'
+                maxWidth: '92vw',
+                maxHeight: '90vh',
+                overflow: 'hidden'
               }}
             >
               {messageText}
