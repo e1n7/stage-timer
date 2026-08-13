@@ -1749,10 +1749,10 @@ function App() {
           // Left label: elapsed position (HH:MM:SS while running), or 0:00 before start
           const leftLabel = total > 0 && activeIdx >= 0 ? formatClock(Math.min(elapsed, total)) : '0:00';
           return (
-            <div className="flex flex-1 items-center gap-3">
+            <div className="flex flex-1 items-center gap-3 px-4">
               <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
               {/* Combined timeline: one single track layer with clipped segments on the same baseline */}
-              <div className="relative flex flex-1 items-center self-center">
+              <div className="relative flex flex-1 items-center self-center mx-2">
                 {/* Base track */}
                 <div className="absolute inset-y-0 my-auto h-1 w-full rounded-full bg-[#333]"></div>
                 {/* Elapsed portion (dark gray) — clipped at the scrubber, same baseline as track */}
