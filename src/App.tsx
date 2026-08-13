@@ -1534,7 +1534,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[260px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
+          <div className={`relative flex h-[200px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
               <div className="flex h-full w-full items-center justify-center px-4 py-8 overflow-hidden">
