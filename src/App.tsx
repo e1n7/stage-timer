@@ -1105,26 +1105,52 @@ function App() {
   };
 
   const loadRoom = useCallback((room: Room) => {
-    // Remove old per-timer settings for timers no longer in this room
-    timerIds.forEach(id => {
-      if (!(room.timerIds || []).includes(id)) {
+    // Remove ALL per-timer state (settings, sync, seconds) that does not
+    // belong to the incoming room, so no timers from a previous room leak.
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_')) {
+        const tid = key.split('_').slice(1).join('_');
+        if (!(room.timerIds || []).includes(tid)) {
+          localStorage.removeItem(key);
+        }
+      }
+    });
+    // Remove timers that are in the room's saved timerIds but had no
+    // settings snapshot, unless they match a timer created in this session.
+    (room.timerIds || []).forEach(id => {
+      if (!room.timerSettings || !room.timerSettings[id]) {
         localStorage.removeItem(`timerSettings_${id}`);
         localStorage.removeItem(`timerSync_${id}`);
         localStorage.removeItem(`timerSeconds_${id}`);
       }
     });
-    // Apply saved per-timer settings
+    // Apply saved per-timer settings for this room's timers, and refresh
+    // each timer's sync state so it mounts fresh at its saved target
+    // duration instead of a stale (e.g. 0) initialSeconds from a previous run.
     if (room.timerSettings) {
       Object.keys(room.timerSettings).forEach(id => {
-        localStorage.setItem(`timerSettings_${id}`, JSON.stringify(room.timerSettings![id]));
+        const settings = room.timerSettings![id];
+        localStorage.setItem(`timerSettings_${id}`, JSON.stringify(settings));
+        const target = settings?.targetDuration ?? 0;
+        localStorage.setItem(`timerSync_${id}`, JSON.stringify({
+          startTime: null,
+          initialSeconds: target,
+          isRunning: false,
+          mode: settings?.mode || 'countdown',
+          lastUpdated: Date.now()
+        }));
+        localStorage.setItem(`timerSeconds_${id}`, JSON.stringify(target));
       });
     }
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
+    setActiveTimerState(null);
     setMessages(room.messages || [{ id: '1', text: '', color: '#ffffff' }]);
+    setMessageShownId(null);
+    setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [timerIds, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages]);
+  }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
@@ -1369,7 +1395,25 @@ function App() {
                     <button onClick={(e) => { e.stopPropagation(); setRooms(rooms.filter(r => r.id !== room.id)); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
                 ))}
-                <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => { setCurrentRoomName('New Room'); setIsRoomMenuOpen(false); }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
+                <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
+                  // Cleanly reset all app state so a new room starts empty:
+                  // remove every per-timer key (settings/sync/seconds), clear the
+                  // timer list, active id, messages, and any shown message.
+                  Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_')) {
+                      localStorage.removeItem(key);
+                    }
+                  });
+                  localStorage.removeItem('stage-timer-message-shown-id');
+                  setCurrentRoomName('New Room');
+                  setTimerIds([]);
+                  setActiveTimerId('');
+                  setActiveTimerState(null);
+                  setMessages([{ id: '1', text: '', color: '#ffffff' }]);
+                  setMessageShownId(null);
+                  setMessageFlashId(null);
+                  setIsRoomMenuOpen(false);
+                }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
               </div>
             )}
           </div>
