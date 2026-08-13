@@ -242,19 +242,21 @@ export const TimerOutput = () => {
               className="text-center"
               style={{
                 color: messageColor,
-                fontSize: `min(${Math.max(8, 38 - (messageText.length / 2.5))}vh, 90vw)`,
+                fontSize: `min(${Math.max(6, 32 - (messageText.length / 3))}vh, 12vw)`,
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
-                lineHeight: 1,
+                lineHeight: 1.1,
                 textShadow: `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
                 letterSpacing: '0.01em',
                 transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
                 transformOrigin: 'center',
                 whiteSpace: 'normal',
                 wordBreak: 'break-word',
-                maxWidth: '90vw',
-                maxHeight: '90vh',
-                overflow: 'hidden'
+                maxWidth: '95vw',
+                maxHeight: '95vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
               {messageText}
@@ -292,14 +294,17 @@ export const TimerOutput = () => {
                 style={{
                   opacity: messageFlashing ? 1 : 1,
                   color: messageColor,
-                  fontSize: 'min(20vw, 15vh)',
+                  fontSize: `min(${Math.max(4, 12 - (messageText.length / 10))}vh, 10vw)`,
                   fontWeight: messageBold ? 900 : 400,
                   textTransform: messageUppercase ? 'uppercase' : 'none',
                   lineHeight: 1.1,
                   textShadow: `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
                   letterSpacing: '0.02em',
                   transform: `scale(${messageFontWidth}, ${messageFontHeight})`,
-                  transformOrigin: 'center'
+                  transformOrigin: 'center',
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  maxWidth: '90vw'
                 }}
               >
                 {messageText}
