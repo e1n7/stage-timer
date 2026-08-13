@@ -1733,7 +1733,7 @@ function App() {
       </div>
 
       <footer className="flex items-center justify-between border-t border-[#333] bg-[#1a1a1a] px-4 py-2 text-[11px] text-[#666]">
-        <div className="flex items-center gap-4"><span><IconSquare /> 395 ms</span></div>
+        <div className="flex items-center gap-4"></div>
         {(() => {
           const durations = timerIds.map(id => {
             const stored = localStorage.getItem(`timerSettings_${id}`);
