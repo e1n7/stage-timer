@@ -729,13 +729,13 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     <div 
       ref={setNodeRef} 
       style={style} 
-      onClick={onActivate} 
-      onMouseEnter={() => setIsHovered(true)} 
-      onMouseLeave={() => setIsHovered(false)} 
-      className={`flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all cursor-pointer ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9]' : 'bg-[#262626] hover:bg-[#2d2d2d]'} ${isDragging ? 'opacity-50' : ''}`}
+      onClick={isActive ? onActivate : undefined} 
+      onMouseEnter={isActive ? () => setIsHovered(true) : undefined} 
+      onMouseLeave={isActive ? () => setIsHovered(false) : undefined} 
+      className={`flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
-      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing">
+      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isHovered || isDragging ? <span className="text-[24px] font-light leading-none">=</span> : index + 1}
       </div>
 
@@ -748,6 +748,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           }}
           className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
           title="Click to set start time"
+          onMouseEnter={(e) => e.stopPropagation()}
+          onMouseLeave={(e) => e.stopPropagation()}
         >
           {formatTime(scheduledStart)}
         </div>
@@ -760,17 +762,19 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           setIsQuickSettingsOpen(true); 
         }}
         className={`flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        onMouseEnter={(e) => e.stopPropagation()}
+        onMouseLeave={(e) => e.stopPropagation()}
       >
         {seconds < 0 && settings.mode === 'countdown' ? '+' + formatClock(Math.abs(seconds)) : currentTime}
       </div>
 
       {/* Title */}
-      <div className="w-32 text-right text-[15px] font-bold truncate opacity-90 pr-2">
+      <div className="w-32 text-right text-[15px] font-bold truncate opacity-90 pr-2" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {settings.title || `Timer ${index + 1}`}
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         <button 
           type="button" 
           onClick={resetTimer} 
