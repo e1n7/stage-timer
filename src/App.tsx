@@ -1705,14 +1705,6 @@ function App() {
                   <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
                     <button
                       type="button"
-                      onClick={() => flashMessage(msg.id)}
-                      className="flex items-center justify-center px-2 py-1 text-white transition-colors hover:bg-[#252525]"
-                      title="Flash timer and message"
-                    >
-                      <IconFlash size={13} />
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => showMessage(msg.id)}
                       className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
                       title="Show message persistently on Output"
