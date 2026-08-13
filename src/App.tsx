@@ -1534,12 +1534,12 @@ function App() {
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-[420px] flex-col border-r border-[#333] px-4 py-3">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 min-h-[180px] overflow-hidden`}>
+          <div className={`relative flex h-[260px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
-              <div className="flex h-full w-full items-center justify-center px-4 py-8">
+              <div className="flex h-full w-full items-center justify-center px-4 py-8 overflow-hidden">
                 <div
-                  className="text-center leading-tight break-words"
+                  className="text-center leading-tight break-words max-h-full max-w-full"
                   style={{
                     color: getActiveMessage().messageColor,
                     fontSize: `${Math.round(84 * getActiveMessage().messageFontHeight)}px`,
@@ -1557,7 +1557,7 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className="w-full">
+              <div className="w-full flex flex-col items-center justify-center">
                 {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
                   <div className="flex items-center justify-center mb-2">
                     <span className="inline-block rounded bg-[#fa5252]/20 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.2em] text-[#fa5252]">Overtime</span>
