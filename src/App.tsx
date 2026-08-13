@@ -28,39 +28,51 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   const m = Math.floor((value % 3600) / 60);
   const s = value % 60;
 
-  // Accept free total-minutes input (e.g. 60) and normalize into hours/minutes/seconds.
-  const updateFromMinutes = (totalMinutes: number) => {
-    const tm = Math.max(0, parseInt(totalMinutes.toString()) || 0);
-    onChange(tm * 60);
-  };
-
+  // Hours, minutes, seconds boxes (00:00:00 format). Minutes accepts 60+; display shows total minutes (e.g. 60:00), but typing 1 in Hours keeps the value as 1 hour (3600s).
   const update = (newH: number, newM: number, newS: number) => {
-    onChange(newH * 3600 + newM * 60 + newS);
+    const total = Math.max(0, newH) * 3600 + Math.max(0, newM) * 60 + Math.max(0, newS);
+    onChange(total);
   };
 
   const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  // Total minutes for the minutes box (60 min -> shows 60, 1:00:00 -> shows 60 too)
   const totalMinutes = Math.floor(value / 60);
-  const remainingSeconds = value % 60;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
-          value={totalMinutes} 
-          onChange={(e) => updateFromMinutes(parseInt(e.target.value) || 0)}
+          value={pad(h)} 
+          onChange={(e) => update(parseInt(e.target.value) || 0, m, s)}
           onFocus={(e) => e.target.select()}
-          className={`${inputClass} w-20`}
+          min={0}
+          max={23}
+          className={inputClass}
         />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes (60 = 1:00:00)</span>
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
       </div>
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
         <input 
           type="number" 
-          value={pad(remainingSeconds)} 
+          value={totalMinutes} 
+          onChange={(e) => { const tm = parseInt(e.target.value) || 0; update(0, tm, s); }}
+          onFocus={(e) => e.target.select()}
+          min={0}
+          className={inputClass}
+        />
+        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes</span>
+      </div>
+      <span className="text-xl font-bold text-[#444] pb-5">:</span>
+      <div className="flex flex-col items-center gap-1">
+        <input 
+          type="number" 
+          value={pad(s)} 
           onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
           onFocus={(e) => e.target.select()}
+          min={0}
+          max={59}
           className={inputClass}
         />
         <span className="text-[10px] uppercase tracking-tighter text-[#555]">Seconds</span>
@@ -190,7 +202,7 @@ const formatClock = (seconds: number, allowNegative = false) => {
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
   
-  const base = hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${pad(minutes)}:${pad(secs)}`;
+  const base = `${pad(hours * 60 + minutes)}:${pad(secs)}`;
   return neg ? `-${base}` : base;
 };
 
