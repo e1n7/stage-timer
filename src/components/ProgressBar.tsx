@@ -40,39 +40,52 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   // left edge = most remaining time, colors approach zero at the right.
   const zones: { width: number; color: string }[] = [];
 
-  // Sort descending so the timeline reads left-to-right as
-  // full time -> warning -> near zero:
-  // green (total down to largest threshold), orange, red (rightmost edge).
-  const descendingSegments = [...segments].sort((a, b) => b.threshold - a.threshold);
+  // Keep the original full-duration thresholds for reference, but anchor the
+  // visible bar to the REMAINING window [0, currentSeconds] so the leftmost
+  // edge is always green and warning colors only appear near the end.
+  const viewTotal = Math.max(currentSeconds, 0);
 
-  let lastThreshold = safeTotal;
+  if (viewTotal > 0 && segments.length > 0) {
+    // Scale each warning threshold proportionally to the remaining window.
+    // Example: red at 10s of 600s total => 1.67% of remaining width. This way
+    // the bar always starts green at the left, with orange/red shrinking toward
+    // the right edge as the countdown approaches zero.
+    const scaledSegments = segments
+      .map(seg => ({ ...seg, threshold: Math.max(0, (seg.threshold / safeTotal) * viewTotal) }))
+      .sort((a, b) => b.threshold - a.threshold);
 
-  // Green zone from total down to the largest warning threshold.
-  if (descendingSegments.length > 0) {
-    zones.push({
-      width: ((lastThreshold - descendingSegments[0].threshold) / safeTotal) * 100,
-      color: '#22c55e'
-    });
-    lastThreshold = descendingSegments[0].threshold;
-  }
+    let last = viewTotal;
 
-  // Warning zones moving toward zero, largest threshold first.
-  for (const seg of descendingSegments) {
-    if (seg.threshold < lastThreshold) {
+    // Green zone from the remaining window down to the largest scaled threshold.
+    if (scaledSegments.length > 0 && scaledSegments[0].threshold < last) {
       zones.push({
-        width: ((lastThreshold - seg.threshold) / safeTotal) * 100,
-        color: seg.color
+        width: ((last - scaledSegments[0].threshold) / viewTotal) * 100,
+        color: '#22c55e'
       });
-      lastThreshold = seg.threshold;
+      last = scaledSegments[0].threshold;
     }
-  }
 
-  // Red zone from the smallest threshold down to zero.
-  if (lastThreshold > 0) {
-    zones.push({
-      width: (lastThreshold / safeTotal) * 100,
-      color: '#fa5252'
-    });
+    // Warning zones moving toward zero, largest scaled threshold first.
+    for (const seg of scaledSegments) {
+      if (seg.threshold < last) {
+        zones.push({
+          width: ((last - seg.threshold) / viewTotal) * 100,
+          color: seg.color
+        });
+        last = seg.threshold;
+      }
+    }
+
+    // Red zone from the smallest scaled threshold down to zero.
+    if (last > 0) {
+      zones.push({
+        width: (last / viewTotal) * 100,
+        color: '#fa5252'
+      });
+    }
+  } else {
+    // No time left to display — full bar is red (overtime).
+    zones.push({ width: 100, color: '#fa5252' });
   }
 
   return (
