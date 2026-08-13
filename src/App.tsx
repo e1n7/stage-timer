@@ -1537,7 +1537,7 @@ function App() {
           <div className={`relative flex h-[200px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
             {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
-              <div className="flex h-full w-full items-center justify-center px-4 py-8 overflow-hidden">
+              <div className="flex h-full w-full items-center justify-center px-2 py-2 overflow-hidden">
                 <div
                   className="text-center leading-tight break-words max-h-full max-w-full"
                   style={{
