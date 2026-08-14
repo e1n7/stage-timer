@@ -1448,15 +1448,22 @@ function App() {
     const rect = gridTrackRef.current.getBoundingClientRect();
     const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     
-    // Prioritize memory state, fallback to localStorage
-    const targetDuration = activeTimerState?.settings?.targetDuration || (() => {
+    const settings = activeTimerState?.settings || (() => {
       const stored = localStorage.getItem(`timerSettings_${activeTimerId}`);
-      return stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+      return stored ? JSON.parse(stored) : null;
     })();
+    
+    const targetDuration = settings?.targetDuration || 0;
+    const mode = settings?.mode || 'countdown';
     
     if (targetDuration <= 0) return;
 
-    const targetTime = targetDuration * (1 - percentage);
+    // For countdown: left (0%) is targetDuration, right (100%) is 0
+    // For countup: left (0%) is 0, right (100%) is targetDuration
+    const targetTime = mode === 'countdown'
+      ? targetDuration * (1 - percentage)
+      : targetDuration * percentage;
+
     sendControl('SET', targetTime);
     setHoverTime(targetTime);
   }, [activeTimerId, activeTimerState, sendControl]);
@@ -1469,14 +1476,22 @@ function App() {
     };
     const handleMouseUp = (e: MouseEvent) => {
       setIsDraggingGrid(false);
-      // If we release outside the grid, clear the hover time
+      // Always check if we are still inside the grid to decide whether to keep hoverTime
       if (gridTrackRef.current) {
         const rect = gridTrackRef.current.getBoundingClientRect();
         const isInside = (
           e.clientX >= rect.left && e.clientX <= rect.right &&
           e.clientY >= rect.top && e.clientY <= rect.bottom
         );
-        if (!isInside) setHoverTime(null);
+        if (!isInside) {
+          setHoverTime(null);
+        } else {
+          // Refresh hover time based on current position to ensure it's accurate
+          const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const mode = activeTimerState?.settings?.mode || 'countdown';
+          const targetDuration = activeTotalTime;
+          setHoverTime(mode === 'countdown' ? targetDuration * (1 - percentage) : targetDuration * percentage);
+        }
       } else {
         setHoverTime(null);
       }
@@ -1884,7 +1899,8 @@ function App() {
                       const x = e.clientX - rect.left;
                       const percentage = Math.max(0, Math.min(1, x / rect.width));
                       const targetDuration = activeTotalTime;
-                      const time = targetDuration * (1 - percentage);
+                      const mode = activeTimerState?.settings?.mode || 'countdown';
+                      const time = mode === 'countdown' ? targetDuration * (1 - percentage) : targetDuration * percentage;
                       setHoverTime(time);
                       
                       if (isDraggingGrid) {
@@ -1893,6 +1909,9 @@ function App() {
                     }}
                     onMouseLeave={() => {
                       if (!isDraggingGrid) setHoverTime(null);
+                    }}
+                    onMouseUp={() => {
+                      setIsDraggingGrid(false);
                     }}
                   />
                 </div>
