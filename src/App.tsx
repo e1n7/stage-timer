@@ -1833,7 +1833,7 @@ function App() {
               message={getActiveMessage()}
               flashActive={isFlashing && getActiveMessage().messageFlash}
               flashVisible={isFlash}
-              maxFontSize={90}
+              maxFontSize={50}
             />
           </div>
 

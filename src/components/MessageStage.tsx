@@ -38,7 +38,7 @@ export const MessageStage = ({
   maxFontSize = 130,
 }: MessageStageProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(0.2);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -46,8 +46,9 @@ export const MessageStage = ({
 
     const updateScale = () => {
       const { width, height } = host.getBoundingClientRect();
-      if (!width || !height) return;
-      setScale(Math.min(width / MESSAGE_CANVAS.width, height / MESSAGE_CANVAS.height));
+      if (width && height) {
+        setScale(Math.min(width / MESSAGE_CANVAS.width, height / MESSAGE_CANVAS.height));
+      }
     };
 
     updateScale();
@@ -67,7 +68,7 @@ export const MessageStage = ({
   // The horizontal fit preserves line breaks; the vertical fit accounts for 1.5x stretch.
   const maxTextWidth = 1760;
   const maxTextHeight = 880;
-  const horizontalFit = maxTextWidth / (longestLine * 0.55);
+  const horizontalFit = maxTextWidth / (longestLine * 0.65);
   const verticalFit = maxTextHeight / (lineCount * 1.2 * 1.5);
   
   // Calculate base best-fit size, then apply the user's multiplier.
