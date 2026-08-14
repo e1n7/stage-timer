@@ -1144,6 +1144,47 @@ function App() {
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
+
+  // Fix #4: cross-tab room/message sync — when another dashboard tab updates
+  // timers/messages/room, broadcast the change so other open tabs reload too.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (!e.key) return;
+      const changed = ['stage-timer-rooms', 'stage-timer-timer-ids', 'stage-timer-active-id', 'stage-timer-messages', 'stage-timer-message-shown-id'].includes(e.key);
+      if (changed) {
+        try {
+          const channel = new BroadcastChannel(CONTROL_CHANNEL);
+          channel.postMessage({ command: 'ROOM_STATE_CHANGED' });
+          channel.close();
+        } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+      channel.onmessage = (e) => {
+        if (e.data && e.data.command === 'ROOM_STATE_CHANGED') {
+          // Another tab changed room/message/timer list state — re-read the
+          // shared state from localStorage so this tab stays in sync.
+          setRooms(window.localStorage.getItem('stage-timer-rooms') ? JSON.parse(window.localStorage.getItem('stage-timer-rooms')!) : []);
+          setCurrentRoomName(window.localStorage.getItem('stage-timer-current-name') ? JSON.parse(window.localStorage.getItem('stage-timer-current-name')!) : 'Unnamed');
+          setTimerIds(window.localStorage.getItem('stage-timer-timer-ids') ? JSON.parse(window.localStorage.getItem('stage-timer-timer-ids')!) : []);
+          const active = window.localStorage.getItem('stage-timer-active-id');
+          setActiveTimerId(active ? JSON.parse(active) : '');
+          setMessages(window.localStorage.getItem('stage-timer-messages') ? JSON.parse(window.localStorage.getItem('stage-timer-messages')!) : [{ id: '1', text: '', color: '#ffffff' }]);
+          const shown = window.localStorage.getItem('stage-timer-message-shown-id');
+          setMessageShownId(shown ? JSON.parse(shown) : null);
+          setMessageFlashId(null);
+        }
+      };
+      return () => { channel.close(); };
+    } catch { /* ignore */ }
+    return undefined;
+  }, []);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
   const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
@@ -1672,7 +1713,20 @@ function App() {
     if (typeof v === 'number' && v > 0) return v;
     return 1.0;
   };
-  const deleteMessage = (id: string) => setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
+  const deleteMessage = (id: string) => {
+    // Fix #1: if the deleted message is currently shown/flash, clear that state so
+    // the Output doesn't stay stuck in a half-shown state. Also clear any scheduled
+    // flash timeout reference by resetting the flash id immediately.
+    if (messageShownId === id) {
+      setMessageShownId(null);
+      syncOutput({ messageText: '', messageShown: false, messageMaximize: false, type: 'force-sync' });
+    }
+    if (messageFlashId === id) {
+      setMessageFlashId(null);
+      syncOutput({ messageText: '', messageShown: false, messageFlash: false, messageMaximize: false, type: 'force-sync' });
+    }
+    setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
+  };
   const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
     // Active message priority: currently flashing > shown
     const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
@@ -1842,7 +1896,7 @@ function App() {
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
-            const exportData = { rooms: [...rooms, { id: Date.now().toString(), name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings }], activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+            const exportData = { rooms: rooms.map(r => r.name === currentRoomName ? { ...r, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
