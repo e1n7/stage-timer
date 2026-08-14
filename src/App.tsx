@@ -687,6 +687,117 @@ interface TimerRowProps {
   onSettingsUpdate: () => void;
 }
 
+interface MessageRowProps {
+  msg: any;
+  idx: number;
+  isShown: boolean;
+  messageShownId: string | null;
+  onUpdate: (id: string, text: string) => void;
+  onDelete: (id: string) => void;
+  onUpdateColor: (id: string, color: string) => void;
+  onToggleBold: (id: string) => void;
+  onToggleUppercase: (id: string) => void;
+  onFlash: (id: string) => void;
+  onUpdateSize: (id: string, value: number) => void;
+  onShow: (id: string) => void;
+  getMessageSize: (msg: any) => number;
+}
+
+const MessageRow = ({ 
+  msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor, 
+  onToggleBold, onToggleUppercase, onFlash, onUpdateSize, onShow, getMessageSize 
+}: MessageRowProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
+  const style = { 
+    transform: CSS.Transform.toString(transform), 
+    transition, 
+    zIndex: isDragging ? 200 : 1, 
+    position: 'relative' as const 
+  };
+  const mSize = getMessageSize(msg);
+  const cardActive = isShown;
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`group relative rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
+    >
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <span 
+            {...attributes} 
+            {...listeners} 
+            className="text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
+            title="Drag to reorder"
+          >
+            {idx + 1}
+          </span>
+          <textarea
+            value={msg.text}
+            onChange={(e) => onUpdate(msg.id, e.target.value)}
+            placeholder="Enter message ..."
+            rows={2}
+            className="min-h-[48px] max-h-[110px] flex-1 resize-y rounded-md border border-[#444] bg-[#1c1c1c] px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-[#555]"
+            style={{
+              color: msg.color,
+              fontWeight: msg.bold ? 700 : 400,
+              textTransform: msg.uppercase ? 'uppercase' : 'none'
+            }}
+          />
+          <div className="flex items-center gap-1">
+            <span 
+              {...attributes} 
+              {...listeners} 
+              className={`px-1 cursor-grab active:cursor-grabbing ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#555] hover:text-[#8a8a8a]'}`} 
+              title="Drag to reorder"
+            >
+              <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
+            </span>
+            <button
+              type="button"
+              onClick={() => onDelete(msg.id)}
+              className={`flex items-center justify-center ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#666] hover:text-[#fa5252]'}`}
+              title="Delete message"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#ffffff')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#22c55e')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
+            <button type="button" onClick={() => onToggleBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
+            <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
+            <button type="button" onClick={() => onFlash(msg.id)} className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-all" title="Flash this message on Output"><IconFlash size={14} /></button>
+            <div className="flex items-center gap-1 ml-2 border-l border-[#444] pl-2">
+              <span className="text-[10px] uppercase text-[#666] mr-1">Size</span>
+              <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
+                <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white">-</button>
+                <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-10 bg-transparent text-center font-mono text-[12px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white">+</button>
+              </div>
+            </div>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
+            <button
+              type="button"
+              onClick={() => onShow(msg.id)}
+              className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+              title="Show message on screen (message only, no timer)"
+            >
+              <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
+              Show
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate }: TimerRowProps) => {
   const {
     seconds,
@@ -1105,6 +1216,17 @@ function App() {
       setTimerIds((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleMessageDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setMessages((items) => {
+        const oldIndex = items.findIndex(m => m.id === active.id);
+        const newIndex = items.findIndex(m => m.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
@@ -1837,110 +1959,30 @@ function App() {
 
         <aside className="flex w-full lg:w-[340px] xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 lg:overflow-y-auto custom-scrollbar">
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
-          <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
-            const mSize = getMessageSize(msg);
-            const isShown = messageShownId === msg.id;
-            const cardActive = isShown;
-            return (
-            <div key={msg.id} className={`group relative rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}>
-              {draggingMsgId === msg.id && <div className="absolute inset-0 z-20 rounded-lg bg-[#4a9eff]/10 pointer-events-none" />}
-              {/* Whole card is the drag surface */}
-              <div
-                draggable
-                onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', msg.id); setDraggingMsgId(msg.id); }}
-                onDragEnd={() => setDraggingMsgId(null)}
-                onDragOver={(e) => { if (draggingMsgId && draggingMsgId !== msg.id) e.preventDefault(); }}
-                onDrop={(e) => { e.preventDefault(); const fromId = e.dataTransfer.getData('text/plain'); if (fromId) moveMessage(fromId, msg.id); setDraggingMsgId(null); }}
-                className="flex flex-col gap-1.5"
-              >
-                {/* Row 1: number + live preview textarea + drag grip + delete */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" title="Drag to reorder">{idx + 1}</span>
-                  <textarea
-                    value={msg.text}
-                    onChange={(e) => updateMessage(msg.id, e.target.value)}
-                    placeholder="Enter message ..."
-                    rows={2}
-                    draggable={false}
-                    className="min-h-[48px] max-h-[110px] flex-1 resize-y rounded-md border border-[#444] bg-[#1c1c1c] px-2.5 py-1.5 text-[13px] text-white outline-none focus:border-[#555]"
-                    style={{
-                      color: msg.color,
-                      fontWeight: msg.bold ? 700 : 400,
-                      textTransform: msg.uppercase ? 'uppercase' : 'none'
-                    }}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
+            <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
+                {messages.map((msg, idx) => (
+                  <MessageRow 
+                    key={msg.id} 
+                    msg={msg} 
+                    idx={idx} 
+                    isShown={messageShownId === msg.id}
+                    messageShownId={messageShownId}
+                    onUpdate={updateMessage}
+                    onDelete={deleteMessage}
+                    onUpdateColor={updateMessageColor}
+                    onToggleBold={toggleMessageBold}
+                    onToggleUppercase={toggleMessageUppercase}
+                    onFlash={flashMessage}
+                    onUpdateSize={updateMessageSize}
+                    onShow={showMessage}
+                    getMessageSize={getMessageSize}
                   />
-                  {/* Drag grip + delete (always visible) */}
-                  <div className="flex items-center gap-1">
-                    <span className={`px-1 cursor-grab active:cursor-grabbing ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#555] hover:text-[#8a8a8a]'}`} title="Drag to reorder">
-                      <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => deleteMessage(msg.id)}
-                      className={`flex items-center justify-center ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#666] hover:text-[#fa5252]'}`}
-                      title="Delete message"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                    </button>
-                  </div>
-                </div>
-                {/* Row 2: formatting + sliders (wraps) | Show/Maximize pinned right (never covered) */}
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                  {/* White swatch */}
-                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#ffffff')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
-                  {/* Green swatch */}
-                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#22c55e')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
-                  {/* Red swatch */}
-                  <button type="button"                       onClick={() => updateMessageColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
-                  {/* Bold */}
-                  <button type="button"                       onClick={() => toggleMessageBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
-                  {/* Uppercase */}
-                  <button type="button"                       onClick={() => toggleMessageUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
-                  {/* Flash this message */}
-                  <button type="button" onClick={() => flashMessage(msg.id)} className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-all" title="Flash this message on Output"><IconFlash size={14} /></button>
-                  {/* Message font size numeric input */}
-                  <div className="flex items-center gap-1 ml-2 border-l border-[#444] pl-2">
-                    <span className="text-[10px] uppercase text-[#666] mr-1">Size</span>
-                    <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
-                      <button 
-                        type="button" 
-                        onClick={() => updateMessageSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))}
-                        className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white"
-                      >-</button>
-                      <input 
-                        type="number" 
-                        min="0.1" 
-                        max="10" 
-                        step="0.1" 
-                        value={mSize} 
-                        onChange={(e) => updateMessageSize(msg.id, parseFloat(e.target.value) || 1.0)} 
-                        className="h-7 w-10 bg-transparent text-center font-mono text-[12px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => updateMessageSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))}
-                        className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white"
-                      >+</button>
-                    </div>
-                  </div>
-                  </div>
-                  {/* Show / Flash / Maximize group — pinned far right (shrink-0 so never covered) */}
-                  <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
-                    <button
-                      type="button"
-                      onClick={() => showMessage(msg.id)}
-                      className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
-                      title="Show message on screen (message only, no timer)"
-                    >
-                      <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
-                      Show
-                    </button>
-                  </div>
-                </div>
+                ))}
               </div>
-            </div>
-          );})}</div>
+            </SortableContext>
+          </DndContext>
           <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
         </aside>
       </div>
