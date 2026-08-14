@@ -1826,8 +1826,8 @@ function App() {
                       transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                     }}
                   >
-                    {/* The Flag Shape from the image */}
-                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px]" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
+                    {/* The Flag Shape from the image (now with ew-resize cursor) */}
+                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px] pointer-events-auto cursor-ew-resize hover:scale-110 transition-transform" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
                   </div>
 
                   {/* Hover Playhead Marker */}
