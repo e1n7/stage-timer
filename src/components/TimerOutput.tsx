@@ -330,7 +330,7 @@ export const TimerOutput = () => {
             )}
           </div>
           {(messageVisible || messageFlashing) && messageText ? null : (
-            <div className="w-full shrink-0 mb-[4vh] mt-[2vh]">
+            <div className="w-full shrink-0 mb-[2vh] mt-[8vh]">
               <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
             </div>
           )}
