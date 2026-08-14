@@ -1183,6 +1183,71 @@ function App() {
   const [isFlashing, setIsFlashing] = useState(false);
   const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
+  const scrubberTrackRef = useRef<HTMLDivElement>(null);
+
+  const handleScrubberAction = useCallback((clientX: number) => {
+    if (!scrubberTrackRef.current || timerIds.length === 0) return;
+    const rect = scrubberTrackRef.current.getBoundingClientRect();
+    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    
+    const durations = timerIds.map(id => {
+      const stored = localStorage.getItem(`timerSettings_${id}`);
+      return stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+    });
+    const totalDuration = durations.reduce((a, b) => a + b, 0);
+    if (totalDuration <= 0) return;
+
+    const targetGlobalSeconds = totalDuration * percentage;
+    
+    // Find which timer this corresponds to
+    let cumulative = 0;
+    let targetTimerId = timerIds[0];
+    let localSeconds = 0;
+
+    for (let i = 0; i < timerIds.length; i++) {
+      const d = durations[i];
+      if (targetGlobalSeconds <= cumulative + d || i === timerIds.length - 1) {
+        targetTimerId = timerIds[i];
+        localSeconds = d - (targetGlobalSeconds - cumulative);
+        break;
+      }
+      cumulative += d;
+    }
+
+    // Switch active timer if needed
+    if (activeTimerId !== targetTimerId) {
+      setActiveTimerId(targetTimerId);
+    }
+    
+    // Send SET command to the target timer
+    try {
+      const channel = new BroadcastChannel(CONTROL_CHANNEL);
+      channel.postMessage({ targetId: targetTimerId, command: 'SET', payload: localSeconds });
+      channel.close();
+    } catch { /* ignore */ }
+  }, [timerIds, activeTimerId, setActiveTimerId]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingScrubber) {
+        handleScrubberAction(e.clientX);
+      }
+    };
+    const handleMouseUp = () => {
+      setIsDraggingScrubber(false);
+    };
+
+    if (isDraggingScrubber) {
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingScrubber, handleScrubberAction]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevIsRunningRef = useRef(false);
 
@@ -2010,24 +2075,34 @@ function App() {
             <div className="flex flex-1 items-center gap-3 px-4">
               <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
               {/* Combined timeline: one single track layer with clipped segments on the same baseline */}
-              <div className="relative flex flex-1 items-center self-center mx-2">
+              <div 
+                ref={scrubberTrackRef}
+                onMouseDown={(e) => {
+                  setIsDraggingScrubber(true);
+                  handleScrubberAction(e.clientX);
+                }}
+                className="relative flex flex-1 items-center self-center mx-2 h-6 cursor-pointer group/scrubber"
+              >
                 {/* Base track */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full rounded-full bg-[#333]"></div>
+                <div className="absolute inset-y-0 my-auto h-1.5 w-full rounded-full bg-[#333] transition-all group-hover/scrubber:h-2"></div>
                 {/* Elapsed portion (dark gray) — clipped at the scrubber, same baseline as track */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
-                  <div className="h-1 w-full rounded-full bg-[#666]"></div>
+                <div className="absolute inset-y-0 my-auto h-1.5 w-full overflow-hidden rounded-full transition-all group-hover/scrubber:h-2" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
+                  <div className="h-full w-full rounded-full bg-[#666]"></div>
                 </div>
                 {/* Remaining portion (white) — clipped after the scrubber */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 0 0 ${scrubberPct * 100}%)` }}>
-                  <div className="h-1 w-full rounded-full bg-white"></div>
+                <div className="absolute inset-y-0 my-auto h-1.5 w-full overflow-hidden rounded-full transition-all group-hover/scrubber:h-2" style={{ clipPath: `inset(0 0 0 ${scrubberPct * 100}%)` }}>
+                  <div className="h-full w-full rounded-full bg-white"></div>
                 </div>
                 {/* Thin vertical separators between stages — same height and baseline as the track */}
                 {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
                   let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
-                  return <div key={`tick-${i}`} className="absolute inset-y-0 my-auto z-10 h-2.5 w-px bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
+                  return <div key={`tick-${i}`} className="absolute inset-y-0 my-auto z-10 h-3 w-px bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
                 })}
                 {/* Blue position marker centered on the same baseline */}
-                <div className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg cursor-pointer hover:scale-110 transition-transform duration-300 absolute my-auto -translate-x-1/2 z-20" style={{ left: `${scrubberPct * 100}%` }}></div>
+                <div 
+                  className={`h-4 w-4 rounded-full bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.5)] absolute my-auto -translate-x-1/2 z-20 transition-transform ${isDraggingScrubber ? 'scale-125' : 'hover:scale-125'}`} 
+                  style={{ left: `${scrubberPct * 100}%` }}
+                ></div>
               </div>
               <span className="tabular-nums shrink-0 text-white">{endLabel}</span>
             </div>
