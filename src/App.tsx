@@ -1424,15 +1424,18 @@ function App() {
     const rect = gridTrackRef.current.getBoundingClientRect();
     const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     
-    // Use the stored duration from localStorage to avoid dependency on activeTimerState
-    const stored = localStorage.getItem(`timerSettings_${activeTimerId}`);
-    const targetDuration = stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+    // Prioritize memory state, fallback to localStorage
+    const targetDuration = activeTimerState?.settings?.targetDuration || (() => {
+      const stored = localStorage.getItem(`timerSettings_${activeTimerId}`);
+      return stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+    })();
+    
     if (targetDuration <= 0) return;
 
     const targetTime = targetDuration * (1 - percentage);
     sendControl('SET', targetTime);
     setHoverTime(targetTime);
-  }, [activeTimerId, sendControl]);
+  }, [activeTimerId, activeTimerState, sendControl]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1807,17 +1810,23 @@ function App() {
                 className={`relative mt-6 group select-none ${activeTotalTime > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
                 onMouseDown={(e) => {
                   if (activeTotalTime <= 0 || e.button !== 0) return;
-                  e.preventDefault(); // Prevent text selection
+                  e.preventDefault(); 
+                  e.stopPropagation();
                   setIsDraggingGrid(true);
                   handleGridAction(e.clientX);
                 }}
                 onMouseMove={(e) => {
-                  if (activeTotalTime <= 0 || isDraggingGrid) return;
+                  if (activeTotalTime <= 0) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
                   const targetDuration = activeTotalTime;
-                  setHoverTime(targetDuration * (1 - percentage));
+                  const time = targetDuration * (1 - percentage);
+                  setHoverTime(time);
+                  
+                  if (isDraggingGrid) {
+                    handleGridAction(e.clientX);
+                  }
                 }}
                 onMouseLeave={() => {
                   if (!isDraggingGrid) setHoverTime(null);
