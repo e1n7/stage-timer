@@ -277,16 +277,16 @@ export const TimerOutput = () => {
           {/* Foreground Message Overlay Box */}
           {messageMaximize && messageText && !isEmpty && (
             <div className="absolute inset-0 z-40 flex items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
-              <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[3vh] px-[3vw] shadow-2xl backdrop-blur-xl overflow-hidden">
+              <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[10vh] px-[6vw] shadow-2xl backdrop-blur-xl overflow-hidden">
                 <div
-                  className="w-full text-center leading-tight break-words transition-opacity duration-75"
+                  className="w-full text-center break-words transition-opacity duration-75"
                   style={{
                     color: messageColor,
                     fontSize: `calc(min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw) * ${messageSize})`,
                     fontWeight: messageBold ? 900 : 400,
                     textTransform: messageUppercase ? 'uppercase' : 'none',
                     fontFamily: 'Inter, system-ui, sans-serif',
-                    lineHeight: 1.1,
+                    lineHeight: 1.4,
                     textShadow: messageFlashing && flash 
                       ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                       : `0 4px 20px rgba(0,0,0,0.8), 0 0 60px ${messageColor}55`,
@@ -296,8 +296,8 @@ export const TimerOutput = () => {
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
                     overflowWrap: 'anywhere',
-                    maxWidth: '90vw',
-                    maxHeight: '82vh',
+                    maxWidth: '80vw',
+                    maxHeight: '58vh',
                     opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                     transition: 'none'
                   }}
