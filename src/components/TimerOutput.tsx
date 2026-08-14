@@ -277,8 +277,9 @@ export const TimerOutput = () => {
           {/* Foreground Message Overlay Box */}
           {messageMaximize && messageText && !isEmpty && (() => {
             const lines = messageText.split('\n').length;
-            const lengthFactor = Math.max(3, 18 - (messageText.length / 6));
-            const lineFactor = 65 / (lines * 1.5); 
+            // Recalibrated for aggressive fill:
+            const lengthFactor = Math.max(4, 28 - (messageText.length / 5));
+            const lineFactor = 88 / (lines * 1.5); 
             const fontSizeVh = Math.min(lengthFactor, lineFactor);
             
             return (
@@ -292,7 +293,7 @@ export const TimerOutput = () => {
                       fontWeight: messageBold ? 900 : 400,
                       textTransform: messageUppercase ? 'uppercase' : 'none',
                       fontFamily: 'Inter, system-ui, sans-serif',
-                      lineHeight: 1.3,
+                      lineHeight: 1.2,
                       textShadow: messageFlashing && flash 
                         ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                         : `0 4px 20px rgba(0,0,0,0.8), 0 0 60px ${messageColor}55`,
@@ -302,8 +303,8 @@ export const TimerOutput = () => {
                       whiteSpace: 'pre-wrap',
                       wordWrap: 'break-word',
                       overflowWrap: 'anywhere',
-                      maxWidth: '94vw',
-                      maxHeight: '60vh', // Recalibrated for thin 1vh margins: 60vh * 1.5 = 90vh visual height
+                      maxWidth: '96vw',
+                      maxHeight: '62vh', // Recalibrated for ultra-thin fill: 62vh * 1.5 stretch = 93vh visual height
                       opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                       transition: 'none'
                     }}
