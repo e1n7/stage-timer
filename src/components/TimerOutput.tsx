@@ -245,7 +245,7 @@ export const TimerOutput = () => {
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
-        <div className="flex h-full w-full items-center justify-center p-[8vh] px-[8vw] overflow-hidden">
+        <div className="flex h-full w-full items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
             <div
               className="w-full text-center leading-tight break-words transition-opacity duration-75"
               style={{
@@ -254,7 +254,7 @@ export const TimerOutput = () => {
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 fontFamily: 'Inter, system-ui, sans-serif',
-                lineHeight: 1.2,
+                lineHeight: 1.1,
                 textShadow: messageFlashing && flash 
                   ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                   : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
@@ -264,10 +264,10 @@ export const TimerOutput = () => {
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: '84vw',
-                maxHeight: '55vh',
-                paddingTop: '8vh',
-                paddingBottom: '8vh',
+                maxWidth: '96vw',
+                maxHeight: '94vh',
+                paddingTop: '2vh',
+                paddingBottom: '2vh',
                 opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                 transition: 'none'
               }}
@@ -320,10 +320,10 @@ export const TimerOutput = () => {
                   whiteSpace: 'pre-wrap',
                   wordWrap: 'break-word',
                   overflowWrap: 'anywhere',
-                  maxWidth: '80vw',
-                  maxHeight: '22vh',
-                  paddingTop: '5vh',
-                  paddingBottom: '5vh'
+                  maxWidth: '92vw',
+                  maxHeight: '35vh',
+                  paddingTop: '1vh',
+                  paddingBottom: '1vh'
                 }}
               >
                 {messageText}
