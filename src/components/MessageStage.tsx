@@ -35,7 +35,7 @@ export const MessageStage = ({
   flashActive = false,
   flashVisible = true,
   className = '',
-  maxFontSize = 130,
+  maxFontSize = 160,
 }: MessageStageProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.2);
@@ -68,12 +68,12 @@ export const MessageStage = ({
   // The horizontal fit preserves line breaks; the vertical fit accounts for 1.5x stretch.
   const maxTextWidth = 1760;
   const maxTextHeight = 880;
-  const horizontalFit = maxTextWidth / (longestLine * 0.65);
-  const verticalFit = maxTextHeight / (lineCount * 1.2 * 1.5);
+  const horizontalFit = maxTextWidth / (longestLine * 0.45);
+  const verticalFit = maxTextHeight / (lineCount * 1.3);
   
   // Calculate base best-fit size, then apply the user's multiplier.
-  // Use the provided maxFontSize (default 130) to keep messages proportional to their host.
-  const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize);
+  // Increased default max to 200 to allow for truly maximized, "smart-fit" text.
+  const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize || 200);
   const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 500);
   const color = message.messageColor || '#ffffff';
 

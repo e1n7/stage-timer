@@ -1329,6 +1329,7 @@ function App() {
       channel.postMessage({ targetId: id, command: 'REFRESH_SETTINGS' });
     });
     channel.close();
+    setSettingsVersion(v => v + 1);
   };
 
   const deleteAllTimers = () => {
@@ -1833,7 +1834,6 @@ function App() {
               message={getActiveMessage()}
               flashActive={isFlashing && getActiveMessage().messageFlash}
               flashVisible={isFlash}
-              maxFontSize={50}
             />
           </div>
 
