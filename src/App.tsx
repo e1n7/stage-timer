@@ -733,10 +733,11 @@ const MessageRow = ({
           <span 
             {...attributes} 
             {...listeners} 
-            className="text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
+            className="flex w-5 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
             title="Drag to reorder"
           >
-            {idx + 1}
+            <span className="group-hover:hidden">{idx + 1}</span>
+            <span className="hidden group-hover:inline text-[18px] font-light leading-none">=</span>
           </span>
           <textarea
             value={msg.text}
@@ -938,9 +939,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       className={`group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
-      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <span className="group-hover:hidden">{index + 1}</span>
-        <span className="hidden group-hover:inline text-[24px] font-light leading-none">=</span>
+      <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
+        {isHovered || isDragging ? (
+          <span className="text-[24px] font-light leading-none">=</span>
+        ) : (
+          <span>{index + 1}</span>
+        )}
       </div>
 
       {/* Scheduled Time Display */}
