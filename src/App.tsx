@@ -1442,10 +1442,12 @@ function App() {
     };
 
     if (isDraggingGrid) {
+      document.body.style.cursor = 'ew-resize';
       window.addEventListener('mousemove', handleMouseMove, { passive: true });
       window.addEventListener('mouseup', handleMouseUp);
     }
     return () => {
+      document.body.style.cursor = '';
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
