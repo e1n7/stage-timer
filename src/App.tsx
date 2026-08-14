@@ -1440,8 +1440,19 @@ function App() {
         handleGridAction(e.clientX);
       }
     };
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       setIsDraggingGrid(false);
+      // If we release outside the grid, clear the hover time
+      if (gridTrackRef.current) {
+        const rect = gridTrackRef.current.getBoundingClientRect();
+        const isInside = (
+          e.clientX >= rect.left && e.clientX <= rect.right &&
+          e.clientY >= rect.top && e.clientY <= rect.bottom
+        );
+        if (!isInside) setHoverTime(null);
+      } else {
+        setHoverTime(null);
+      }
     };
 
     if (isDraggingGrid) {
@@ -1793,15 +1804,15 @@ function App() {
 
               <div 
                 ref={gridTrackRef}
-                className={`relative mt-6 group select-none ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
+                className={`relative mt-6 group select-none ${activeTotalTime > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
                 onMouseDown={(e) => {
-                  if (displaySeconds <= 0 || e.button !== 0) return;
+                  if (activeTotalTime <= 0 || e.button !== 0) return;
                   e.preventDefault(); // Prevent text selection
                   setIsDraggingGrid(true);
                   handleGridAction(e.clientX);
                 }}
                 onMouseMove={(e) => {
-                  if (displaySeconds <= 0 || isDraggingGrid) return;
+                  if (activeTotalTime <= 0 || isDraggingGrid) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
