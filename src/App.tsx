@@ -1095,6 +1095,20 @@ interface Room {
 }
 
 function App() {
+  // Deep Reset: Clear all service worker caches on mount to fix stuck PWAs
+  useEffect(() => {
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        for (const name of names) caches.delete(name);
+      });
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) registration.unregister();
+      });
+    }
+  }, []);
+
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
