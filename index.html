@@ -15,19 +15,28 @@
   </head>
   <body>
     <script>
-      // Force clear all caches on load to fix stuck PWAs
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (let name of names) caches.delete(name);
-        });
-      }
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (let registration of registrations) {
-            registration.unregister();
+      // Version-gated cache clearing: only wipes stale caches when this
+      // version marker changes. On a fresh visit it clears old caches once,
+      // then skips on every subsequent load so installed PWAs keep working.
+      try {
+        if ('localStorage' in window) {
+          var currentVersion = 'v3';
+          var storedVersion = localStorage.getItem('appVersion');
+          if (storedVersion !== currentVersion) {
+            localStorage.setItem('appVersion', currentVersion);
+            if ('caches' in window) {
+              caches.keys().then(function (names) {
+                for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+              });
+            }
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                for (var i = 0; i < registrations.length; i++) registrations[i].unregister();
+              });
+            }
           }
-        });
-      }
+        }
+      } catch (e) { /* localStorage may be unavailable; never break the app */ }
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
