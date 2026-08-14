@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
+import { MessageStage } from './MessageStage';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -247,7 +248,7 @@ export const TimerOutput = () => {
       ) : (
         <div className="relative flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
           {/* Background Timer Layer (Blurred out when message is active) */}
-          <div className={`flex h-full w-full flex-col items-center justify-between transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[16px] brightness-50 select-none pointer-events-none' : ''}`}>
+          <div className={`flex h-full w-full flex-col items-center justify-between transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
             <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
               <div
                 className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
@@ -274,47 +275,19 @@ export const TimerOutput = () => {
             </div>
           </div>
 
-          {/* Foreground Message Overlay Box */}
-          {messageMaximize && messageText && !isEmpty && (() => {
-            const lines = messageText.split('\n').length;
-            // Recalibrated for aggressive fill:
-            const lengthFactor = Math.max(4, 28 - (messageText.length / 5));
-            const lineFactor = 88 / (lines * 1.5); 
-            const fontSizeVh = Math.min(lengthFactor, lineFactor);
-            
-            return (
-              <div className="absolute inset-0 z-40 flex items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
-                <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[1vh] px-[2vw] shadow-2xl backdrop-blur-xl overflow-hidden">
-                  <div
-                    className="w-full text-center transition-opacity duration-75"
-                    style={{
-                      color: messageColor,
-                      fontSize: `calc(${fontSizeVh}vh * ${messageSize})`,
-                      fontWeight: messageBold ? 900 : 400,
-                      textTransform: messageUppercase ? 'uppercase' : 'none',
-                      fontFamily: 'Inter, system-ui, sans-serif',
-                      lineHeight: 1.2,
-                      textShadow: messageFlashing && flash 
-                        ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
-                        : `0 4px 20px rgba(0,0,0,0.8), 0 0 60px ${messageColor}55`,
-                      letterSpacing: '0.01em',
-                      transform: `scale(0.9, 1.5)`,
-                      transformOrigin: 'center',
-                      whiteSpace: 'pre-wrap',
-                      wordWrap: 'break-word',
-                      overflowWrap: 'anywhere',
-                      maxWidth: '96vw',
-                      maxHeight: '62vh', // Recalibrated for ultra-thin fill: 62vh * 1.5 stretch = 93vh visual height
-                      opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
-                      transition: 'none'
-                    }}
-                  >
-                    {messageText}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
+          <MessageStage
+            className="absolute inset-0 z-40"
+            active={messageMaximize && !!messageText && !isEmpty}
+            message={{
+              messageText,
+              messageColor,
+              messageBold,
+              messageUppercase,
+              messageSize,
+            }}
+            flashActive={messageFlashing}
+            flashVisible={flash}
+          />
         </div>
       )}
     </div>
