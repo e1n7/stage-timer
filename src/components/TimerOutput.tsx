@@ -264,8 +264,8 @@ export const TimerOutput = () => {
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: '95vw',
-                maxHeight: '92vh',
+                maxWidth: '92vw',
+                maxHeight: '88vh',
                 opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                 transition: 'none'
               }}
@@ -318,7 +318,7 @@ export const TimerOutput = () => {
                   whiteSpace: 'pre-wrap',
                   wordWrap: 'break-word',
                   overflowWrap: 'anywhere',
-                  maxWidth: '90vw'
+                  maxWidth: '88vw'
                 }}
               >
                 {messageText}
