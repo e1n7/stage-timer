@@ -11,6 +11,10 @@ export type MessageStageData = {
   messageBold?: boolean;
   messageUppercase?: boolean;
   messageSize?: number;
+  /** Height multiplier from the message Size slider (legacy name: messageSize) */
+  messageFontHeight?: number;
+  /** Width multiplier from the message Size slider (legacy name: messageSize) */
+  messageFontWidth?: number;
 };
 
 type MessageStageProps = {
@@ -77,8 +81,14 @@ export const MessageStage = ({
   // Calculate base best-fit size, then apply the user's multiplier.
   // maxFontSize caps the master-canvas size (scaled down to the host by `scale`);
   // a fullscreen output passes a large cap so short messages still fill the screen.
+  // Height/width come from the message's own settings: explicit
+  // messageFontHeight/messageFontWidth first, then the legacy messageSize
+  // fallback, then 1.0. This keeps the Output view the same size as the
+  // dashboard preview.
+  const heightMult = typeof message.messageFontHeight === 'number' && message.messageFontHeight > 0 ? message.messageFontHeight : (typeof message.messageSize === 'number' && message.messageSize > 0 ? message.messageSize : 1.0);
+  const widthMult = typeof message.messageFontWidth === 'number' && message.messageFontWidth > 0 ? message.messageFontWidth : (typeof message.messageSize === 'number' && message.messageSize > 0 ? message.messageSize : 1.0);
   const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize);
-  const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 500);
+  const fontSize = clamp(baseSize * heightMult, 12, 500);
   const color = message.messageColor || '#ffffff';
 
   return (
@@ -113,7 +123,7 @@ export const MessageStage = ({
                 overflowWrap: 'anywhere',
                 maxWidth: 1880,
                 maxHeight: 1040,
-                transform: 'scale(0.9, 1.5)',
+                transform: `scale(${widthMult * 0.9}, ${heightMult * 1.5})`,
                 transformOrigin: 'center center',
                 opacity: flashActive && !flashVisible ? 0.1 : 1,
                 textShadow: flashActive && flashVisible

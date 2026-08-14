@@ -1776,7 +1776,7 @@ function App() {
     }
     setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
   };
-  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean } => {
+  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean; messageFontHeight: number; messageFontWidth: number } => {
     // Active message priority: currently flashing > shown
     const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
       : messageShownId;
@@ -1788,6 +1788,8 @@ function App() {
       messageBold: !!msg?.bold,
       messageUppercase: !!msg?.uppercase,
       messageSize: msg ? getMessageSize(msg) : 1.0,
+      messageFontHeight: (msg?.fontHeight ?? msg?.messageSize) ?? 1.0,
+      messageFontWidth: (msg?.fontWidth ?? msg?.messageSize) ?? 1.0,
       messageShown: !!messageShownId || !!messageFlashId,
       messageFlash: !!messageFlashId,
       // Show now acts as maximize: message only, no timer on Output
