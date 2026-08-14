@@ -936,19 +936,20 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       onClick={isActive ? onActivate : undefined} 
       className={`group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
-      {/* Index / Handle */}
+      {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
         {...attributes} 
         {...listeners} 
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" 
+        className="group/index flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" 
         onClick={(e) => e.stopPropagation()}
       >
-        {isHovered || isDragging ? (
+        {isDragging ? (
           <span className="text-[24px] font-light leading-none">=</span>
         ) : (
-          <span>{index + 1}</span>
+          <>
+            <span className="group-hover/index:hidden">{index + 1}</span>
+            <span className="hidden group-hover/index:inline text-[24px] font-light leading-none">=</span>
+          </>
         )}
       </div>
 
@@ -1815,7 +1816,7 @@ function App() {
       <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
-          <div className={`relative flex h-[200px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
+          <div className={`relative flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
 
             {/* Timer background layer; the shared message stage sits above it. */}

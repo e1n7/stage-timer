@@ -61,15 +61,16 @@ export const MessageStage = ({
   const longestLine = Math.max(1, ...lines.map((line) => line.length));
   const lineCount = Math.max(1, lines.length);
 
-  // All sizing is calculated in the fixed 1920x1080 master canvas. The
-  // horizontal fit preserves the same line breaks; the vertical fit accounts
-  // for line height and the shared 1.5x tall-text treatment.
-  const maxTextWidth = 1680;
-  const maxTextHeight = 720;
+  // All sizing is calculated in the fixed 1920x1080 master canvas.
+  // The horizontal fit preserves line breaks; the vertical fit accounts for 1.5x stretch.
+  const maxTextWidth = 1760;
+  const maxTextHeight = 880;
   const horizontalFit = maxTextWidth / (longestLine * 0.55);
   const verticalFit = maxTextHeight / (lineCount * 1.2 * 1.5);
-  const preferredSize = 140 * (message.messageSize || 1);
-  const fontSize = clamp(Math.min(preferredSize, horizontalFit, verticalFit), 16, 190);
+  
+  // Calculate base best-fit size, then apply the user's multiplier.
+  const baseSize = Math.min(horizontalFit, verticalFit, 160);
+  const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 450);
   const color = message.messageColor || '#ffffff';
 
   return (
@@ -86,13 +87,14 @@ export const MessageStage = ({
           transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-        <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-white/20 bg-[#141414]/80 p-[1vh] shadow-2xl backdrop-blur-xl">
-          <div className="flex h-full w-full items-center justify-center overflow-hidden px-[42px] py-[24px]">
+        {/* Use absolute pixel units relative to 1920x1080 stage for perfect sync */}
+        <div className="relative h-full w-full overflow-hidden rounded-[28px] border-[2px] border-white/20 bg-[#141414]/80 shadow-2xl backdrop-blur-xl">
+          <div className="flex h-full w-full items-center justify-center overflow-hidden p-[20px]">
             <div
               className="w-full text-center"
               style={{
                 color,
-                fontSize,
+                fontSize: `${fontSize}px`,
                 fontWeight: message.messageBold ? 900 : 400,
                 textTransform: message.messageUppercase ? 'uppercase' : 'none',
                 fontFamily: 'Inter, system-ui, sans-serif',
@@ -101,8 +103,8 @@ export const MessageStage = ({
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: 1800,
-                maxHeight: 850,
+                maxWidth: 1880,
+                maxHeight: 1040,
                 transform: 'scale(0.9, 1.5)',
                 transformOrigin: 'center center',
                 opacity: flashActive && !flashVisible ? 0.1 : 1,
