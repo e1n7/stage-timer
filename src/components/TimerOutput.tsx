@@ -38,7 +38,9 @@ export const TimerOutput = () => {
   const [messageVisible, setMessageVisible] = useState<boolean>(false);
   const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
   const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
+  const [messageFlashVisible, setMessageFlashVisible] = useState<boolean>(true);
   const flashIntervalRef = useRef<any>(null);
+  const messageFlashIntervalRef = useRef<any>(null);
 
   const triggerFlash = useCallback(() => {
     if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
@@ -51,7 +53,27 @@ export const TimerOutput = () => {
         if (flashIntervalRef.current) clearInterval(flashIntervalRef.current);
         setFlash(false);
         setIsFlashing(false);
+        flashIntervalRef.current = null;
+      }
+    }, 150);
+  }, []);
+
+  const triggerMessageFlash = useCallback(() => {
+    // Blink loop that only drives the MESSAGE (MessageStage flashActive /
+    // flashVisible). The timer digits keep their own isFlashing/flash flags
+    // via triggerFlash(), so a message flash never blinks the timer.
+    if (messageFlashIntervalRef.current) clearInterval(messageFlashIntervalRef.current);
+    setMessageFlashing(true);
+    setMessageFlashVisible(true);
+    let count = 0;
+    messageFlashIntervalRef.current = setInterval(() => {
+      setMessageFlashVisible(prev => !prev);
+      count++;
+      if (count >= 6) {
+        if (messageFlashIntervalRef.current) clearInterval(messageFlashIntervalRef.current);
+        setMessageFlashVisible(true);
         setMessageFlashing(false);
+        messageFlashIntervalRef.current = null;
       }
     }, 150);
   }, []);
@@ -103,14 +125,15 @@ export const TimerOutput = () => {
       }
       if ('messageShown' in data) setMessageVisible(!!data.messageShown);
       if ('messageFlash' in data && data.messageFlash) {
+        // Message-only flash: blink the message, never the timer digits.
         setMessageFlashing(true);
+        triggerMessageFlash();
         if (data.messageText) setMessageText(data.messageText);
         if (data.messageColor) setMessageColor(data.messageColor);
         if ('messageBold' in data) setMessageBold(!!data.messageBold);
         if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
         if (typeof data.messageSize === 'number') setMessageSize(data.messageSize);
         setMessageMaximize(true);
-        triggerFlash();
       }
       if ('messageMaximize' in data) {
         const maxOn = !!data.messageMaximize;
@@ -286,7 +309,7 @@ export const TimerOutput = () => {
               messageSize,
             }}
             flashActive={messageFlashing}
-            flashVisible={flash}
+            flashVisible={messageFlashVisible}
           />
         </div>
       )}

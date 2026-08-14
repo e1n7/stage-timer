@@ -1186,6 +1186,11 @@ function App() {
     return undefined;
   }, []);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
+  // Message-only flash state (used by the Messages Flash button). The timer
+  // digits keep their own isFlashing/isFlash flags via handleFlash, so a
+  // message flash never makes the timer blink.
+  const [isMessageFlashing, setIsMessageFlashing] = useState(false);
+  const [isMessageFlash, setIsMessageFlash] = useState(false);
   const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
@@ -1760,7 +1765,8 @@ function App() {
     }
   };
   const flashMessage = (id: string) => {
-    // Flash button: quick blink, does not latch the message
+    // Flash button: quick blink of the MESSAGE ONLY. Does not touch the
+    // timer digits — those are driven by isFlashing/isFlash in handleFlash.
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
@@ -1775,15 +1781,15 @@ function App() {
         type: 'force-sync' 
       });
     }
-    setIsFlashing(true);
+    setIsMessageFlashing(true);
     let count = 0;
     const interval = setInterval(() => {
-      setIsFlash(prev => !prev);
+      setIsMessageFlash(prev => !prev);
       count += 1;
       if (count >= 6) {
         clearInterval(interval);
-        setIsFlash(false);
-        setIsFlashing(false);
+        setIsMessageFlash(false);
+        setIsMessageFlashing(false);
         setMessageFlashId(null);
       }
     }, 150);
@@ -1929,8 +1935,8 @@ function App() {
               className="absolute inset-3 z-20"
               active={!isBlackout && getActiveMessage().messageShown}
               message={getActiveMessage()}
-              flashActive={isFlashing && getActiveMessage().messageFlash}
-              flashVisible={isFlash}
+              flashActive={isMessageFlashing}
+              flashVisible={isMessageFlash}
             />
           </div>
 
