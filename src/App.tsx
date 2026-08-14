@@ -775,9 +775,9 @@ const MessageRow = ({
             <div className="flex items-center gap-1 ml-2 border-l border-[#444] pl-2">
               <span className="text-[10px] uppercase text-[#666] mr-1">Size</span>
               <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
-                <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white">-</button>
-                <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-10 bg-transparent text-center font-mono text-[12px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-6 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white">+</button>
+                <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white border-r border-[#444]">-</button>
+                <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-7 bg-transparent text-center font-mono text-[11px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white border-l border-[#444]">+</button>
               </div>
             </div>
           </div>
