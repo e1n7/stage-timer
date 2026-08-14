@@ -514,7 +514,6 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <button 
                 type="button"
                 onClick={() => {
-                  updateSettings(localSettings);
                   onApplyToAll?.({ 
                     mode: localSettings.mode, 
                     fontHeight: localSettings.fontHeight,
@@ -636,16 +635,48 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               </select>
             </div>
 
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[13px] text-[#8a8a8a]">Font Height</span>
+              <div className="flex flex-1 items-center gap-3">
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="3.0" 
+                  step="0.1"
+                  value={localSettings.fontHeight || 1.6} 
+                  onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })}
+                  className="flex-1 accent-[#4a9eff]"
+                />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[13px] text-[#8a8a8a]">Font Width</span>
+              <div className="flex flex-1 items-center gap-3">
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="2.0" 
+                  step="0.1"
+                  value={localSettings.fontWidth || 1.0} 
+                  onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })}
+                  className="flex-1 accent-[#4a9eff]"
+                />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
+              </div>
+            </div>
+            
             <div className="flex justify-end">
               <button 
                 type="button"
                 onClick={() => {
-                  onConfirm?.(localSettings);
                   onApplyToAll?.({ 
                     mode: localSettings.mode,
                     fontHeight: localSettings.fontHeight,
                     fontWidth: localSettings.fontWidth
                   });
+                  onSettingsUpdate();
                 }}
                 className="text-[12px] text-[#4a9eff] hover:underline"
               >
