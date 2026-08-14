@@ -400,8 +400,16 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
   if (!isOpen) return null;
 
-  const yellowSegment = localSettings.segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
-  const redSegment = localSettings.segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
+  const segments = Array.isArray(localSettings.segments) ? localSettings.segments : [];
+  const yellowSegment = segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
+  const redSegment = segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
+  const updateWarningSegment = (color: string, threshold: number) => {
+    const index = segments.findIndex((segment: any) => segment.color === color);
+    const nextSegments = index >= 0
+      ? segments.map((segment: any, segmentIndex: number) => segmentIndex === index ? { ...segment, threshold } : segment)
+      : [...segments, { color, threshold }];
+    setLocalSettings({ ...localSettings, segments: nextSegments });
+  };
 
   const formatMMSS = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -547,10 +555,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <span className="w-16 text-[13px] text-white">Yellow</span>
               <ThresholdInput 
                 value={yellowSegment.threshold} 
-                onChange={(val) => {
-                  const newSegments = localSettings.segments.map((s: any) => s.color === '#f08c00' ? { ...s, threshold: val } : s); 
-                  setLocalSettings({ ...localSettings, segments: newSegments }); 
-                }}
+                onChange={(val) => updateWarningSegment('#f08c00', val)}
               />
             </div>
             <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
@@ -558,10 +563,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <span className="w-16 text-[13px] text-white">Red</span>
               <ThresholdInput 
                 value={redSegment.threshold} 
-                onChange={(val) => {
-                  const newSegments = localSettings.segments.map((s: any) => s.color === '#fa5252' ? { ...s, threshold: val } : s); 
-                  setLocalSettings({ ...localSettings, segments: newSegments }); 
-                }}
+                onChange={(val) => updateWarningSegment('#fa5252', val)}
               />
             </div>
             <div className="flex items-center gap-4 py-2">
@@ -1560,6 +1562,19 @@ function App() {
     });
   }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
+  const deleteRoom = useCallback((room: Room) => {
+    const remainingTimerIds = new Set(rooms.filter(candidate => candidate.id !== room.id).flatMap(candidate => candidate.timerIds || []));
+    (room.timerIds || []).forEach(timerId => {
+      if (!remainingTimerIds.has(timerId)) {
+        localStorage.removeItem(`timerSettings_${timerId}`);
+        localStorage.removeItem(`timerSync_${timerId}`);
+        localStorage.removeItem(`timerSeconds_${timerId}`);
+      }
+    });
+    setRooms(prev => prev.filter(candidate => candidate.id !== room.id));
+    if (currentRoomId === room.id) setCurrentRoomId(null);
+  }, [currentRoomId, rooms, setCurrentRoomId, setRooms]);
+
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
     postSharedMessage(CHANNEL_NAME, payload);
     try {
@@ -1900,7 +1915,7 @@ function App() {
                 {rooms.map((room) => (
                   <div key={room.id} onClick={() => loadRoom(room)} className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer">
                     <span className="truncate">{room.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setRooms(rooms.filter(r => r.id !== room.id)); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
                 ))}
                 <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
@@ -1927,20 +1942,27 @@ function App() {
             )}
           </div>
           <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { 
+  const importedRooms = imported.rooms.map((room: any, index: number) => ({
+    ...room,
+    id: room.id || `imported_${Date.now()}_${index}`,
+  }));
   setRooms(prev => {
-    const existingNames = new Set(prev.map(r => r.name));
-    const newRooms = imported.rooms.filter((r: any) => !existingNames.has(r.name));
-    return [...prev, ...newRooms];
+    const roomsById = new Map(prev.map(room => [room.id, room]));
+    importedRooms.forEach((room: Room) => roomsById.set(room.id, room));
+    return Array.from(roomsById.values());
   }); 
-  if (imported.activeRoomName) { 
-    const activeRoom = imported.rooms.find((r: any) => r.name === imported.activeRoomName); 
-    if (activeRoom) loadRoom(activeRoom); 
-  } 
+  const activeRoom = imported.activeRoomId
+    ? importedRooms.find((room: Room) => room.id === imported.activeRoomId)
+    : imported.activeRoomName
+      ? importedRooms.find((room: Room) => room.name === imported.activeRoomName)
+      : undefined;
+  if (activeRoom) loadRoom(activeRoom);
 } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
-            const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+                        const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
+ const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
