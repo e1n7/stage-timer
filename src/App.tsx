@@ -1816,17 +1816,12 @@ function App() {
                   handleGridAction(e.clientX);
                 }}
                 onMouseMove={(e) => {
-                  if (activeTotalTime <= 0) return;
+                  if (activeTotalTime <= 0 || isDraggingGrid) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const percentage = Math.max(0, Math.min(1, x / rect.width));
                   const targetDuration = activeTotalTime;
-                  const time = targetDuration * (1 - percentage);
-                  setHoverTime(time);
-                  
-                  if (isDraggingGrid) {
-                    handleGridAction(e.clientX);
-                  }
+                  setHoverTime(targetDuration * (1 - percentage));
                 }}
                 onMouseLeave={() => {
                   if (!isDraggingGrid) setHoverTime(null);
