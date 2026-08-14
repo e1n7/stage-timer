@@ -19,6 +19,7 @@ type MessageStageProps = {
   flashActive?: boolean;
   flashVisible?: boolean;
   className?: string;
+  maxFontSize?: number;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -34,6 +35,7 @@ export const MessageStage = ({
   flashActive = false,
   flashVisible = true,
   className = '',
+  maxFontSize = 130,
 }: MessageStageProps) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -69,8 +71,8 @@ export const MessageStage = ({
   const verticalFit = maxTextHeight / (lineCount * 1.2 * 1.5);
   
   // Calculate base best-fit size, then apply the user's multiplier.
-  // Lowered default max from 160 to 130 to keep new messages from being too big.
-  const baseSize = Math.min(horizontalFit, verticalFit, 130);
+  // Use the provided maxFontSize (default 130) to keep messages proportional to their host.
+  const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize);
   const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 500);
   const color = message.messageColor || '#ffffff';
 

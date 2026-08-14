@@ -521,7 +521,6 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                     fontWidth: localSettings.fontWidth
                   });
                   onSettingsUpdate();
-                  onClose();
                 }}
                 className="text-[11px] text-[#4a9eff] hover:underline"
               >
@@ -647,7 +646,6 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
                     fontHeight: localSettings.fontHeight,
                     fontWidth: localSettings.fontWidth
                   });
-                  onClose();
                 }}
                 className="text-[12px] text-[#4a9eff] hover:underline"
               >
@@ -731,14 +729,15 @@ const MessageRow = ({
     >
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <span 
+          <div 
             {...attributes} 
             {...listeners} 
-            className="flex w-5 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
+            className="group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
             title="Drag to reorder"
           >
-            {idx + 1}
-          </span>
+            <span className="group-hover/index:hidden">{idx + 1}</span>
+            <span className="hidden group-hover/index:inline text-[18px] font-light leading-none">=</span>
+          </div>
           <textarea
             value={msg.text}
             onChange={(e) => onUpdate(msg.id, e.target.value)}
@@ -752,14 +751,6 @@ const MessageRow = ({
             }}
           />
           <div className="flex items-center gap-1">
-            <span 
-              {...attributes} 
-              {...listeners} 
-              className={`px-1 cursor-grab active:cursor-grabbing ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#555] hover:text-[#8a8a8a]'}`} 
-              title="Drag to reorder"
-            >
-              <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><rect x="1" y="1" width="10" height="2" rx="1"/><rect x="1" y="6" width="10" height="2" rx="1"/><rect x="1" y="11" width="10" height="2" rx="1"/></svg>
-            </span>
             <button
               type="button"
               onClick={() => onDelete(msg.id)}
@@ -1837,11 +1828,12 @@ function App() {
             </div>
 
             <MessageStage
-              className="absolute inset-0 z-20"
+              className="absolute inset-3 z-20"
               active={!isBlackout && getActiveMessage().messageShown}
               message={getActiveMessage()}
               flashActive={isFlashing && getActiveMessage().messageFlash}
               flashVisible={isFlash}
+              maxFontSize={90}
             />
           </div>
 
