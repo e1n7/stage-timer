@@ -1,6 +1,7 @@
 {
   "name": "Stage Timer",
   "short_name": "Stage Timer",
+  "version": "1.0.1",
   "description": "A professional stage timer application",
   "start_url": "/",
   "display": "standalone",
