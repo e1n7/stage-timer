@@ -69,8 +69,9 @@ export const MessageStage = ({
   const verticalFit = maxTextHeight / (lineCount * 1.2 * 1.5);
   
   // Calculate base best-fit size, then apply the user's multiplier.
-  const baseSize = Math.min(horizontalFit, verticalFit, 160);
-  const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 450);
+  // Lowered default max from 160 to 130 to keep new messages from being too big.
+  const baseSize = Math.min(horizontalFit, verticalFit, 130);
+  const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 500);
   const color = message.messageColor || '#ffffff';
 
   return (
