@@ -1581,14 +1581,12 @@ function App() {
 
   const handleFlash = () => {
     setIsFlashing(true);
-    // Send a single explicit flash signal to the output view
+    // Send a single explicit flash signal to the output view.
+    // This only flashes the timer, not the message.
     syncOutput({ 
       flash: true, 
-      // If a message is shown, include its details so it flashes too
-      ...(messageShownId ? {
-        ...getActiveMessage(),
-        messageFlash: true
-      } : {}),
+      ...getActiveMessage(),
+      messageFlash: false,
       type: 'force-sync' 
     });
 
@@ -1842,7 +1840,7 @@ function App() {
               className="absolute inset-0 z-20"
               active={!isBlackout && getActiveMessage().messageShown}
               message={getActiveMessage()}
-              flashActive={isFlashing}
+              flashActive={isFlashing && getActiveMessage().messageFlash}
               flashVisible={isFlash}
             />
           </div>
