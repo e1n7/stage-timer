@@ -1784,53 +1784,67 @@ function App() {
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative flex h-[200px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
-            {(getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout) ? (
-              <div className="flex h-full w-full items-center justify-center px-2 py-2 overflow-hidden">
-                <div
-                  className="w-full text-center leading-tight break-words max-h-full"
-                  style={{
-                    color: getActiveMessage().messageColor,
-                    fontSize: `min(${Math.max(14, 60 - (getActiveMessage().messageText.length * 0.8))}px, 160px)`,
-                    fontWeight: getActiveMessage().messageBold ? 900 : 400,
-                    textTransform: getActiveMessage().messageUppercase ? 'uppercase' : 'none',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    lineHeight: 1.1,
-                    opacity: (isFlashing && !isFlash) ? 0.1 : 1,
-                    textShadow: isFlashing && isFlash 
-                      ? `0 0 15px #fff, 0 0 30px ${getActiveMessage().messageColor}, 0 0 50px ${getActiveMessage().messageColor}, 0 0 80px ${getActiveMessage().messageColor}` 
-                      : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${getActiveMessage().messageColor}55`,
-                    letterSpacing: '0.01em',
-                    transition: 'none',
-                    transform: `scale(calc(${getActiveMessage().messageSize} * 0.9), calc(${getActiveMessage().messageSize} * 1.5))`,
-                    transformOrigin: 'center',
-                    whiteSpace: 'pre-wrap',
-                    wordWrap: 'break-word',
-                    overflowWrap: 'anywhere'
-                  }}
-                >
-                  {getActiveMessage().messageText}
-                </div>
+            
+            {/* Background Preview Layer (Blurred when message shown) */}
+            <div className={`w-full flex flex-col items-center justify-center transition-all duration-300 ${getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
+              <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
+              <div 
+                className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
+                style={{ 
+                  color: getDashboardTextColor(), 
+                  fontSize: 'clamp(40px, 18vw, 90px)',
+                  opacity: (isFlashing && !isFlash) ? 0 : 1,
+                  textShadow: isFlashing && isFlash 
+                    ? `0 0 15px #fff, 0 0 30px ${getDashboardTextColor()}, 0 0 50px ${getDashboardTextColor()}, 0 0 80px ${getDashboardTextColor()}` 
+                    : 'none'
+                }}
+              >
+                {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
               </div>
-            ) : (
-              <div className="w-full flex flex-col items-center justify-center">
-                {/* Overtime label removed */}
-                <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
-                <div 
-                  className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
-                  style={{ 
-                    color: getDashboardTextColor(), 
-                    fontSize: 'clamp(40px, 18vw, 90px)',
-                    opacity: (isFlashing && !isFlash) ? 0 : 1,
-                    textShadow: isFlashing && isFlash 
-                      ? `0 0 15px #fff, 0 0 30px ${getDashboardTextColor()}, 0 0 50px ${getDashboardTextColor()}, 0 0 80px ${getDashboardTextColor()}` 
-                      : 'none'
-                  }}
-                >
-                  {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
+              {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-5" className="rounded-sm" />}
+            </div>
+
+            {/* Foreground Message Preview Box */}
+            {getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout && (() => {
+              const msg = getActiveMessage();
+              const lines = msg.messageText.split('\n').length;
+              // Miniature version of the Output View math:
+              const lengthFactor = Math.max(12, 36 - (msg.messageText.length / 4));
+              const lineFactor = 120 / (lines * 1.5);
+              const fontSizePx = Math.min(lengthFactor, lineFactor);
+
+              return (
+                <div className="absolute inset-0 z-20 flex items-center justify-center p-2 overflow-hidden">
+                  <div className="flex h-full w-full items-center justify-center rounded-lg border border-white/20 bg-[#141414]/80 p-3 shadow-2xl backdrop-blur-md overflow-hidden">
+                    <div
+                      className="w-full text-center transition-opacity duration-75"
+                      style={{
+                        color: msg.messageColor,
+                        fontSize: `calc(${fontSizePx}px * ${msg.messageSize})`,
+                        fontWeight: msg.messageBold ? 900 : 400,
+                        textTransform: msg.messageUppercase ? 'uppercase' : 'none',
+                        fontFamily: 'Inter, system-ui, sans-serif',
+                        lineHeight: 1.2,
+                        textShadow: isFlashing && isFlash 
+                          ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${msg.messageColor}` 
+                          : `0 2px 16px rgba(0,0,0,0.8), 0 0 40px ${msg.messageColor}55`,
+                        letterSpacing: '0.01em',
+                        transform: `scale(0.9, 1.5)`,
+                        transformOrigin: 'center',
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'anywhere',
+                        maxHeight: '160px',
+                        opacity: (isFlashing && !isFlash) ? 0.1 : 1,
+                        transition: 'none'
+                      }}
+                    >
+                      {msg.messageText}
+                    </div>
+                  </div>
                 </div>
-                {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-5" className="rounded-sm" />}
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {activeTimerId && (
