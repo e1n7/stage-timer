@@ -246,7 +246,7 @@ export const TimerOutput = () => {
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
         <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
-          <div className="flex h-full w-full items-center justify-center rounded-[40px] border border-white/10 bg-white/[0.03] p-[4vh] shadow-2xl backdrop-blur-sm">
+          <div className="flex h-full w-full items-center justify-center rounded-[40px] border border-white/10 bg-white/[0.03] p-[6vh] shadow-2xl backdrop-blur-sm overflow-hidden">
             <div
               className="w-full text-center leading-tight break-words transition-opacity duration-75"
               style={{
@@ -265,8 +265,8 @@ export const TimerOutput = () => {
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: '88vw',
-                maxHeight: '85vh',
+                maxWidth: '80vw',
+                maxHeight: '70vh',
                 opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                 transition: 'none'
               }}
@@ -301,10 +301,11 @@ export const TimerOutput = () => {
             </div>
             {(messageVisible || messageFlashing) && messageText && (
               <div
-                className="mt-[3vh] w-full flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-[2vh] px-[4vw] shadow-xl backdrop-blur-sm transition-opacity duration-75"
+                className="mt-[3vh] w-full flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-[3vh] px-[4vw] shadow-xl backdrop-blur-sm transition-opacity duration-75 overflow-hidden"
                 style={{
                   opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
-                  maxWidth: '94vw'
+                  maxWidth: '92vw',
+                  maxHeight: '35vh'
                 }}
               >
                 <div
@@ -326,8 +327,8 @@ export const TimerOutput = () => {
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
                     overflowWrap: 'anywhere',
-                    maxWidth: '88vw',
-                    maxHeight: '30vh'
+                    maxWidth: '80vw',
+                    maxHeight: '25vh'
                   }}
                 >
                   {messageText}
