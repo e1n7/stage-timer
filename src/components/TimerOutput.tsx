@@ -283,7 +283,7 @@ export const TimerOutput = () => {
             
             return (
               <div className="absolute inset-0 z-40 flex items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
-                <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[8vh] px-[6vw] shadow-2xl backdrop-blur-xl overflow-hidden">
+                <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[15vh] px-[12vw] shadow-2xl backdrop-blur-xl overflow-hidden">
                   <div
                     className="w-full text-center transition-opacity duration-75"
                     style={{
@@ -302,8 +302,8 @@ export const TimerOutput = () => {
                       whiteSpace: 'pre-wrap',
                       wordWrap: 'break-word',
                       overflowWrap: 'anywhere',
-                      maxWidth: '85vw',
-                      maxHeight: '75vh',
+                      maxWidth: '75vw',
+                      maxHeight: '65vh',
                       opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                       transition: 'none'
                     }}
