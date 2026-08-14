@@ -1807,27 +1807,9 @@ function App() {
 
               <div 
                 ref={gridTrackRef}
-                className={`relative mt-6 group select-none ${activeTotalTime > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
-                onMouseDown={(e) => {
-                  if (activeTotalTime <= 0 || e.button !== 0) return;
-                  e.preventDefault(); 
-                  e.stopPropagation();
-                  setIsDraggingGrid(true);
-                  handleGridAction(e.clientX);
-                }}
-                onMouseMove={(e) => {
-                  if (activeTotalTime <= 0 || isDraggingGrid) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const percentage = Math.max(0, Math.min(1, x / rect.width));
-                  const targetDuration = activeTotalTime;
-                  setHoverTime(targetDuration * (1 - percentage));
-                }}
-                onMouseLeave={() => {
-                  if (!isDraggingGrid) setHoverTime(null);
-                }}
+                className={`relative mt-6 group select-none ${activeTotalTime > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}`}
               >
-                <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a] select-none">
+                <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a]">
                   <div className="grid grid-cols-7 gap-[1px] bg-[#333]">
                     {[1, 6/7, 5/7, 4/7, 3/7, 2/7, 1/7].map((factor, i) => {
                       const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
@@ -1843,14 +1825,14 @@ function App() {
                   
                   {/* Red Playhead Marker */}
                   <div 
-                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-auto cursor-ew-resize z-20"
+                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-20"
                     style={{ 
-                      left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
-                      transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
+                      left: `${Math.max(0, Math.min(100, (1 - ((isDraggingGrid && hoverTime !== null ? hoverTime : displaySeconds) / activeProgressTotal)) * 100))}%`,
+                      transition: (activeTimerState?.isRunning || isDraggingGrid) ? 'none' : 'left 0.1s linear'
                     }}
                   >
                     {/* The Flag Shape from the image */}
-                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px] hover:scale-110 transition-transform" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
+                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px]" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
                   </div>
 
                   {/* Hover Playhead Marker (Subtle ghost line) */}
@@ -1862,6 +1844,33 @@ function App() {
                       }}
                     />
                   )}
+
+                  {/* Transparent Interaction Overlay */}
+                  <div 
+                    className="absolute inset-0 z-30 cursor-ew-resize"
+                    onMouseDown={(e) => {
+                      if (activeTotalTime <= 0 || e.button !== 0) return;
+                      e.preventDefault(); 
+                      setIsDraggingGrid(true);
+                      handleGridAction(e.clientX);
+                    }}
+                    onMouseMove={(e) => {
+                      if (activeTotalTime <= 0) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const percentage = Math.max(0, Math.min(1, x / rect.width));
+                      const targetDuration = activeTotalTime;
+                      const time = targetDuration * (1 - percentage);
+                      setHoverTime(time);
+                      
+                      if (isDraggingGrid) {
+                        handleGridAction(e.clientX);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (!isDraggingGrid) setHoverTime(null);
+                    }}
+                  />
                 </div>
               </div>
             </>
