@@ -17,6 +17,8 @@
     <script>
       // ======================================================================
       // VERSION RULE (IMPORTANT — do not remove this comment):
+      // PWA version marker. RULE: bump this version (vN -> vN+1) on EVERY push,
+      // so installed PWA users clear their cached bundle.
       // This app is installed as a PWA on users' devices. To make installed
       // users pick up new code, you MUST bump the version below after EVERY
       // code change that gets pushed/deployed:
@@ -28,7 +30,7 @@
       // ======================================================================
       try {
         if ('localStorage' in window) {
-          var currentVersion = 'v4';
+          var currentVersion = 'v5';
           var storedVersion = localStorage.getItem('appVersion');
           if (storedVersion !== currentVersion) {
             localStorage.setItem('appVersion', currentVersion);

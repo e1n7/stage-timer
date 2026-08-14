@@ -306,7 +306,7 @@ export const TimerOutput = () => {
 
           <MessageStage
             className="absolute inset-0 z-40"
-            maxFontSize={500}
+            maxFontSize={160}
             active={messageMaximize && !!messageText && !isEmpty}
             message={{
               messageText,
