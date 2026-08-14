@@ -933,13 +933,14 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? onActivate : undefined} 
-      onMouseEnter={isActive ? () => setIsHovered(true) : undefined} 
-      onMouseLeave={isActive ? () => setIsHovered(false) : undefined} 
-      className={`flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      onMouseEnter={() => setIsHovered(true)} 
+      onMouseLeave={() => setIsHovered(false)} 
+      className={`group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle */}
       <div {...attributes} {...listeners} className="flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        {isHovered || isDragging ? <span className="text-[24px] font-light leading-none">=</span> : index + 1}
+        <span className="group-hover:hidden">{index + 1}</span>
+        <span className="hidden group-hover:inline text-[24px] font-light leading-none">=</span>
       </div>
 
       {/* Scheduled Time Display */}
