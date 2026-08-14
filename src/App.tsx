@@ -1356,6 +1356,43 @@ function App() {
 
   const addTimer = (atIndex?: number) => {
     const newId = `timer_${Date.now()}`;
+    // New timers inherit the 3 shared settings saved by "Apply to All"
+    // (Appearance, Font Height, Font Width). Everything else falls back
+    // to the built-in defaults.
+    try {
+      const shared = JSON.parse(localStorage.getItem('timerSharedDefaults') || '{}');
+      const defaults = {
+        title: 'Timer',
+        speaker: '',
+        notes: '',
+        audioVolume: 0.5,
+        beepOnReach: true,
+        beepOnHalfTime: true,
+        beepOnOneMinute: true,
+        warningThreshold: 60,
+        dangerThreshold: 0,
+        historyLimit: 10,
+        targetDuration: 0,
+        mode: 'countdown',
+        fontHeight: 1.6,
+        fontWidth: 1.0,
+        scheduledStart: null,
+        segments: [
+          { threshold: 60, color: '#f08c00' },
+          { threshold: 10, color: '#fa5252' }
+        ]
+      };
+      const merged = { ...defaults, ...shared };
+      localStorage.setItem(`timerSettings_${newId}`, JSON.stringify(merged));
+      localStorage.setItem(`timerSeconds_${newId}`, JSON.stringify(0));
+      localStorage.setItem(`timerSync_${newId}`, JSON.stringify({
+        startTime: null,
+        initialSeconds: 0,
+        isRunning: false,
+        mode: merged.mode || 'countdown',
+        lastUpdated: Date.now()
+      }));
+    } catch { /* fall back to built-in defaults */ }
     if (atIndex !== undefined) {
       const newIds = [...timerIds];
       newIds.splice(atIndex, 0, newId);
@@ -1395,10 +1432,17 @@ function App() {
   };
 
   const applyToAllSettings = (sharedSettings: any) => {
-    // Only propagate the visual/appearance keys so a settings change can
-    // never reset any timer's current elapsed/remaining time.
+    // Only these 3 settings apply to all timers: Appearance (mode),
+    // Font Height, and Font Width. Never touch time-related keys so a
+    // settings change can never reset any timer's elapsed/remaining time.
     const { mode, fontHeight, fontWidth } = sharedSettings || {};
     const visualOnly = { mode, fontHeight, fontWidth };
+    // Persist the shared defaults so that timers added AFTER this point
+    // also inherit these 3 settings automatically.
+    localStorage.setItem(
+      'timerSharedDefaults',
+      JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
+    );
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
       const settings = stored ? JSON.parse(stored) : {
