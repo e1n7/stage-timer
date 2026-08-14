@@ -175,19 +175,45 @@ export const useTimer = (id: string = 'default') => {
   }, []);
 
   const checkWarnings = useCallback((currentSeconds: number) => {
-    const rounded = Math.floor(currentSeconds);
-    if (Math.abs(currentSeconds - rounded) < 0.05) {
-      if (audioRef.current && settings.beepOnReach && rounded === 0 && syncState.mode === 'countdown') {
-        if (!lastBeepsRef.current.reach) {
-          audioRef.current.beep.currentTime = 0;
-          audioRef.current.beep.play().catch(() => {});
-          lastBeepsRef.current.reach = true;
-        }
-      } else if (rounded !== 0) {
-        lastBeepsRef.current.reach = false;
+    if (syncState.mode !== 'countdown') return;
+
+    const playBeep = () => {
+      if (!audioRef.current) return;
+      audioRef.current.beep.currentTime = 0;
+      audioRef.current.beep.play().catch(() => {});
+    };
+    const targetDuration = settings.targetDuration || 0;
+    const halfTime = targetDuration / 2;
+    const oneMinute = 60;
+
+    if (settings.beepOnHalfTime && targetDuration > 0 && currentSeconds <= halfTime) {
+      if (!lastBeepsRef.current.halfTime) {
+        playBeep();
+        lastBeepsRef.current.halfTime = true;
       }
+    } else if (currentSeconds > halfTime) {
+      lastBeepsRef.current.halfTime = false;
     }
-  }, [settings.beepOnReach, syncState.mode]);
+
+    if (settings.beepOnOneMinute && targetDuration >= oneMinute && currentSeconds <= oneMinute) {
+      if (!lastBeepsRef.current.oneMinute) {
+        playBeep();
+        lastBeepsRef.current.oneMinute = true;
+      }
+    } else if (currentSeconds > oneMinute) {
+      lastBeepsRef.current.oneMinute = false;
+    }
+
+    const rounded = Math.floor(currentSeconds);
+    if (Math.abs(currentSeconds - rounded) < 0.05 && audioRef.current && settings.beepOnReach && rounded === 0) {
+      if (!lastBeepsRef.current.reach) {
+        playBeep();
+        lastBeepsRef.current.reach = true;
+      }
+    } else if (currentSeconds > 0) {
+      lastBeepsRef.current.reach = false;
+    }
+  }, [settings.beepOnHalfTime, settings.beepOnOneMinute, settings.beepOnReach, settings.targetDuration, syncState.mode]);
 
   useEffect(() => {
     const tick = () => {
@@ -215,6 +241,25 @@ export const useTimer = (id: string = 'default') => {
     return () => clearInterval(interval);
   }, [syncState, secondsKey, checkWarnings]);
 
+  const recordLog = useCallback(() => {
+    const currentSettings = settingsRef.current;
+    const currentSeconds = secondsRef.current;
+    const currentSyncState = syncStateRef.current;
+    if (!currentSyncState?.isRunning && currentSeconds === currentSettings.targetDuration) return;
+    const duration = currentSettings.mode === 'countdown'
+      ? Math.max(0, currentSettings.targetDuration - currentSeconds)
+      : Math.max(0, currentSeconds);
+    if (duration <= 0 || currentSettings.historyLimit <= 0) return;
+    const entry: LogEntry = {
+      id: `log_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`,
+      date: new Date().toISOString(),
+      duration,
+      mode: currentSettings.mode,
+      notes: currentSettings.notes,
+    };
+    setLog(previous => [entry, ...previous].slice(0, Math.max(1, currentSettings.historyLimit)));
+  }, [setLog]);
+
   const startTimer = useCallback(() => {
     setSyncState({
       startTime: Date.now(),
@@ -226,6 +271,7 @@ export const useTimer = (id: string = 'default') => {
   }, []);
 
   const pauseTimer = useCallback(() => {
+    recordLog();
     setSyncState(prev => ({
       ...prev,
       isRunning: false,
@@ -233,9 +279,10 @@ export const useTimer = (id: string = 'default') => {
       initialSeconds: secondsRef.current,
       lastUpdated: Date.now()
     }));
-  }, []);
+  }, [recordLog]);
 
   const resetTimer = useCallback(() => {
+    recordLog();
     setSyncState({
       startTime: null,
       initialSeconds: settingsRef.current.targetDuration,

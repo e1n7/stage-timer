@@ -25,6 +25,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
+const createId = (prefix: string) => `${prefix}_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
 
 const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
@@ -1290,26 +1291,41 @@ function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevIsRunningRef = useRef(false);
+  const autoFollowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Follow Active Timer Logic: Auto-advance to next timer when current one finishes
+  // Follow Active Timer Logic - advance only when a timer is paused at zero.
+  // A negative paused value is overtime and must remain visible.
   useEffect(() => {
-    if (isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && activeTimerState?.seconds <= 0) {
+    if (!isFollowEnabled && autoFollowTimeoutRef.current) {
+      clearTimeout(autoFollowTimeoutRef.current);
+      autoFollowTimeoutRef.current = null;
+    }
+
+    const seconds = activeTimerState?.seconds;
+    const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.05;
+    if (isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero) {
       const currentIndex = timerIds.indexOf(activeTimerId);
       if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
         const nextId = timerIds[currentIndex + 1];
         setActiveTimerId(nextId);
-        // Delay slightly to allow the next timer to become active before starting
-        setTimeout(() => {
+        if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
+        autoFollowTimeoutRef.current = setTimeout(() => {
           try {
+            if (!timerIds.includes(nextId)) return;
             postSharedMessage(CONTROL_CHANNEL, { targetId: nextId, command: 'START' });
             postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: nextId });
             window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: nextId }));
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
+          finally { autoFollowTimeoutRef.current = null; }
         }, 300);
       }
     }
     prevIsRunningRef.current = activeTimerState?.isRunning || false;
   }, [activeTimerState?.isRunning, activeTimerState?.seconds, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
+
+  useEffect(() => () => {
+    if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
@@ -1336,7 +1352,7 @@ function App() {
   };
 
   const addTimer = (atIndex?: number) => {
-    const newId = `timer_${Date.now()}`;
+    const newId = createId('timer');
     // New timers inherit the 3 shared settings saved by "Apply to All"
     // (Appearance, Font Height, Font Width). Everything else falls back
     // to the built-in defaults.
@@ -1396,6 +1412,7 @@ function App() {
     try { localStorage.removeItem(`timerSettings_${id}`); } catch { /* ignore */ }
     try { localStorage.removeItem(`timerSeconds_${id}`); } catch { /* ignore */ }
     try { localStorage.removeItem(`timerSync_${id}`); } catch { /* ignore */ }
+    try { localStorage.removeItem(`timerLog_${id}`); } catch { /* ignore */ }
     try {
       postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' });
     } catch { /* ignore */ }
@@ -1452,6 +1469,7 @@ function App() {
         localStorage.removeItem(`timerSettings_${id}`);
         localStorage.removeItem(`timerSeconds_${id}`);
         localStorage.removeItem(`timerSync_${id}`);
+        localStorage.removeItem(`timerLog_${id}`);
       });
       timerIds.forEach(id => postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }));
     } catch { /* ignore */ }
@@ -1462,7 +1480,7 @@ function App() {
   };
 
   const duplicateTimer = (id: string, index: number) => {
-    const newId = `timer_dup_${Date.now()}`;
+    const newId = createId('timer_dup');
     const newIds = [...timerIds];
     newIds.splice(index + 1, 0, newId);
 
@@ -1486,23 +1504,14 @@ function App() {
   };
 
   const loadRoom = useCallback((room: Room) => {
-    // Remove ALL per-timer state (settings, sync, seconds) that does not
-    // belong to the incoming room, so no timers from a previous room leak.
+    // Remove only genuinely orphaned timer state. Timer IDs can be shared by
+    // legacy rooms, so loading one room must not erase another room's state.
+    const knownTimerIds = new Set(rooms.flatMap(candidate => candidate.timerIds || []));
+    (room.timerIds || []).forEach(id => knownTimerIds.add(id));
     Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_')) {
-        const tid = key.split('_').slice(1).join('_');
-        if (!(room.timerIds || []).includes(tid)) {
-          localStorage.removeItem(key);
-        }
-      }
-    });
-    // Remove timers that are in the room's saved timerIds but had no
-    // settings snapshot, unless they match a timer created in this session.
-    (room.timerIds || []).forEach(id => {
-      if (!room.timerSettings || !room.timerSettings[id]) {
-        localStorage.removeItem(`timerSettings_${id}`);
-        localStorage.removeItem(`timerSync_${id}`);
-        localStorage.removeItem(`timerSeconds_${id}`);
+      if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_') || key.startsWith('timerLog_')) {
+        const tid = key.substring(key.indexOf('_') + 1);
+        if (!knownTimerIds.has(tid)) localStorage.removeItem(key);
       }
     });
     // Apply saved per-timer settings for this room's timers, and refresh
@@ -1539,12 +1548,12 @@ function App() {
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
+  }, [rooms, setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
     const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : rooms.find(room => room.name === roomName);
-    const roomId = existingRoom?.id || currentRoomId || Date.now().toString();
+    const roomId = existingRoom?.id || currentRoomId || createId('room');
     setCurrentRoomId(roomId);
     const timerSettings: Record<string, any> = {};
     timerIds.forEach(id => {
@@ -1567,6 +1576,7 @@ function App() {
         localStorage.removeItem(`timerSettings_${timerId}`);
         localStorage.removeItem(`timerSync_${timerId}`);
         localStorage.removeItem(`timerSeconds_${timerId}`);
+        localStorage.removeItem(`timerLog_${timerId}`);
       }
     });
     setRooms(prev => prev.filter(candidate => candidate.id !== room.id));
@@ -1852,7 +1862,7 @@ function App() {
     next.splice(toIdx, 0, moved);
     return next;
   });
-  const addMessage = () => setMessages(prev => [...prev, { id: Date.now().toString(), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
+  const addMessage = () => setMessages(prev => [...prev, { id: createId('message'), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
 
   const goToNextTimer = () => {
     if (timerIds.length <= 1) return;
