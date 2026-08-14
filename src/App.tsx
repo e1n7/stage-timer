@@ -1804,7 +1804,7 @@ function App() {
                 }}
                 onMouseLeave={() => !isDraggingGrid && setHoverTime(null)}
               >
-                <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a]">
+                <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a] select-none">
                   <div className="grid grid-cols-7 gap-[1px] bg-[#333]">
                     {[1, 6/7, 5/7, 4/7, 3/7, 2/7, 1/7].map((factor, i) => {
                       const targetTime = (activeTimerState?.settings.targetDuration || 0) * factor;
@@ -1820,14 +1820,14 @@ function App() {
                   
                   {/* Red Playhead Marker */}
                   <div 
-                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-20"
+                    className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-auto cursor-ew-resize z-20"
                     style={{ 
                       left: `${Math.max(0, Math.min(100, (1 - (displaySeconds / activeProgressTotal)) * 100))}%`,
                       transition: activeTimerState?.isRunning ? 'none' : 'left 0.1s linear'
                     }}
                   >
-                    {/* The Flag Shape from the image (now with ew-resize cursor) */}
-                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px] pointer-events-auto cursor-ew-resize hover:scale-110 transition-transform" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
+                    {/* The Flag Shape from the image */}
+                    <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px] hover:scale-110 transition-transform" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
                   </div>
 
                   {/* Hover Playhead Marker */}
