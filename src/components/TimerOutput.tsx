@@ -245,7 +245,8 @@ export const TimerOutput = () => {
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
-        <div className="flex h-full w-full items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
+        <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
+          <div className="flex h-full w-full items-center justify-center rounded-[40px] border border-white/10 bg-white/[0.03] p-[4vh] shadow-2xl backdrop-blur-sm">
             <div
               className="w-full text-center leading-tight break-words transition-opacity duration-75"
               style={{
@@ -264,16 +265,15 @@ export const TimerOutput = () => {
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: '96vw',
-                maxHeight: '94vh',
-                paddingTop: '2vh',
-                paddingBottom: '2vh',
+                maxWidth: '88vw',
+                maxHeight: '85vh',
                 opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                 transition: 'none'
               }}
             >
               {messageText}
             </div>
+          </div>
         </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
@@ -301,32 +301,37 @@ export const TimerOutput = () => {
             </div>
             {(messageVisible || messageFlashing) && messageText && (
               <div
-                className="mt-[3vh] w-full text-center transition-opacity duration-75 leading-tight break-words"
+                className="mt-[3vh] w-full flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-[2vh] px-[4vw] shadow-xl backdrop-blur-sm transition-opacity duration-75"
                 style={{
                   opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
-                  color: messageColor,
-                  fontSize: `calc(min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw) * ${messageSize})`,
-                  fontWeight: messageBold ? 900 : 400,
-                  textTransform: messageUppercase ? 'uppercase' : 'none',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  lineHeight: 1.1,
-                  textShadow: messageFlashing && flash 
-                    ? `0 0 10px #fff, 0 0 20px ${messageColor}, 0 0 40px ${messageColor}` 
-                    : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
-                  transition: 'none',
-                  letterSpacing: '0.02em',
-                  transform: `scale(0.9, 1.4)`,
-                  transformOrigin: 'center',
-                  whiteSpace: 'pre-wrap',
-                  wordWrap: 'break-word',
-                  overflowWrap: 'anywhere',
-                  maxWidth: '92vw',
-                  maxHeight: '35vh',
-                  paddingTop: '1vh',
-                  paddingBottom: '1vh'
+                  maxWidth: '94vw'
                 }}
               >
-                {messageText}
+                <div
+                  className="w-full text-center leading-tight break-words"
+                  style={{
+                    color: messageColor,
+                    fontSize: `calc(min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw) * ${messageSize})`,
+                    fontWeight: messageBold ? 900 : 400,
+                    textTransform: messageUppercase ? 'uppercase' : 'none',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    lineHeight: 1.1,
+                    textShadow: messageFlashing && flash 
+                      ? `0 0 10px #fff, 0 0 20px ${messageColor}, 0 0 40px ${messageColor}` 
+                      : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
+                    transition: 'none',
+                    letterSpacing: '0.02em',
+                    transform: `scale(0.9, 1.4)`,
+                    transformOrigin: 'center',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    maxWidth: '88vw',
+                    maxHeight: '30vh'
+                  }}
+                >
+                  {messageText}
+                </div>
               </div>
             )}
           </div>
