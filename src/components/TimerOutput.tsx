@@ -275,11 +275,7 @@ export const TimerOutput = () => {
         </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
-          {seconds < 0 && (
-            <div className="absolute left-1/2 top-[3vh] z-10 -translate-x-1/2">
-              <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
-            </div>
-          )}
+          {/* Overtime label removed */}
           <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
             <div
               className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"

@@ -1813,11 +1813,7 @@ function App() {
               </div>
             ) : (
               <div className="w-full flex flex-col items-center justify-center">
-                {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' && (
-                  <div className="flex items-center justify-center mb-2">
-                    <span className="inline-block rounded bg-[#fa5252]/20 px-3 py-1 text-[12px] font-bold uppercase tracking-[0.2em] text-[#fa5252]">Overtime</span>
-                  </div>
-                )}
+                {/* Overtime label removed */}
                 <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
                 <div 
                   className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
