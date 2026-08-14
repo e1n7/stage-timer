@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { MessageStage } from './components/MessageStage';

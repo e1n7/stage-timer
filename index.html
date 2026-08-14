@@ -14,7 +14,22 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   </head>
   <body>
+    <script>
+      // Force clear all caches on load to fix stuck PWAs
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) caches.delete(name);
+        });
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+    </script>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx?v=2"></script>
+    <script type="module" src="/src/main.tsx?v=3"></script>
   </body>
 </html>
