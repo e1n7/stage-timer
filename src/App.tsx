@@ -2018,7 +2018,7 @@ function App() {
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
-                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime)}.{Math.floor(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10)}
+                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime)}.{Math.floor(Math.abs(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10))}
                   </span>
                 </div>
               </div>
