@@ -737,8 +737,7 @@ const MessageRow = ({
             className="flex w-5 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
             title="Drag to reorder"
           >
-            <span className="group-hover:hidden">{idx + 1}</span>
-            <span className="hidden group-hover:inline text-[18px] font-light leading-none">=</span>
+            {idx + 1}
           </span>
           <textarea
             value={msg.text}
@@ -1605,7 +1604,30 @@ function App() {
     if (m.id !== id) return m;
     return { ...m, uppercase: !m.uppercase, text: m.uppercase ? (m.text || '').toLowerCase() : (m.text || '').toUpperCase() };
   }));
-  const updateMessageSize = (id: string, value: number) => setMessages(prev => prev.map(m => m.id === id ? { ...m, messageSize: value } : m));
+  const updateMessageSize = (id: string, value: number) => {
+    const nextSize = Math.min(10, Math.max(0.1, Number.isFinite(value) ? value : 1.0));
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, messageSize: nextSize } : m));
+
+    // Push the new size immediately when this message is currently visible.
+    // This keeps the Dashboard and already-open Output tab in sync without
+    // changing any timer, timeline, or control behavior.
+    if (messageShownId === id || messageFlashId === id) {
+      const msg = messages.find(m => m.id === id);
+      if (msg) {
+        syncOutput({
+          messageText: msg.text || '',
+          messageColor: msg.color || '#ffffff',
+          messageBold: !!msg.bold,
+          messageUppercase: !!msg.uppercase,
+          messageSize: nextSize,
+          messageShown: true,
+          messageMaximize: true,
+          ...(messageFlashId === id ? { messageFlash: true } : {}),
+          type: 'force-sync'
+        });
+      }
+    }
+  };
   const getMessageSize = (msg: any) => {
     const v = msg.messageSize;
     if (typeof v === 'number' && v > 0) return v;
