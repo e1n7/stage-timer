@@ -15,12 +15,20 @@
   </head>
   <body>
     <script>
-      // Version-gated cache clearing: only wipes stale caches when this
-      // version marker changes. On a fresh visit it clears old caches once,
-      // then skips on every subsequent load so installed PWAs keep working.
+      // ======================================================================
+      // VERSION RULE (IMPORTANT — do not remove this comment):
+      // This app is installed as a PWA on users' devices. To make installed
+      // users pick up new code, you MUST bump the version below after EVERY
+      // code change that gets pushed/deployed:
+      //   v3 -> v4 -> v5 -> ... (always increase by one)
+      // Never reuse an old version number. If the number is not bumped, the
+      // app will keep running the old cached bundle for PWA-installed users.
+      // This marker drives the cache-wipe logic below: caches are only
+      // cleared when the marker changes, so normal visits stay fast.
+      // ======================================================================
       try {
         if ('localStorage' in window) {
-          var currentVersion = 'v3';
+          var currentVersion = 'v4';
           var storedVersion = localStorage.getItem('appVersion');
           if (storedVersion !== currentVersion) {
             localStorage.setItem('appVersion', currentVersion);
