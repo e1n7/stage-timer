@@ -2169,3 +2169,4 @@ export default App;
 // Fresh build trigger
 
 // Final UI cleanup verification: sound and flash options removed from all threshold rows.
+// Deployment trigger for restoration to stable version 091648b
