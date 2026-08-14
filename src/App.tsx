@@ -4,6 +4,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { MessageStage } from './components/MessageStage';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
+import { readJsonStorage } from './lib/storage';
 import {
   DndContext,
   closestCenter,
@@ -892,11 +893,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
-            const stored = localStorage.getItem(`timerSettings_${id}`);
-            if (stored) {
-              const newSettings = JSON.parse(stored);
-              updateSettings(newSettings);
-            }
+            const newSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+            if (newSettings) updateSettings(newSettings);
             break;
           }
         }
@@ -927,11 +925,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
-            const stored = localStorage.getItem(`timerSettings_${id}`);
-            if (stored) {
-              const newSettings = JSON.parse(stored);
-              updateSettings(newSettings);
-            }
+            const newSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+            if (newSettings) updateSettings(newSettings);
             break;
           }
         }
@@ -1161,16 +1156,13 @@ function App() {
         if (e.data && e.data.command === 'ROOM_STATE_CHANGED') {
           // Another tab changed room/message/timer list state — re-read the
           // shared state from localStorage so this tab stays in sync.
-          setRooms(window.localStorage.getItem('stage-timer-rooms') ? JSON.parse(window.localStorage.getItem('stage-timer-rooms')!) : []);
-          const roomId = window.localStorage.getItem('stage-timer-current-id');
-          setCurrentRoomId(roomId ? JSON.parse(roomId) : null);
-          setCurrentRoomName(window.localStorage.getItem('stage-timer-current-name') ? JSON.parse(window.localStorage.getItem('stage-timer-current-name')!) : 'Unnamed');
-          setTimerIds(window.localStorage.getItem('stage-timer-timer-ids') ? JSON.parse(window.localStorage.getItem('stage-timer-timer-ids')!) : []);
-          const active = window.localStorage.getItem('stage-timer-active-id');
-          setActiveTimerId(active ? JSON.parse(active) : '');
-          setMessages(window.localStorage.getItem('stage-timer-messages') ? JSON.parse(window.localStorage.getItem('stage-timer-messages')!) : [{ id: '1', text: '', color: '#ffffff' }]);
-          const shown = window.localStorage.getItem('stage-timer-message-shown-id');
-          setMessageShownId(shown ? JSON.parse(shown) : null);
+          setRooms(readJsonStorage<Room[]>('stage-timer-rooms', []));
+          setCurrentRoomId(readJsonStorage<string | null>('stage-timer-current-id', null));
+          setCurrentRoomName(readJsonStorage<string>('stage-timer-current-name', 'Unnamed'));
+          setTimerIds(readJsonStorage<string[]>('stage-timer-timer-ids', []));
+          setActiveTimerId(readJsonStorage<string>('stage-timer-active-id', ''));
+          setMessages(readJsonStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]));
+          setMessageShownId(readJsonStorage<string | null>('stage-timer-message-shown-id', null));
           setMessageFlashId(null);
         }
       });
@@ -1235,9 +1227,8 @@ function App() {
     let currentEndTime = anchorTime;
     for (let i = anchorIndex; i < timerIds.length; i++) {
       const id = timerIds[i];
-      const stored = localStorage.getItem(`timerSettings_${id}`);
-      const settings = stored ? JSON.parse(stored) : { targetDuration: 0, scheduledStart: null };
-      
+        const settings = readJsonStorage(`timerSettings_${id}`, { targetDuration: 0, scheduledStart: null });
+
       let startTime = currentEndTime;
       
       // Only apply manual start to the anchor or if explicitly set
@@ -1254,8 +1245,7 @@ function App() {
       let currentStartTime = anchorTime;
       for (let i = anchorIndex - 1; i >= 0; i--) {
         const id = timerIds[i];
-        const stored = localStorage.getItem(`timerSettings_${id}`);
-        const settings = stored ? JSON.parse(stored) : { targetDuration: 0 };
+        const settings = readJsonStorage(`timerSettings_${id}`, { targetDuration: 0 });
         
         const endTime = currentStartTime;
         const startTime = endTime - (settings.targetDuration || 0);
@@ -1351,7 +1341,7 @@ function App() {
     // (Appearance, Font Height, Font Width). Everything else falls back
     // to the built-in defaults.
     try {
-      const shared = JSON.parse(localStorage.getItem('timerSharedDefaults') || '{}');
+      const shared = readJsonStorage<Record<string, any>>('timerSharedDefaults', {});
       const defaults = {
         title: 'Timer',
         speaker: '',
@@ -1433,8 +1423,7 @@ function App() {
       JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
     );
     timerIds.forEach(id => {
-      const stored = localStorage.getItem(`timerSettings_${id}`);
-      const settings = stored ? JSON.parse(stored) : {
+      const settings = readJsonStorage(`timerSettings_${id}`, {
         title: 'Timer',
         targetDuration: 0,
         mode: 'countdown',
@@ -1442,7 +1431,7 @@ function App() {
           { threshold: 60, color: '#f08c00' },
           { threshold: 10, color: '#fa5252' }
         ]
-      };
+      });
       localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
     });
     // Force a settings refresh (without resetting time) everywhere:
@@ -1476,13 +1465,22 @@ function App() {
     const newId = `timer_dup_${Date.now()}`;
     const newIds = [...timerIds];
     newIds.splice(index + 1, 0, newId);
-    
-    // Copy settings in localStorage
-    const originalSettings = localStorage.getItem(`timerSettings_${id}`);
+
+    const originalSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+    const originalSeconds = readJsonStorage<number>(`timerSeconds_${id}`, 0);
+    const originalSync = readJsonStorage<any | null>(`timerSync_${id}`, null);
     if (originalSettings) {
-      localStorage.setItem(`timerSettings_${newId}`, originalSettings);
+      localStorage.setItem(`timerSettings_${newId}`, JSON.stringify(originalSettings));
     }
-    
+    localStorage.setItem(`timerSeconds_${newId}`, JSON.stringify(originalSeconds));
+    localStorage.setItem(`timerSync_${newId}`, JSON.stringify(originalSync || {
+      startTime: null,
+      initialSeconds: originalSeconds,
+      isRunning: false,
+      mode: originalSettings?.mode || 'countdown',
+      lastUpdated: Date.now(),
+    }));
+
     setTimerIds(newIds);
     setActiveTimerId(newId);
   };
@@ -1551,7 +1549,7 @@ function App() {
     const timerSettings: Record<string, any> = {};
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
-      if (stored) timerSettings[id] = JSON.parse(stored);
+      if (stored) timerSettings[id] = readJsonStorage(`timerSettings_${id}`, null);
     });
     setRooms(prev => {
       const existingIndex = prev.findIndex(r => r.id === roomId);
@@ -1596,8 +1594,7 @@ function App() {
     const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     
     const settings = activeTimerState?.settings || (() => {
-      const stored = localStorage.getItem(`timerSettings_${activeTimerId}`);
-      return stored ? JSON.parse(stored) : null;
+      return readJsonStorage(`timerSettings_${activeTimerId}`, null);
     })();
     
     const targetDuration = settings?.targetDuration || 0;
@@ -1960,7 +1957,10 @@ function App() {
 } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
-            timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
+            timerIds.forEach(id => {
+              const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+              if (settings) exportTimerSettings[id] = settings;
+            });
                         const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
@@ -2267,8 +2267,7 @@ function App() {
         <div className="flex items-center gap-4"></div>
         {(() => {
           const durations = timerIds.map(id => {
-            const stored = localStorage.getItem(`timerSettings_${id}`);
-            return stored ? (JSON.parse(stored).targetDuration || 0) : 0;
+            return readJsonStorage<any>(`timerSettings_${id}`, null)?.targetDuration || 0;
           });
           const total = durations.reduce((a, b) => a + b, 0);
           const activeIdx = activeTimerId ? timerIds.indexOf(activeTimerId) : -1;

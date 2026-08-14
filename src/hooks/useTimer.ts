@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
+import { readJsonStorage } from '../lib/storage';
 import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 0;
@@ -73,10 +74,7 @@ export const useTimer = (id: string = 'default') => {
   const logKey = `timerLog_${id}`;
   const syncKey = `timerSync_${id}`;
 
-  const [seconds, setSeconds] = useState<number>(() => {
-    const saved = localStorage.getItem(secondsKey);
-    return saved ? JSON.parse(saved) : DEFAULT_TIME;
-  });
+  const [seconds, setSeconds] = useState<number>(() => readJsonStorage<number>(secondsKey, DEFAULT_TIME));
   const secondsRef = useRef(seconds);
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
   
@@ -90,16 +88,13 @@ export const useTimer = (id: string = 'default') => {
   const suppressSyncBroadcastRef = useRef(false);
   const syncStateRef = useRef<SyncState | null>(null);
 
-  const [syncState, setSyncState] = useState<SyncState>(() => {
-    const saved = localStorage.getItem(syncKey);
-    return saved ? JSON.parse(saved) : {
-      startTime: null,
-      initialSeconds: DEFAULT_TIME,
-      isRunning: false,
-      mode: 'countdown',
-      lastUpdated: Date.now()
-    };
-  });
+  const [syncState, setSyncState] = useState<SyncState>(() => readJsonStorage<SyncState>(syncKey, {
+    startTime: null,
+    initialSeconds: DEFAULT_TIME,
+    isRunning: false,
+    mode: 'countdown',
+    lastUpdated: Date.now()
+  }));
 
   const lastBeepsRef = useRef<{ halfTime: boolean; oneMinute: boolean; reach: boolean }>({
     halfTime: false,

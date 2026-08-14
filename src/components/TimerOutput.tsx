@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
 import { MessageStage } from './MessageStage';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
+import { readJsonStorage } from '../lib/storage';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -182,12 +183,8 @@ export const TimerOutput = () => {
     postSharedMessage(CHANNEL_NAME, { type: 'handshake' });
 
     const storageSync = () => {
-      const stored = localStorage.getItem('timerState');
-      if (stored) {
-        try {
-          updateFromData(JSON.parse(stored));
-        } catch { /* ignore */ }
-      }
+      const stored = readJsonStorage<Record<string, unknown> | null>('timerState', null);
+      if (stored) updateFromData(stored);
     };
 
     window.addEventListener('storage', storageSync);

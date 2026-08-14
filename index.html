@@ -30,18 +30,23 @@
       // ======================================================================
       try {
         if ('localStorage' in window) {
-          var currentVersion = 'v6';
+          var currentVersion = 'v7';
           var storedVersion = localStorage.getItem('appVersion');
           if (storedVersion !== currentVersion) {
             localStorage.setItem('appVersion', currentVersion);
             if ('caches' in window) {
               caches.keys().then(function (names) {
-                for (var i = 0; i < names.length; i++) caches.delete(names[i]);
+                for (var i = 0; i < names.length; i++) {
+                  if (names[i].indexOf('stage-timer-') === 0) caches.delete(names[i]);
+                }
               });
             }
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (var i = 0; i < registrations.length; i++) registrations[i].unregister();
+                var appScope = new URL('./', window.location.href).href;
+                for (var i = 0; i < registrations.length; i++) {
+                  if (registrations[i].scope === appScope) registrations[i].unregister();
+                }
               });
             }
           }
