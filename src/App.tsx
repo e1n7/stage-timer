@@ -341,6 +341,11 @@ const IconMaximize = ({ size = 12 }: IconProps) => (
 const IconSquare = ({ size = 8 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
 );
+const IconLogo = ({ size = 20 }: IconProps) => (
+  <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Timer--Streamline-Radix" height={size} width={size}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M7.999978666666666 0.9066410666666666c-0.29456 0 -0.5333333333333333 0.2387776 -0.5333333333333333 0.5333376v2.3171839999999997c0 0.29454933333333333 0.2387733333333333 0.5333333333333333 0.5333333333333333 0.5333333333333333 0.29454933333333333 0 0.5333333333333333 -0.238784 0.5333333333333333 -0.5333333333333333V1.9965866666666665C11.611946666666666 2.266538666666667 14.026666666666667 4.8512640000000005 14.026666666666667 7.999978666666666c0 3.3284480000000003 -2.6982399999999997 6.026687999999999 -6.026687999999999 6.026687999999999 -3.3284373333333335 0 -6.026666666666667 -2.6982399999999997 -6.026666666666667 -6.026687999999999 0 -1.486784 0.5376960000000001 -2.846613333333333 1.4298773333333334 -3.8976853333333334 0.19061333333333333 -0.22455466666666668 0.16309333333333334 -0.5611200000000001 -0.061472 -0.7517333333333334 -0.22455466666666668 -0.19061333333333333 -0.5611200000000001 -0.16309333333333334 -0.7517333333333334 0.06146133333333333C1.5403200000000001 4.648618666666667 0.9066410666666666 6.250976 0.9066410666666666 7.999978666666666c0 3.9175679999999997 3.1757909333333334 7.0933546666666665 7.0933376 7.0933546666666665 3.9175679999999997 0 7.0933546666666665 -3.1757866666666668 7.0933546666666665 -7.0933546666666665 0 -3.9175466666666665 -3.1757866666666668 -7.0933376 -7.0933546666666665 -7.0933376ZM7.189856 8.619434666666667 4.5052053333333335 4.877194666666667c-0.07607466666666667 -0.10604799999999999 -0.06418133333333334 -0.2515733333333333 0.028106666666666665 -0.3438613333333333 0.09227733333333334 -0.092288 0.23781333333333335 -0.10418133333333333 0.34385066666666664 -0.028106666666666665l3.7422400000000002 2.6846506666666663c0.5136853333333333 0.368512 0.5742613333333333 1.10976 0.12724266666666667 1.5567893333333334 -0.44702933333333333 0.44702933333333333 -1.1882773333333332 0.38644266666666666 -1.5567893333333334 -0.12723199999999998Z" fill="#22c55e"></path>
+  </svg>
+);
 
 interface TimeAdjustMenuProps {
   direction: 'decrease' | 'increase';
@@ -1720,7 +1725,14 @@ function App() {
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-full sm:w-64 text-center sm:text-left" placeholder="Unnamed" />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 px-1">
+            <IconLogo size={24} />
+            <span className="text-[18px] font-black tracking-tighter text-white uppercase hidden sm:inline">Stage Timer</span>
+          </div>
+          <div className="h-6 w-[1px] bg-[#333] hidden sm:block mx-1"></div>
+          <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[18px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors flex-1 sm:w-48" placeholder="Unnamed" />
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
           <div className="relative">
