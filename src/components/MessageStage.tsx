@@ -55,7 +55,10 @@ export const MessageStage = ({
     const observer = new ResizeObserver(updateScale);
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+    // Re-run when the stage first becomes active: on the initial mount the
+    // stage may return null early (ref never attached), so the scale effect
+    // must re-run once the host element is actually rendered.
+  }, [active, message.messageText]);
 
   if (!active || !message.messageText) return null;
 
@@ -72,8 +75,9 @@ export const MessageStage = ({
   const verticalFit = maxTextHeight / (lineCount * 1.3);
   
   // Calculate base best-fit size, then apply the user's multiplier.
-  // Increased default max to 200 to allow for truly maximized, "smart-fit" text.
-  const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize || 200);
+  // maxFontSize caps the master-canvas size (scaled down to the host by `scale`);
+  // a fullscreen output passes a large cap so short messages still fill the screen.
+  const baseSize = Math.min(horizontalFit, verticalFit, maxFontSize);
   const fontSize = clamp(baseSize * (message.messageSize || 1.0), 12, 500);
   const color = message.messageColor || '#ffffff';
 
