@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 0;
@@ -86,6 +87,9 @@ export const useTimer = (id: string = 'default') => {
   const [selectedTimeZone, setSelectedTimeZone] = useLocalStorage<string>('stage-timer-global-timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [now, setNow] = useState(new Date());
 
+  const suppressSyncBroadcastRef = useRef(false);
+  const syncStateRef = useRef<SyncState | null>(null);
+
   const [syncState, setSyncState] = useState<SyncState>(() => {
     const saved = localStorage.getItem(syncKey);
     return saved ? JSON.parse(saved) : {
@@ -106,8 +110,29 @@ export const useTimer = (id: string = 'default') => {
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
 
   useEffect(() => {
+    syncStateRef.current = syncState;
     localStorage.setItem(syncKey, JSON.stringify(syncState));
-  }, [syncState, syncKey]);
+    if (suppressSyncBroadcastRef.current) {
+      suppressSyncBroadcastRef.current = false;
+    } else {
+      postSharedMessage('stage-timer-control', {
+        command: 'TIMER_STATE_CHANGED',
+        targetId: id,
+        payload: syncState,
+      });
+    }
+  }, [id, syncState, syncKey]);
+
+  useEffect(() => subscribeSharedChannel('stage-timer-control', (event) => {
+    const data = event.data;
+    if (!data || data.command !== 'TIMER_STATE_CHANGED' || data.targetId !== id || !data.payload) return;
+    const incoming = data.payload as SyncState;
+    const current = syncStateRef.current;
+    if (!current || (incoming.lastUpdated || 0) > (current.lastUpdated || 0)) {
+      suppressSyncBroadcastRef.current = true;
+      setSyncState(incoming);
+    }
+  }), [id]);
 
   useEffect(() => {
     const wallTimer = setInterval(() => setNow(new Date()), 1000);

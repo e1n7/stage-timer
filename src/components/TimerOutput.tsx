@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProgressBar, ProgressSegment } from './ProgressBar';
 import { MessageStage } from './MessageStage';
+import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -96,8 +97,6 @@ export const TimerOutput = () => {
   });
 
   useEffect(() => {
-    let channel: BroadcastChannel | null = null;
-
     const updateFromData = (data: any) => {
       if (!data || typeof data !== 'object') return;
 
@@ -179,11 +178,8 @@ export const TimerOutput = () => {
       }
     };
 
-    try {
-      channel = new BroadcastChannel(CHANNEL_NAME);
-      channel.onmessage = (event) => updateFromData(event.data);
-      channel.postMessage({ type: 'handshake' });
-    } catch { /* ignore */ }
+    const unsubscribe = subscribeSharedChannel(CHANNEL_NAME, (event) => updateFromData(event.data));
+    postSharedMessage(CHANNEL_NAME, { type: 'handshake' });
 
     const storageSync = () => {
       const stored = localStorage.getItem('timerState');
@@ -198,7 +194,7 @@ export const TimerOutput = () => {
     storageSync();
 
     return () => {
-      channel?.close();
+      unsubscribe();
       window.removeEventListener('storage', storageSync);
     };
   }, []);

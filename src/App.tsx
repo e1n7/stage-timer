@@ -3,6 +3,7 @@ import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { MessageStage } from './components/MessageStage';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import {
   DndContext,
   closestCenter,
@@ -901,8 +902,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     };
     window.addEventListener('stage-timer-control', handleLocalControl);
 
-    const channel = new BroadcastChannel(CONTROL_CHANNEL);
-    channel.onmessage = (event) => {
+    const unsubscribe = subscribeSharedChannel(CONTROL_CHANNEL, (event) => {
       const { targetId, command, payload } = event.data;
       
       // Global commands
@@ -934,12 +934,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           }
         }
       }
-    };
+    });
     return () => {
       window.removeEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
       window.removeEventListener('stage-timer-pause-all-except', handleInWindowPauseAll);
       window.removeEventListener('stage-timer-control', handleLocalControl);
-      channel.close();
+      unsubscribe();
     };
   }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
 
@@ -1041,9 +1041,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             if (!isRunning) {
               onActivate();
               window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
-              const channel = new BroadcastChannel(CONTROL_CHANNEL);
-              channel.postMessage({ command: 'RESET_ALL_EXCEPT', payload: id });
-              channel.close();
+              postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: id });
               startTimer();
             } else {
               pauseTimer();
@@ -1118,44 +1116,36 @@ interface Room {
   name: string;
   timerIds: string[];
   activeTimerId: string;
-  messages: Array<{ id: string; text: string; color: string; }>;
+  messages: Array<{ id: string; text: string; color: string; bold?: boolean; uppercase?: boolean; messageSize?: number; fontHeight?: number; fontWidth?: number; }>;
   timerSettings?: Record<string, any>;
   activeRoomSettings?: any;
 }
 
 function App() {
-  // Deep Reset: Clear all service worker caches on mount to fix stuck PWAs
-  useEffect(() => {
-    if ('caches' in window) {
-      caches.keys().then((names) => {
-        for (const name of names) caches.delete(name);
-      });
-    }
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) registration.unregister();
-      });
-    }
-  }, []);
-
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
+  const [currentRoomId, setCurrentRoomId] = useLocalStorage<string | null>('stage-timer-current-id', null);
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
 
+  useEffect(() => {
+    if (!currentRoomId) {
+      const matchingRoom = rooms.find(room => room.name === currentRoomName);
+      if (matchingRoom) setCurrentRoomId(matchingRoom.id);
+    }
+  }, [currentRoomId, currentRoomName, rooms, setCurrentRoomId]);
+
   // Fix #4: cross-tab room/message sync — when another dashboard tab updates
   // timers/messages/room, broadcast the change so other open tabs reload too.
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (!e.key) return;
-      const changed = ['stage-timer-rooms', 'stage-timer-timer-ids', 'stage-timer-active-id', 'stage-timer-messages', 'stage-timer-message-shown-id'].includes(e.key);
+      const changed = ['stage-timer-rooms', 'stage-timer-current-id', 'stage-timer-current-name', 'stage-timer-timer-ids', 'stage-timer-active-id', 'stage-timer-messages', 'stage-timer-message-shown-id'].includes(e.key);
       if (changed) {
         try {
-          const channel = new BroadcastChannel(CONTROL_CHANNEL);
-          channel.postMessage({ command: 'ROOM_STATE_CHANGED' });
-          channel.close();
+          postSharedMessage(CONTROL_CHANNEL, { command: 'ROOM_STATE_CHANGED' });
         } catch { /* ignore */ }
       }
     };
@@ -1165,12 +1155,13 @@ function App() {
 
   useEffect(() => {
     try {
-      const channel = new BroadcastChannel(CONTROL_CHANNEL);
-      channel.onmessage = (e) => {
+      const unsubscribe = subscribeSharedChannel(CONTROL_CHANNEL, (e) => {
         if (e.data && e.data.command === 'ROOM_STATE_CHANGED') {
           // Another tab changed room/message/timer list state — re-read the
           // shared state from localStorage so this tab stays in sync.
           setRooms(window.localStorage.getItem('stage-timer-rooms') ? JSON.parse(window.localStorage.getItem('stage-timer-rooms')!) : []);
+          const roomId = window.localStorage.getItem('stage-timer-current-id');
+          setCurrentRoomId(roomId ? JSON.parse(roomId) : null);
           setCurrentRoomName(window.localStorage.getItem('stage-timer-current-name') ? JSON.parse(window.localStorage.getItem('stage-timer-current-name')!) : 'Unnamed');
           setTimerIds(window.localStorage.getItem('stage-timer-timer-ids') ? JSON.parse(window.localStorage.getItem('stage-timer-timer-ids')!) : []);
           const active = window.localStorage.getItem('stage-timer-active-id');
@@ -1180,11 +1171,11 @@ function App() {
           setMessageShownId(shown ? JSON.parse(shown) : null);
           setMessageFlashId(null);
         }
-      };
-      return () => { channel.close(); };
+      });
+      return unsubscribe;
     } catch { /* ignore */ }
     return undefined;
-  }, []);
+  }, [setCurrentRoomId, setCurrentRoomName, setRooms, setTimerIds, setActiveTimerId, setMessages, setMessageShownId]);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
   // Message-only flash state (used by the Messages Flash button). The timer
   // digits keep their own isFlashing/isFlash flags via handleFlash, so a
@@ -1318,10 +1309,8 @@ function App() {
         // Delay slightly to allow the next timer to become active before starting
         setTimeout(() => {
           try {
-            const channel = new BroadcastChannel(CONTROL_CHANNEL);
-            channel.postMessage({ targetId: nextId, command: 'START' });
-            channel.postMessage({ command: 'RESET_ALL_EXCEPT', payload: nextId });
-            channel.close();
+            postSharedMessage(CONTROL_CHANNEL, { targetId: nextId, command: 'START' });
+            postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: nextId });
             window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: nextId }));
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
         }, 300);
@@ -1416,9 +1405,7 @@ function App() {
     try { localStorage.removeItem(`timerSeconds_${id}`); } catch { /* ignore */ }
     try { localStorage.removeItem(`timerSync_${id}`); } catch { /* ignore */ }
     try {
-      const channel = new BroadcastChannel(CONTROL_CHANNEL);
-      channel.postMessage({ targetId: id, command: 'DESTROY' });
-      channel.close();
+      postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' });
     } catch { /* ignore */ }
     const newIds = timerIds.filter(tid => tid !== id);
     setTimerIds(newIds);
@@ -1460,15 +1447,11 @@ function App() {
     // BroadcastChannel reaches other tabs/windows; the local window event
     // 'stage-timer-control' reaches timer rows in THIS tab immediately so
     // the changes apply without a page reload.
-    const channel = new BroadcastChannel(CONTROL_CHANNEL);
     timerIds.forEach(id => {
       const data = { targetId: id, command: 'REFRESH_SETTINGS' };
-      try {
-        channel.postMessage(data);
-      } catch { /* ignore */ }
+      postSharedMessage(CONTROL_CHANNEL, data);
       window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
     });
-    channel.close();
     setSettingsVersion(v => v + 1);
   };
 
@@ -1479,9 +1462,7 @@ function App() {
         localStorage.removeItem(`timerSeconds_${id}`);
         localStorage.removeItem(`timerSync_${id}`);
       });
-      const channel = new BroadcastChannel(CONTROL_CHANNEL);
-      timerIds.forEach(id => channel.postMessage({ targetId: id, command: 'DESTROY' }));
-      channel.close();
+      timerIds.forEach(id => postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }));
     } catch { /* ignore */ }
     setTimerIds([]);
     setActiveTimerId('');
@@ -1542,11 +1523,19 @@ function App() {
         localStorage.setItem(`timerSeconds_${id}`, JSON.stringify(target));
       });
     }
+    setCurrentRoomId(room.id);
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
     setActiveTimerState(null);
-    setMessages(room.messages || [{ id: '1', text: '', color: '#ffffff' }]);
+    setMessages((room.messages || [{ id: '1', text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]).map(message => ({
+      ...message,
+      text: message.text || '',
+      color: message.color || '#ffffff',
+      bold: !!message.bold,
+      uppercase: !!message.uppercase,
+      messageSize: getMessageSize(message),
+    })));
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
@@ -1554,26 +1543,25 @@ function App() {
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
+    const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : rooms.find(room => room.name === roomName);
+    const roomId = existingRoom?.id || currentRoomId || Date.now().toString();
+    setCurrentRoomId(roomId);
     const timerSettings: Record<string, any> = {};
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
       if (stored) timerSettings[id] = JSON.parse(stored);
     });
     setRooms(prev => {
-      const existingIndex = prev.findIndex(r => r.name === roomName);
-      const roomData: Room = { id: existingIndex >= 0 ? prev[existingIndex].id : Date.now().toString(), name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
+      const existingIndex = prev.findIndex(r => r.id === roomId);
+      const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
       const next = existingIndex >= 0 ? [...prev] : [...prev];
       if (existingIndex >= 0) next[existingIndex] = roomData; else next.push(roomData);
       return next;
     });
-  }, [currentRoomName, timerIds, activeTimerId, messages, setRooms]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
-    try {
-      const channel = new BroadcastChannel(CHANNEL_NAME);
-      channel.postMessage(payload);
-      channel.close();
-    } catch { /* ignore */ }
+    postSharedMessage(CHANNEL_NAME, payload);
     try {
       localStorage.setItem('timerState', JSON.stringify(payload));
     } catch { /* ignore */ }
@@ -1582,11 +1570,7 @@ function App() {
   const sendControl = useCallback((command: string, payload?: any) => {
     if (!activeTimerId) return;
     const data = { targetId: activeTimerId, command, payload };
-    try {
-      const channel = new BroadcastChannel(CONTROL_CHANNEL);
-      channel.postMessage(data);
-      channel.close();
-    } catch { /* ignore */ }
+    postSharedMessage(CONTROL_CHANNEL, data);
     // Dispatch a local event so components in the same tab (like TimerRow) can respond instantly
     window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
   }, [activeTimerId]);
@@ -1929,6 +1913,7 @@ function App() {
                     }
                   });
                   localStorage.removeItem('stage-timer-message-shown-id');
+                  setCurrentRoomId(null);
                   setCurrentRoomName('New Room');
                   setTimerIds([]);
                   setActiveTimerId('');
@@ -1955,7 +1940,7 @@ function App() {
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => { const stored = localStorage.getItem(`timerSettings_${id}`); if (stored) exportTimerSettings[id] = JSON.parse(stored); });
-            const exportData = { rooms: rooms.map(r => r.name === currentRoomName ? { ...r, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+            const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomName: currentRoomName, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -2200,10 +2185,8 @@ function App() {
                   const currentlyRunning = activeTimerState?.isRunning;
                   if (currentlyRunning && activeTimerId && activeTimerId !== id) {
                     try {
-                      const channel = new BroadcastChannel(CONTROL_CHANNEL);
-                      channel.postMessage({ targetId: activeTimerId, command: 'PAUSE' });
-                      channel.postMessage({ command: 'PAUSE_ALL_EXCEPT', payload: id });
-                      channel.close();
+                      postSharedMessage(CONTROL_CHANNEL, { targetId: activeTimerId, command: 'PAUSE' });
+                      postSharedMessage(CONTROL_CHANNEL, { command: 'PAUSE_ALL_EXCEPT', payload: id });
                     } catch { /* ignore */ }
                     window.dispatchEvent(new CustomEvent('stage-timer-pause-all-except', { detail: id }));
                   }
