@@ -78,6 +78,8 @@ export const TimerOutput = () => {
     }, 150);
   }, []);
   const [messageSize, setMessageSize] = useState<number>(1.0);
+  const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
+  const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
   const [title, setTitle] = useState<string>('');
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
@@ -121,6 +123,8 @@ export const TimerOutput = () => {
         setMessageBold(!!data.messageBold);
         setMessageUppercase(!!data.messageUppercase);
         if (typeof data.messageSize === 'number') setMessageSize(data.messageSize);
+        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
         if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
       if ('messageShown' in data) setMessageVisible(!!data.messageShown);
@@ -133,6 +137,8 @@ export const TimerOutput = () => {
         if ('messageBold' in data) setMessageBold(!!data.messageBold);
         if ('messageUppercase' in data) setMessageUppercase(!!data.messageUppercase);
         if (typeof data.messageSize === 'number') setMessageSize(data.messageSize);
+        if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
+        if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
         setMessageMaximize(true);
       }
       if ('messageMaximize' in data) {
@@ -308,6 +314,8 @@ export const TimerOutput = () => {
               messageBold,
               messageUppercase,
               messageSize,
+              messageFontHeight,
+              messageFontWidth,
             }}
             flashActive={messageFlashing}
             flashVisible={messageFlashVisible}
