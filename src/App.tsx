@@ -1423,13 +1423,16 @@ function App() {
     if (!gridTrackRef.current || !activeTimerId) return;
     const rect = gridTrackRef.current.getBoundingClientRect();
     const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const targetDuration = Math.max(0, Number(activeTimerState?.settings?.targetDuration ?? 0));
+    
+    // Use the stored duration from localStorage to avoid dependency on activeTimerState
+    const stored = localStorage.getItem(`timerSettings_${activeTimerId}`);
+    const targetDuration = stored ? (JSON.parse(stored).targetDuration || 0) : 0;
     if (targetDuration <= 0) return;
 
     const targetTime = targetDuration * (1 - percentage);
     sendControl('SET', targetTime);
     setHoverTime(targetTime);
-  }, [activeTimerId, activeTimerState, sendControl]);
+  }, [activeTimerId, sendControl]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1790,9 +1793,10 @@ function App() {
 
               <div 
                 ref={gridTrackRef}
-                className={`relative mt-6 group ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
+                className={`relative mt-6 group select-none ${displaySeconds > 0 ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'}`}
                 onMouseDown={(e) => {
-                  if (displaySeconds <= 0) return;
+                  if (displaySeconds <= 0 || e.button !== 0) return;
+                  e.preventDefault(); // Prevent text selection
                   setIsDraggingGrid(true);
                   handleGridAction(e.clientX);
                 }}
@@ -1804,7 +1808,9 @@ function App() {
                   const targetDuration = activeTotalTime;
                   setHoverTime(targetDuration * (1 - percentage));
                 }}
-                onMouseLeave={() => !isDraggingGrid && setHoverTime(null)}
+                onMouseLeave={() => {
+                  if (!isDraggingGrid) setHoverTime(null);
+                }}
               >
                 <div className="relative overflow-hidden rounded-md border border-[#333] bg-[#1a1a1a] select-none">
                   <div className="grid grid-cols-7 gap-[1px] bg-[#333]">
@@ -1832,10 +1838,10 @@ function App() {
                     <div className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-3.5 bg-[#fa5252] rounded-[2px] hover:scale-110 transition-transform" style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% 70%, 50% 100%, 0% 70%)' }} />
                   </div>
 
-                  {/* Hover Playhead Marker */}
-                  {hoverTime !== null && (
+                  {/* Hover Playhead Marker (Subtle ghost line) */}
+                  {hoverTime !== null && !isDraggingGrid && (
                     <div 
-                      className="absolute top-0 bottom-0 w-[1px] bg-white/50 pointer-events-none z-0"
+                      className="absolute top-0 bottom-0 w-[1px] bg-white/20 pointer-events-none z-0"
                       style={{ 
                         left: `${Math.max(0, Math.min(100, (1 - (hoverTime / activeProgressTotal)) * 100))}%`
                       }}
