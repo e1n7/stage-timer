@@ -732,7 +732,6 @@ interface MessageRowProps {
   onUpdateColor: (id: string, color: string) => void;
   onToggleBold: (id: string) => void;
   onToggleUppercase: (id: string) => void;
-  onFlash: (id: string) => void;
   onUpdateSize: (id: string, value: number) => void;
   onShow: (id: string) => void;
   getMessageSize: (msg: any) => number;
@@ -740,7 +739,7 @@ interface MessageRowProps {
 
 const MessageRow = ({ 
   msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor, 
-  onToggleBold, onToggleUppercase, onFlash, onUpdateSize, onShow, getMessageSize 
+  onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize 
 }: MessageRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
   const style = { 
@@ -799,7 +798,6 @@ const MessageRow = ({
             <button type="button" onClick={() => onUpdateColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
             <button type="button" onClick={() => onToggleBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
             <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
-            <button type="button" onClick={() => onFlash(msg.id)} className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525] hover:text-white transition-all" title="Flash this message on Output"><IconFlash size={14} /></button>
             <div className="flex items-center gap-1 ml-2 border-l border-[#444] pl-2">
               <span className="text-[10px] uppercase text-[#666] mr-1">Size</span>
               <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
@@ -2134,7 +2132,7 @@ function App() {
                     onUpdateColor={updateMessageColor}
                     onToggleBold={toggleMessageBold}
                     onToggleUppercase={toggleMessageUppercase}
-                    onFlash={flashMessage}
+  
                     onUpdateSize={updateMessageSize}
                     onShow={showMessage}
                     getMessageSize={getMessageSize}
