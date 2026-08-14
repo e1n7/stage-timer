@@ -1501,8 +1501,8 @@ function App() {
   ];
 
   return (
-    <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased">
-      <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333]">
+    <div className="flex min-h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-y-auto lg:overflow-hidden lg:h-screen">
+      <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0">
         <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-full sm:w-64 text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
@@ -1557,8 +1557,8 @@ function App() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
-        <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] px-4 py-3 overflow-y-auto custom-scrollbar">
+      <div className="flex flex-1 flex-col lg:flex-row overflow-visible lg:overflow-hidden">
+        <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] px-4 py-3 lg:overflow-y-auto custom-scrollbar">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative flex h-[200px] w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-4 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
@@ -1751,7 +1751,7 @@ function App() {
           </div>
         </aside>
 
-        <main className="flex flex-1 flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] overflow-y-auto custom-scrollbar">
+        <main className="flex flex-1 flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] lg:overflow-y-auto custom-scrollbar">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[24px] font-bold text-white tracking-tight">Timers</h2>
             <div className="flex items-center gap-3">
@@ -1835,7 +1835,7 @@ function App() {
           </div>
         </main>
 
-        <aside className="flex w-full lg:w-[340px] xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 overflow-y-auto custom-scrollbar">
+        <aside className="flex w-full lg:w-[340px] xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 lg:overflow-y-auto custom-scrollbar">
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
           <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">{messages.map((msg, idx) => {
             const mSize = getMessageSize(msg);
