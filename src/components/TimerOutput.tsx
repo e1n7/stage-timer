@@ -245,7 +245,7 @@ export const TimerOutput = () => {
       {blackout || isEmpty ? (
         <div className="h-full w-full bg-black" />
       ) : messageMaximize && messageText ? (
-        <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
+        <div className="flex h-full w-full items-center justify-center p-[6vh] overflow-hidden">
             <div
               className="w-full text-center leading-tight break-words transition-opacity duration-75"
               style={{
@@ -254,7 +254,7 @@ export const TimerOutput = () => {
                 fontWeight: messageBold ? 900 : 400,
                 textTransform: messageUppercase ? 'uppercase' : 'none',
                 fontFamily: 'Inter, system-ui, sans-serif',
-                lineHeight: 1.1,
+                lineHeight: 1.2,
                 textShadow: messageFlashing && flash 
                   ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
                   : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
@@ -264,8 +264,10 @@ export const TimerOutput = () => {
                 whiteSpace: 'pre-wrap',
                 wordWrap: 'break-word',
                 overflowWrap: 'anywhere',
-                maxWidth: '92vw',
-                maxHeight: '88vh',
+                maxWidth: '88vw',
+                maxHeight: '80vh',
+                paddingTop: '5vh',
+                paddingBottom: '5vh',
                 opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                 transition: 'none'
               }}
@@ -318,7 +320,9 @@ export const TimerOutput = () => {
                   whiteSpace: 'pre-wrap',
                   wordWrap: 'break-word',
                   overflowWrap: 'anywhere',
-                  maxWidth: '88vw'
+                  maxWidth: '85vw',
+                  paddingTop: '3vh',
+                  paddingBottom: '3vh'
                 }}
               >
                 {messageText}
