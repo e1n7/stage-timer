@@ -276,8 +276,8 @@ export const TimerOutput = () => {
 
           {/* Foreground Message Overlay Box */}
           {messageMaximize && messageText && !isEmpty && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center p-[6vh] overflow-hidden">
-              <div className="flex w-full max-w-[85vw] items-center justify-center rounded-[40px] border border-white/20 bg-[#141414]/80 p-[6vh] shadow-2xl backdrop-blur-xl overflow-hidden">
+            <div className="absolute inset-0 z-40 flex items-center justify-center p-[2vh] px-[2vw] overflow-hidden">
+              <div className="flex h-full w-full max-w-[96vw] max-h-[94vh] items-center justify-center rounded-[28px] border border-white/20 bg-[#141414]/80 p-[3vh] px-[3vw] shadow-2xl backdrop-blur-xl overflow-hidden">
                 <div
                   className="w-full text-center leading-tight break-words transition-opacity duration-75"
                   style={{
@@ -296,7 +296,8 @@ export const TimerOutput = () => {
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
                     overflowWrap: 'anywhere',
-                    maxHeight: '70vh',
+                    maxWidth: '90vw',
+                    maxHeight: '82vh',
                     opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
                     transition: 'none'
                   }}
