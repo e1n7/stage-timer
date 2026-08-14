@@ -242,103 +242,68 @@ export const TimerOutput = () => {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
       </button>
 
-      {blackout || isEmpty ? (
+      {blackout ? (
         <div className="h-full w-full bg-black" />
-      ) : messageMaximize && messageText ? (
-        <div className="flex h-full w-full items-center justify-center p-[4vh] overflow-hidden">
-          <div className="flex h-full w-full items-center justify-center rounded-[40px] border border-white/10 bg-white/[0.03] p-[6vh] shadow-2xl backdrop-blur-sm overflow-hidden">
-            <div
-              className="w-full text-center leading-tight break-words transition-opacity duration-75"
-              style={{
-                color: messageColor,
-                fontSize: `calc(min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw) * ${messageSize})`,
-                fontWeight: messageBold ? 900 : 400,
-                textTransform: messageUppercase ? 'uppercase' : 'none',
-                fontFamily: 'Inter, system-ui, sans-serif',
-                lineHeight: 1.1,
-                textShadow: messageFlashing && flash 
-                  ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
-                  : `0 4px 20px rgba(0,0,0,0.6), 0 0 60px ${messageColor}55`,
-                letterSpacing: '0.01em',
-                transform: `scale(0.9, 1.5)`,
-                transformOrigin: 'center',
-                whiteSpace: 'pre-wrap',
-                wordWrap: 'break-word',
-                overflowWrap: 'anywhere',
-                maxWidth: '80vw',
-                maxHeight: '70vh',
-                opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
-                transition: 'none'
-              }}
-            >
-              {messageText}
-            </div>
-          </div>
-        </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
-          {/* Overtime label removed */}
-          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
-            <div
-              className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
-              style={{
-                color: getTextColor(),
-                // Leave room for the progress bar while keeping the digits tall on every screen.
-                fontSize: (messageVisible || messageFlashing) && messageText ? 'min(80vw, 38vh)' : 'min(92vw, 42vh)',
-                lineHeight: 1,
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontStretch: 'ultra-expanded',
-                letterSpacing: '0.01em',
-                opacity: (isFlashing && !flash) ? 0 : 1,
-                textShadow: isFlashing && flash 
-                  ? `0 0 15px #fff, 0 0 30px ${getTextColor()}, 0 0 50px ${getTextColor()}, 0 0 80px ${getTextColor()}` 
-                  : 'none',
-                transform: `scale(${fontWidth}, ${fontHeight})`,
-                transformOrigin: 'center center'
-              }}
-            >
-              {seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)}
-            </div>
-            {(messageVisible || messageFlashing) && messageText && (
+        <div className="relative flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
+          {/* Background Timer Layer (Blurred out when message is active) */}
+          <div className={`flex h-full w-full flex-col items-center justify-between transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[16px] brightness-50 select-none pointer-events-none' : ''}`}>
+            <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
               <div
-                className="mt-[3vh] w-full flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-[3vh] px-[4vw] shadow-xl backdrop-blur-sm transition-opacity duration-75 overflow-hidden"
+                className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
                 style={{
-                  opacity: messageFlashing ? (flash ? 1 : 0.2) : 1,
-                  maxWidth: '92vw',
-                  maxHeight: '35vh'
+                  color: getTextColor(),
+                  fontSize: 'min(92vw, 42vh)',
+                  lineHeight: 1,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontStretch: 'ultra-expanded',
+                  letterSpacing: '0.01em',
+                  opacity: (isFlashing && !flash) ? 0 : 1,
+                  textShadow: isFlashing && flash 
+                    ? `0 0 15px #fff, 0 0 30px ${getTextColor()}, 0 0 50px ${getTextColor()}, 0 0 80px ${getTextColor()}` 
+                    : 'none',
+                  transform: `scale(${fontWidth}, ${fontHeight})`,
+                  transformOrigin: 'center center'
                 }}
               >
+                {isEmpty ? '00:00' : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds))}
+              </div>
+            </div>
+            <div className="w-full shrink-0 mb-[2vh] mt-[8vh]">
+              <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
+            </div>
+          </div>
+
+          {/* Foreground Message Overlay Box */}
+          {messageMaximize && messageText && !isEmpty && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center p-[6vh] overflow-hidden">
+              <div className="flex w-full max-w-[85vw] items-center justify-center rounded-[40px] border border-white/20 bg-[#141414]/80 p-[6vh] shadow-2xl backdrop-blur-xl overflow-hidden">
                 <div
-                  className="w-full text-center leading-tight break-words"
+                  className="w-full text-center leading-tight break-words transition-opacity duration-75"
                   style={{
                     color: messageColor,
-                    fontSize: `calc(min(${Math.max(3, 10 - (messageText.length / 12))}vh, 8vw) * ${messageSize})`,
+                    fontSize: `calc(min(${Math.max(4, 24 - (messageText.length / 5))}vh, 12vw) * ${messageSize})`,
                     fontWeight: messageBold ? 900 : 400,
                     textTransform: messageUppercase ? 'uppercase' : 'none',
                     fontFamily: 'Inter, system-ui, sans-serif',
                     lineHeight: 1.1,
                     textShadow: messageFlashing && flash 
-                      ? `0 0 10px #fff, 0 0 20px ${messageColor}, 0 0 40px ${messageColor}` 
-                      : `0 2px 16px rgba(0,0,0,0.6), 0 0 40px ${messageColor}55`,
-                    transition: 'none',
-                    letterSpacing: '0.02em',
-                    transform: `scale(0.9, 1.4)`,
+                      ? `0 0 10px #fff, 0 0 20px #fff, 0 0 40px ${messageColor}, 0 0 70px ${messageColor}, 0 0 100px ${messageColor}` 
+                      : `0 4px 20px rgba(0,0,0,0.8), 0 0 60px ${messageColor}55`,
+                    letterSpacing: '0.01em',
+                    transform: `scale(0.9, 1.5)`,
                     transformOrigin: 'center',
                     whiteSpace: 'pre-wrap',
                     wordWrap: 'break-word',
                     overflowWrap: 'anywhere',
-                    maxWidth: '80vw',
-                    maxHeight: '25vh'
+                    maxHeight: '70vh',
+                    opacity: messageFlashing ? (flash ? 1 : 0.1) : 1,
+                    transition: 'none'
                   }}
                 >
                   {messageText}
                 </div>
               </div>
-            )}
-          </div>
-          {(messageVisible || messageFlashing) && messageText ? null : (
-            <div className="w-full shrink-0 mb-[2vh] mt-[8vh]">
-              <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
             </div>
           )}
         </div>
