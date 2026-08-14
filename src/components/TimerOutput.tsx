@@ -280,7 +280,7 @@ export const TimerOutput = () => {
               <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
             </div>
           )}
-          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-start pt-[2vh] overflow-visible">
+          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
             <div
               className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
               style={{
