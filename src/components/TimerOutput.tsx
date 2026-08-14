@@ -236,7 +236,7 @@ export const TimerOutput = () => {
 
       <button
         onClick={toggleFullscreen}
-        className="absolute right-6 top-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100"
+        className="absolute right-2 top-2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100"
         aria-label="Toggle Fullscreen"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
@@ -274,13 +274,13 @@ export const TimerOutput = () => {
             </div>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-[1vh] pb-[2vh]">
+        <div className="flex h-full w-full flex-col items-center justify-between px-[1vw] pt-0 pb-[2vh]">
           {seconds < 0 && (
             <div className="absolute left-1/2 top-[3vh] z-10 -translate-x-1/2">
               <span className="inline-block rounded bg-[#fa5252]/20 px-6 py-3 text-[4vh] font-bold uppercase tracking-[0.15em] text-[#fa5252]">Overtime</span>
             </div>
           )}
-          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
+          <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-start pt-[2vh] overflow-visible">
             <div
               className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
               style={{
