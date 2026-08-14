@@ -1725,14 +1725,7 @@ function App() {
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 px-1">
-            <IconLogo size={24} />
-            <span className="text-[18px] font-black tracking-tighter text-white uppercase hidden sm:inline">Stage Timer</span>
-          </div>
-          <div className="h-6 w-[1px] bg-[#333] hidden sm:block mx-1"></div>
-          <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[18px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors flex-1 sm:w-48" placeholder="Unnamed" />
-        </div>
+        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-full sm:w-64 text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
           <div className="relative">
