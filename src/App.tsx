@@ -850,6 +850,31 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }
     };
     window.addEventListener('stage-timer-pause-all-except', handleInWindowPauseAll);
+
+    // Handle local controls dispatched from the same window
+    const handleLocalControl = (event: Event) => {
+      const { targetId, command, payload } = (event as CustomEvent).detail;
+      if (targetId === id) {
+        switch (command) {
+          case 'START': startTimer(); break;
+          case 'PAUSE': pauseTimer(); break;
+          case 'RESET': resetTimer(); break;
+          case 'ADJUST': setTime(Math.max(0, secondsRef.current + (typeof payload === 'number' ? payload : 0))); break;
+          case 'SET': setTime(payload); break;
+          case 'RELOAD_SETTINGS': 
+          case 'REFRESH_SETTINGS': {
+            const stored = localStorage.getItem(`timerSettings_${id}`);
+            if (stored) {
+              const newSettings = JSON.parse(stored);
+              updateSettings(newSettings);
+            }
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('stage-timer-control', handleLocalControl);
+
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     channel.onmessage = (event) => {
       const { targetId, command, payload } = event.data;
@@ -870,19 +895,14 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(Math.max(0, secondsRef.current + payload)); break;
+          case 'ADJUST': setTime(Math.max(0, secondsRef.current + (typeof payload === 'number' ? payload : 0))); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
-            // Refresh visual/settings state WITHOUT touching the current time.
-            // The timer must never restart or jump when only settings change.
             const stored = localStorage.getItem(`timerSettings_${id}`);
             if (stored) {
               const newSettings = JSON.parse(stored);
-              const safeSettings = { ...newSettings };
-              // Keep the timer's real current duration; never overwrite it from settings.
-              safeSettings.targetDuration = newSettings.targetDuration;
-              updateSettings(safeSettings);
+              updateSettings(newSettings);
             }
             break;
           }
@@ -892,6 +912,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     return () => {
       window.removeEventListener('stage-timer-reset-all-except', handleInWindowResetAll);
       window.removeEventListener('stage-timer-pause-all-except', handleInWindowPauseAll);
+      window.removeEventListener('stage-timer-control', handleLocalControl);
       channel.close();
     };
   }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
@@ -1412,11 +1433,14 @@ function App() {
 
   const sendControl = useCallback((command: string, payload?: any) => {
     if (!activeTimerId) return;
+    const data = { targetId: activeTimerId, command, payload };
     try {
       const channel = new BroadcastChannel(CONTROL_CHANNEL);
-      channel.postMessage({ targetId: activeTimerId, command, payload });
+      channel.postMessage(data);
       channel.close();
     } catch { /* ignore */ }
+    // Dispatch a local event so components in the same tab (like TimerRow) can respond instantly
+    window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
   }, [activeTimerId]);
 
   const handleGridAction = useCallback((clientX: number) => {
