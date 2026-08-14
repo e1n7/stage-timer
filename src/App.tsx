@@ -1456,10 +1456,17 @@ function App() {
       };
       localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
     });
-    // Force a settings refresh (without resetting time) via BroadcastChannel
+    // Force a settings refresh (without resetting time) everywhere:
+    // BroadcastChannel reaches other tabs/windows; the local window event
+    // 'stage-timer-control' reaches timer rows in THIS tab immediately so
+    // the changes apply without a page reload.
     const channel = new BroadcastChannel(CONTROL_CHANNEL);
     timerIds.forEach(id => {
-      channel.postMessage({ targetId: id, command: 'REFRESH_SETTINGS' });
+      const data = { targetId: id, command: 'REFRESH_SETTINGS' };
+      try {
+        channel.postMessage(data);
+      } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
     });
     channel.close();
     setSettingsVersion(v => v + 1);
