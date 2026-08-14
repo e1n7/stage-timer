@@ -1302,7 +1302,8 @@ function App() {
     }
 
     const seconds = activeTimerState?.seconds;
-    const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.05;
+    // Only the non-negative zero boundary is finished; every negative value remains overtime.
+    const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.1;
     if (isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero) {
       const currentIndex = timerIds.indexOf(activeTimerId);
       if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
