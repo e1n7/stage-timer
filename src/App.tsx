@@ -972,7 +972,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="flex flex-col items-start w-32">
+      <div className="hidden sm:flex flex-col items-start w-32">
         <div 
           onClick={(e) => { 
             e.stopPropagation(); 
