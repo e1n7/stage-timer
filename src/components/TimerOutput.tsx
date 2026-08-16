@@ -281,9 +281,9 @@ export const TimerOutput = () => {
                   fontFamily: 'Inter, system-ui, sans-serif',
                   fontStretch: 'ultra-expanded',
                   letterSpacing: '0.01em',
-                  opacity: (isFlashing && !flash) ? 0 : 1,
-                  textShadow: isFlashing && flash 
-                    ? `0 0 15px #fff, 0 0 30px ${getTextColor()}, 0 0 50px ${getTextColor()}, 0 0 80px ${getTextColor()}` 
+                  opacity: isFlashing ? (flash ? 1 : 0.45) : 1,
+                  textShadow: isFlashing && flash
+                    ? `0 0 8px ${getTextColor()}`
                     : 'none',
                   transform: `scale(${fontWidth}, ${fontHeight})`,
                   transformOrigin: 'center center'
