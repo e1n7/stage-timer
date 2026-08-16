@@ -54,6 +54,18 @@ const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: numb
 
 const createId = (prefix: string) => `${prefix}_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
 
+const normalizeTimerSettingsForTransfer = (settings: Record<string, any>) => {
+  const rawStart = settings.scheduledStart;
+  const scheduledStart = Number.isFinite(rawStart)
+    ? Math.max(0, Math.min(86399, Math.floor(rawStart)))
+    : null;
+  const rawDate = settings.scheduledStartDate;
+  const scheduledStartDate = typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+    ? rawDate
+    : null;
+  return { ...settings, scheduledStart, scheduledStartDate };
+};
+
 const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
   const [mStr, setMStr] = useState(pad(Math.floor((value % 3600) / 60)));
@@ -2031,6 +2043,12 @@ function App() {
   const importedRooms = imported.rooms.map((room: any, index: number) => ({
     ...room,
     id: room.id || `imported_${Date.now()}_${index}`,
+    timerSettings: room.timerSettings && typeof room.timerSettings === 'object'
+      ? Object.fromEntries(Object.entries(room.timerSettings).map(([id, settings]) => [
+          id,
+          normalizeTimerSettingsForTransfer((settings && typeof settings === 'object') ? settings as Record<string, any> : {}),
+        ]))
+      : room.timerSettings,
   }));
   setRooms(prev => {
     const roomsById = new Map(prev.map(room => [room.id, room]));
@@ -2048,7 +2066,7 @@ function App() {
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
-              if (settings) exportTimerSettings[id] = settings;
+              if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
                         const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
