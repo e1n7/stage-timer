@@ -2087,9 +2087,9 @@ function App() {
                 style={{ 
                   color: getDashboardTextColor(), 
                   fontSize: 'clamp(40px, 18vw, 90px)',
-                  opacity: (isFlashing && !isFlash) ? 0 : 1,
-                  textShadow: isFlashing && isFlash 
-                    ? `0 0 15px #fff, 0 0 30px ${getDashboardTextColor()}, 0 0 50px ${getDashboardTextColor()}, 0 0 80px ${getDashboardTextColor()}` 
+                  opacity: isFlashing ? (isFlash ? 1 : 0.45) : 1,
+                  textShadow: isFlashing && isFlash
+                    ? `0 0 8px ${getDashboardTextColor()}`
                     : 'none'
                 }}
               >

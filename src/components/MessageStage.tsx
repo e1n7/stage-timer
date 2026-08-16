@@ -125,9 +125,9 @@ export const MessageStage = ({
                 maxHeight: 1040,
                 transform: `scale(${Math.min(widthMult * 0.9, 1)}, ${Math.min(heightMult * 1.5, 1)})`,
                 transformOrigin: 'center center',
-                opacity: flashActive && !flashVisible ? 0.1 : 1,
+                opacity: flashActive ? (flashVisible ? 1 : 0.45) : 1,
                 textShadow: flashActive && flashVisible
-                  ? `0 0 15px #fff, 0 0 30px #fff, 0 0 50px ${color}, 0 0 80px ${color}`
+                  ? `0 0 8px ${color}`
                   : `0 4px 20px rgba(0,0,0,0.8), 0 0 60px ${color}55`,
               }}
             >
