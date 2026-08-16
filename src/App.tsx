@@ -25,6 +25,33 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
+
+const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: number, timeZone: string): number => {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  const hours = Math.floor(secondsSinceMidnight / 3600) % 24;
+  const minutes = Math.floor((secondsSinceMidnight % 3600) / 60);
+  const seconds = Math.floor(secondsSinceMidnight % 60);
+  const targetAsUtc = Date.UTC(year, month - 1, day, hours, minutes, seconds);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  let timestamp = targetAsUtc;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = formatter.formatToParts(new Date(timestamp));
+    const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+    const zonedAsUtc = Date.UTC(values.year, values.month - 1, values.day, values.hour % 24, values.minute, values.second);
+    timestamp = targetAsUtc - (zonedAsUtc - timestamp);
+  }
+  return timestamp / 1000;
+};
+
 const createId = (prefix: string) => `${prefix}_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
 
 const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
@@ -1243,13 +1270,17 @@ function App() {
     let currentEndTime = anchorTime;
     for (let i = anchorIndex; i < timerIds.length; i++) {
       const id = timerIds[i];
-        const settings = readJsonStorage(`timerSettings_${id}`, { targetDuration: 0, scheduledStart: null });
+        const settings = readJsonStorage<Record<string, any>>(`timerSettings_${id}`, { targetDuration: 0, scheduledStart: null });
 
       let startTime = currentEndTime;
       
-      // Only apply manual start to the anchor or if explicitly set
+      // Only apply manual start to the anchor or if explicitly set.
+      // Saved dates use the selected timezone; legacy time-only settings keep
+      // their existing time-of-day behavior.
       if (settings.scheduledStart !== null && (i === anchorIndex && !activeTimerState?.isRunning)) {
-        startTime = midnight + settings.scheduledStart;
+        startTime = settings.scheduledStartDate
+          ? getZonedDateTimeTimestamp(settings.scheduledStartDate, settings.scheduledStart, selectedTimeZone)
+          : midnight + settings.scheduledStart;
       }
 
       result[id] = { start: startTime };
@@ -1283,6 +1314,22 @@ function App() {
       timeZone: selectedTimeZone 
     });
   };
+
+  // Start a date-selected timer when its exact local timestamp is reached.
+  // This stays at the App boundary so the timer hook and progress calculation
+  // remain unchanged.
+  useEffect(() => {
+    const settings = activeTimerState?.settings;
+    if (!activeTimerId || !activeTimerState || activeTimerState.isRunning || !settings?.scheduledStartDate || settings.scheduledStart === null) return;
+    const scheduledAt = getZonedDateTimeTimestamp(settings.scheduledStartDate, settings.scheduledStart, selectedTimeZone);
+    const isIdle = activeTimerState.syncState?.startTime === null && activeTimerState.seconds >= (settings.targetDuration || 0) - 0.1;
+    if (Date.now() / 1000 < scheduledAt || !isIdle) return;
+    const startCommand = { targetId: activeTimerId, command: 'START' };
+    postSharedMessage(CONTROL_CHANNEL, startCommand);
+    window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
+    postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: activeTimerId });
+    window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: activeTimerId }));
+  }, [activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion]);
 
   useEffect(() => {
     const handleGlobalClick = () => {
