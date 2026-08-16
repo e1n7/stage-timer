@@ -1324,7 +1324,9 @@ function App() {
         autoFollowTimeoutRef.current = setTimeout(() => {
           try {
             if (!timerIds.includes(nextId)) return;
-            postSharedMessage(CONTROL_CHANNEL, { targetId: nextId, command: 'START' });
+            const startCommand = { targetId: nextId, command: 'START' };
+            postSharedMessage(CONTROL_CHANNEL, startCommand);
+            window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
             postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: nextId });
             window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: nextId }));
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
