@@ -993,7 +993,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`flex-1 text-center text-[20px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className={`flex-1 text-center text-[18px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
