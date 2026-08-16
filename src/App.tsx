@@ -1803,7 +1803,7 @@ function App() {
       setMessageFlashId(null);
       syncOutput({ messageText: '', messageShown: false, messageFlash: false, messageMaximize: false, type: 'force-sync' });
     }
-    setMessages(prev => prev.length > 1 ? prev.filter(m => m.id !== id) : prev.map(m => m.id === id ? { ...m, text: '', color: '#ffffff', bold: false, uppercase: false } : m));
+    setMessages(prev => prev.filter(m => m.id !== id));
   };
   const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean; messageFontHeight: number; messageFontWidth: number } => {
     // Active message priority: currently flashing > shown
