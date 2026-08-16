@@ -474,7 +474,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             </div>
 
             <div className="flex items-center justify-between gap-6 py-2">
-              <span className="text-[12px] text-[#8a8a8a]">Duration ⓘ</span>
+              <span className="text-[12px] text-[#8a8a8a]" title="The total amount of time this timer runs.">Duration ⓘ</span>
               <DurationInput 
                 value={localSettings.targetDuration || 0} 
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
@@ -621,7 +621,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             </div>
 
             <div className="flex items-center justify-between gap-6 py-2">
-              <span className="text-[13px] text-[#8a8a8a]">Duration ⓘ</span>
+              <span className="text-[13px] text-[#8a8a8a]" title="The total amount of time this timer runs.">Duration ⓘ</span>
               <DurationInput 
                 value={localSettings.targetDuration || 0} 
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
