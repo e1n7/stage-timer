@@ -445,7 +445,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="mb-4 flex items-center justify-between border-b border-[#333] pb-3">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
-            <h2 className="text-lg font-bold text-white">Settings for {localSettings.title || 'Timer 1'}</h2>
+            <h2 className="text-lg font-bold text-white">Settings{localSettings.title ? ` for ${localSettings.title}` : ''}</h2>
           </div>
           <button onClick={onClose} className="text-xl text-[#8a8a8a] hover:text-white">✕</button>
         </div>
@@ -453,7 +453,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="w-20 text-[13px] text-[#8a8a8a]">Title</label>
-            <input type="text" value={localSettings.title || 'Timer 1'} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] text-white focus:border-[#444] focus:outline-none" />
+            <input type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] text-white focus:border-[#444] focus:outline-none" />
           </div>
 
         </div>
@@ -993,7 +993,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`flex-1 text-center text-[26px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className={`flex-1 text-center text-[20px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
@@ -1002,7 +1002,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
       {/* Title */}
       <div className="w-32 text-right text-[15px] font-bold truncate opacity-90 pr-2" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        {settings.title || `Timer ${index + 1}`}
+        {settings.title}
       </div>
 
       {/* Controls */}
@@ -1730,10 +1730,11 @@ function App() {
     });
 
     let count = 0;
+    const flashTicks = 3 * 2;
     const interval = setInterval(() => {
       setIsFlash(prev => !prev);
       count++;
-      if (count >= 6) {
+      if (count >= flashTicks) {
         clearInterval(interval);
         setIsFlash(false);
         setIsFlashing(false);
@@ -1843,10 +1844,11 @@ function App() {
     }
     setIsMessageFlashing(true);
     let count = 0;
+    const flashTicks = 3 * 2;
     const interval = setInterval(() => {
       setIsMessageFlash(prev => !prev);
       count += 1;
-      if (count >= 6) {
+      if (count >= flashTicks) {
         clearInterval(interval);
         setIsMessageFlash(false);
         setIsMessageFlashing(false);
