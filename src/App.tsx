@@ -465,7 +465,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <h3 className="text-[14px] font-bold text-white">Timing</h3>
             
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="text-[12px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
+              <span className="text-[12px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
                 onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
@@ -612,7 +612,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="text-[13px] text-[#8a8a8a] pt-1">Start Time ⓘ</span>
+              <span className="text-[13px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
                 onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
