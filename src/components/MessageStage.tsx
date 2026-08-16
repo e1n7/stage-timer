@@ -123,7 +123,7 @@ export const MessageStage = ({
                 overflowWrap: 'anywhere',
                 maxWidth: 1880,
                 maxHeight: 1040,
-                transform: `scale(${widthMult * 0.9}, ${heightMult * 1.5})`,
+                transform: `scale(${Math.min(widthMult * 0.9, 1)}, ${heightMult * 1.5})`,
                 transformOrigin: 'center center',
                 opacity: flashActive && !flashVisible ? 0.1 : 1,
                 textShadow: flashActive && flashVisible
