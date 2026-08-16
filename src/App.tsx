@@ -1291,10 +1291,11 @@ function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevIsRunningRef = useRef(false);
+  const prevSecondsRef = useRef<number | null>(null);
   const autoFollowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Follow Active Timer Logic - advance only when a timer is paused at zero.
-  // A negative paused value is overtime and must remain visible.
+  // Follow Active Timer Logic - advance countdown timers at the zero boundary.
+  // Normal timer behavior, including overtime when follow is disabled, is unchanged.
   useEffect(() => {
     if (!isFollowEnabled && autoFollowTimeoutRef.current) {
       clearTimeout(autoFollowTimeoutRef.current);
@@ -1302,9 +1303,19 @@ function App() {
     }
 
     const seconds = activeTimerState?.seconds;
-    // Only the non-negative zero boundary is finished; every negative value remains overtime.
+    const previousSeconds = prevSecondsRef.current;
+    const crossedZeroWhileRunning =
+      isFollowEnabled &&
+      activeTimerState?.isRunning &&
+      activeTimerState?.settings.mode === 'countdown' &&
+      typeof seconds === 'number' &&
+      seconds <= 0 &&
+      typeof previousSeconds === 'number' &&
+      previousSeconds > 0;
     const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.1;
-    if (isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero) {
+    const pausedAtZero = isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
+
+    if (crossedZeroWhileRunning || pausedAtZero) {
       const currentIndex = timerIds.indexOf(activeTimerId);
       if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
         const nextId = timerIds[currentIndex + 1];
@@ -1321,8 +1332,9 @@ function App() {
         }, 300);
       }
     }
+    prevSecondsRef.current = typeof seconds === 'number' ? seconds : null;
     prevIsRunningRef.current = activeTimerState?.isRunning || false;
-  }, [activeTimerState?.isRunning, activeTimerState?.seconds, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
+  }, [activeTimerState?.isRunning, activeTimerState?.seconds, activeTimerState?.settings.mode, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
 
   useEffect(() => () => {
     if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
