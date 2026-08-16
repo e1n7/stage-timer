@@ -132,60 +132,73 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   );
 };
 
-const StartTimeInput = ({ value, onChange, selectedTimeZone }: { value: number | null, onChange: (val: number | null) => void, selectedTimeZone: string }) => {
+const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string }) => {
   const now = new Date();
-  
-  const formatter = new Intl.DateTimeFormat('en-US', { 
-    timeZone: selectedTimeZone, 
-    hour12: false, 
-    hour: 'numeric', 
-    minute: 'numeric', 
-    second: 'numeric' 
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: selectedTimeZone,
+    hour12: false,
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric'
   });
-  const formatted = formatter.format(now);
-  const [hNow, mNow, sNow] = formatted.split(':').map(Number);
+  const [hNow, mNow, sNow] = formatter.format(now).split(':').map(Number);
   const secondsSinceMidnight = hNow * 3600 + mNow * 60 + sNow;
-
   const displayValue = value === null ? secondsSinceMidnight : value;
-  
-  const h = Math.floor(displayValue / 3600);
-  const m = Math.floor((displayValue % 3600) / 60);
-  const s = displayValue % 60;
+  const h24 = Math.floor(displayValue / 3600) % 24;
+  const minute = Math.floor((displayValue % 3600) / 60);
+  const second = displayValue % 60;
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const hour12 = h24 % 12 || 12;
+  const todayInZone = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(now);
+  const selectedDate = dateValue || todayInZone;
 
-  const update = (newH: number, newM: number, newS: number) => {
-    onChange(newH * 3600 + newM * 60 + newS);
+  const update = (nextHour12: number, nextMinute: number, nextSecond: number, nextPeriod: string, nextDate = selectedDate) => {
+    let nextHour24 = nextHour12 % 12;
+    if (nextPeriod === 'PM') nextHour24 += 12;
+    onChange(nextHour24 * 3600 + nextMinute * 60 + nextSecond, nextDate || null);
   };
 
-  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#555] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const selectClass = "w-[72px] rounded border border-[#333] bg-[#141414] px-2 py-2 text-center text-[16px] font-mono text-white focus:border-[#4a9eff] focus:outline-none";
+  const options = (count: number, padValue = true) => Array.from({ length: count }, (_, index) => ({ value: index, label: padValue ? pad(index) : String(index) }));
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <input 
-          type="checkbox" 
+        <input
+          type="checkbox"
           id="manual-start"
-          checked={value !== null} 
-          onChange={(e) => onChange(e.target.checked ? displayValue : null)}
+          checked={value !== null}
+          onChange={(e) => onChange(e.target.checked ? displayValue : null, e.target.checked ? selectedDate : null)}
           className="h-4 w-4 rounded border-[#333] bg-[#141414] accent-[#4a9eff]"
         />
-        <label htmlFor="manual-start" className="text-[13px] text-[#8a8a8a] cursor-pointer">Set Specific Start Time</label>
+        <label htmlFor="manual-start" className="cursor-pointer text-[13px] text-[#8a8a8a]">Set Specific Start Time</label>
       </div>
       {value !== null && (
-        <div className="flex items-center gap-3 ml-6">
-          <div className="flex flex-col items-center gap-1">
-            <input type="number" value={pad(h)} onChange={(e) => update(Math.max(0, parseInt(e.target.value) || 0), m, s)} onFocus={(e) => e.target.select()} className={inputClass} />
-            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
+        <div className="ml-6 flex flex-col gap-3">
+          <div className="flex items-center gap-2 rounded border border-[#333] bg-[#141414] p-2">
+            <select value={hour12} onChange={(e) => update(Number(e.target.value), minute, second, period)} className={selectClass} aria-label="Start hour">
+              {Array.from({ length: 12 }, (_, index) => index + 1).map(hour => <option key={hour} value={hour}>{pad(hour)}</option>)}
+            </select>
+            <span className="text-xl font-bold text-[#444]">:</span>
+            <select value={minute} onChange={(e) => update(hour12, Number(e.target.value), second, period)} className={selectClass} aria-label="Start minute">
+              {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+            <span className="text-xl font-bold text-[#444]">:</span>
+            <select value={second} onChange={(e) => update(hour12, minute, Number(e.target.value), period)} className={selectClass} aria-label="Start second">
+              {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+            <select value={period} onChange={(e) => update(hour12, minute, second, e.target.value)} className={selectClass} aria-label="Start period">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
           </div>
-          <span className="text-xl font-bold text-[#444] pb-5">:</span>
-          <div className="flex flex-col items-center gap-1">
-            <input type="number" value={pad(m)} onChange={(e) => update(h, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)), s)} onFocus={(e) => e.target.select()} className={inputClass} />
-            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Mins</span>
-          </div>
-          <span className="text-xl font-bold text-[#444] pb-5">:</span>
-          <div className="flex flex-col items-center gap-1">
-            <input type="number" value={pad(s)} onChange={(e) => update(h, m, Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))} onFocus={(e) => e.target.select()} className={inputClass} />
-            <span className="text-[10px] uppercase tracking-tighter text-[#555]">Secs</span>
-          </div>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => update(hour12, minute, second, period, e.target.value)}
+            className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] font-mono text-white focus:border-[#4a9eff] focus:outline-none"
+            aria-label="Start date"
+          />
         </div>
       )}
     </div>
@@ -468,7 +481,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <span className="text-[12px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
-                onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
+                dateValue={localSettings.scheduledStartDate}
+                onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
                 selectedTimeZone={selectedTimeZone}
               />
             </div>
@@ -615,7 +629,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               <span className="text-[13px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
-                onChange={(val) => setLocalSettings({ ...localSettings, scheduledStart: val })}
+                dateValue={localSettings.scheduledStartDate}
+                onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
                 selectedTimeZone={selectedTimeZone}
               />
             </div>
