@@ -1012,7 +1012,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       <div 
         {...attributes} 
         {...listeners} 
-        className="group/index flex w-8 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing" 
+        className="group/index flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
         onClick={(e) => e.stopPropagation()}
       >
         {isDragging ? (
@@ -1047,7 +1047,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`flex-1 text-center text-[18px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className={`min-w-[5rem] flex-1 text-center text-[18px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:min-w-[4.5rem] max-[639px]:text-[16px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
@@ -1055,12 +1055,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title min-w-[4rem] w-32 flex-[0_1_8rem] text-right text-[15px] font-bold truncate opacity-90 pr-2 max-[639px]:w-20 max-[639px]:flex-[0_1_5rem] max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-title min-w-[4rem] w-32 flex-[0_1_8rem] text-right text-[15px] font-bold truncate opacity-90 pr-2 max-[639px]:w-16 max-[639px]:min-w-[3.5rem] max-[639px]:flex-[0_1_4rem] max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {settings.title}
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-controls flex shrink-0 items-center gap-2 max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isActive ? (
           <button 
             type="button" 
@@ -1104,7 +1104,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
         
-        <div className="relative ml-1">
+        <div className="timer-row-more relative ml-1 max-[639px]:ml-0">
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 

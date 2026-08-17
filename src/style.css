@@ -42,9 +42,23 @@
   }
 
   .timer-row-title {
-    min-width: 4rem;
-    width: 5rem;
-    flex: 0 1 5rem;
+    min-width: 3.5rem;
+    width: 4rem;
+    flex: 0 1 4rem;
+  }
+
+  .timer-row-controls > button {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .timer-row-controls > button:nth-of-type(3) {
+    width: 2.25rem;
+  }
+
+  .timer-row-more > button {
+    width: 1.5rem;
+    height: 2rem;
   }
 }
 
