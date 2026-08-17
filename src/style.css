@@ -212,23 +212,25 @@
 /* Give the scheduled time, countdown, and title balanced horizontal spacing. */
 .timer-row {
   justify-content: flex-start;
+  gap: 0.5rem !important;
 }
-
 .timer-row-scheduled {
-  margin-right: 0.25rem;
+  width: 7rem;
+  min-width: 7rem;
+  flex-basis: 7rem;
+  margin-right: 0;
 }
-
 .timer-row-scheduled + div {
-  flex: 0 1 8rem;
-  min-width: 6rem;
+  flex: 0 1 7rem;
+  min-width: 5rem;
+  text-align: left;
+}
+.timer-row-title {
+  flex: 0 0 6rem;
+  margin-left: 0;
   text-align: left;
 }
 
-.timer-row-title {
-  flex: 0 0 7rem;
-  margin-left: 0.25rem;
-  text-align: left;
-}
 
 .timer-row-controls {
   margin-left: auto;
