@@ -1006,7 +1006,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? onActivate : undefined} 
-      className={`group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1026,7 +1026,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="hidden sm:flex flex-col items-start w-32">
+      <div className="timer-row-scheduled hidden sm:flex flex-col items-start w-32">
         <div 
           onClick={(e) => { 
             e.stopPropagation(); 
@@ -1055,7 +1055,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="w-32 text-right text-[15px] font-bold truncate opacity-90 pr-2" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-title min-w-[4rem] w-32 flex-[0_1_8rem] text-right text-[15px] font-bold truncate opacity-90 pr-2 max-[639px]:w-20 max-[639px]:flex-[0_1_5rem] max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {settings.title}
       </div>
 

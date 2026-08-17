@@ -36,6 +36,16 @@
   .timer-output-display {
     font-size: min(72vw, 30vh) !important;
   }
+
+  .timer-row-scheduled {
+    display: none !important;
+  }
+
+  .timer-row-title {
+    min-width: 4rem;
+    width: 5rem;
+    flex: 0 1 5rem;
+  }
 }
 
 @layer utilities {
