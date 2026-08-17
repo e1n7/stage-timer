@@ -215,18 +215,18 @@
 }
 
 .timer-row-scheduled {
-  margin-right: 1rem;
+  margin-right: 0.25rem;
 }
 
 .timer-row-scheduled + div {
-  flex: 0 1 9rem;
-  min-width: 7rem;
+  flex: 0 1 8rem;
+  min-width: 6rem;
   text-align: left;
 }
 
 .timer-row-title {
-  flex: 0 0 8rem;
-  margin-left: 1rem;
+  flex: 0 0 7rem;
+  margin-left: 0.25rem;
   text-align: left;
 }
 
