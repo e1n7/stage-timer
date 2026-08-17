@@ -2271,7 +2271,7 @@ function App() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar shrink-0 lg:shrink">
+        <main className="timer-panel flex-1 flex flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar shrink-0 lg:shrink">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Timers</h2>
             <div className="flex items-center gap-3">
