@@ -155,6 +155,22 @@
   }
 }
 
+/* Scheduled time stays visible; timer rows keep a stable single-line height. */
+.timer-row-scheduled {
+  display: flex !important;
+  flex: 0 0 8rem;
+}
+
+.timer-row {
+  height: 3rem;
+  min-height: 3rem;
+  overflow: hidden;
+}
+
+.timer-row-controls {
+  flex-wrap: nowrap !important;
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
