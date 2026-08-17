@@ -90,9 +90,9 @@ export const useTimer = (id: string = 'default') => {
 
   const [syncState, setSyncState] = useState<SyncState>(() => readJsonStorage<SyncState>(syncKey, {
     startTime: null,
-    initialSeconds: DEFAULT_TIME,
+    initialSeconds: settings.mode === 'countup' ? DEFAULT_TIME : settings.targetDuration,
     isRunning: false,
-    mode: 'countdown',
+    mode: settings.mode || 'countdown',
     lastUpdated: Date.now()
   }));
 
@@ -105,6 +105,18 @@ export const useTimer = (id: string = 'default') => {
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
 
   useEffect(() => {
+    const nextMode = settings.mode || 'countdown';
+    const countupNeedsBaseline = nextMode === 'countup' && settings.targetDuration > 0 && syncState.initialSeconds === settings.targetDuration;
+    if (syncState.mode !== nextMode || countupNeedsBaseline) {
+      setSyncState(prev => ({
+        ...prev,
+        startTime: prev.isRunning ? Date.now() : null,
+        initialSeconds: nextMode === 'countup' ? DEFAULT_TIME : settings.targetDuration,
+        mode: nextMode,
+        lastUpdated: Date.now(),
+      }));
+      return;
+    }
     syncStateRef.current = syncState;
     localStorage.setItem(syncKey, JSON.stringify(syncState));
     if (suppressSyncBroadcastRef.current) {
@@ -116,7 +128,7 @@ export const useTimer = (id: string = 'default') => {
         payload: syncState,
       });
     }
-  }, [id, syncState, syncKey]);
+  }, [id, settings.mode, settings.targetDuration, syncState, syncKey]);
 
   useEffect(() => subscribeSharedChannel('stage-timer-control', (event) => {
     const data = event.data;
@@ -283,11 +295,12 @@ export const useTimer = (id: string = 'default') => {
 
   const resetTimer = useCallback(() => {
     recordLog();
+    const mode = settingsRef.current.mode || 'countdown';
     setSyncState({
       startTime: null,
-      initialSeconds: settingsRef.current.targetDuration,
+      initialSeconds: mode === 'countup' ? DEFAULT_TIME : settingsRef.current.targetDuration,
       isRunning: false,
-      mode: settingsRef.current.mode || 'countdown',
+      mode,
       lastUpdated: Date.now()
     });
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
@@ -304,6 +317,17 @@ export const useTimer = (id: string = 'default') => {
 
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
+    if (newSettings.mode && newSettings.mode !== syncStateRef.current?.mode) {
+      const nextMode = newSettings.mode;
+      const nextDuration = Number(newSettings.targetDuration ?? settingsRef.current.targetDuration) || 0;
+      setSyncState(prev => ({
+        ...prev,
+        startTime: prev.isRunning ? Date.now() : null,
+        initialSeconds: nextMode === 'countup' ? DEFAULT_TIME : nextDuration,
+        mode: nextMode,
+        lastUpdated: Date.now(),
+      }));
+    }
   }, [setSettings]);
 
   const clearLog = useCallback(() => setLog([]), [setLog]);
