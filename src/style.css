@@ -105,6 +105,17 @@
   container-type: inline-size;
 }
 
+/* Scheduled time is reserved for wide desktop layouts only. */
+.timer-row-scheduled {
+  display: none !important;
+}
+
+@media (min-width: 1101px) {
+  .timer-row-scheduled {
+    display: flex !important;
+  }
+}
+
 @container (min-width: 641px) and (max-width: 700px) {
   .timer-row {
     gap: 0.5rem;
