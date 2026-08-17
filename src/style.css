@@ -215,18 +215,18 @@
   gap: 0.5rem !important;
 }
 .timer-row-scheduled {
-  width: 7rem;
-  min-width: 7rem;
-  flex-basis: 7rem;
+  width: 6rem;
+  min-width: 6rem;
+  flex-basis: 6rem;
   margin-right: 0;
 }
 .timer-row-scheduled + div {
-  flex: 0 1 7rem;
+  flex: 0 0 5rem;
   min-width: 5rem;
   text-align: left;
 }
 .timer-row-title {
-  flex: 0 0 6rem;
+  flex: 0 0 5rem;
   margin-left: 0;
   text-align: left;
 }
