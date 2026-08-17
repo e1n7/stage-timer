@@ -292,7 +292,7 @@ export const TimerOutput = () => {
                 {isEmpty ? '00:00' : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds))}
               </div>
             </div>
-            <div className="w-full shrink-0 mb-0 mt-[2vh]">
+            <div className="w-full shrink-0 mb-0 mt-0">
               <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
             </div>
           </div>
