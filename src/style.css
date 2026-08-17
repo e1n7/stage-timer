@@ -209,6 +209,31 @@
   height: 2.25rem !important;
 }
 
+/* Give the scheduled time, countdown, and title balanced horizontal spacing. */
+.timer-row {
+  justify-content: flex-start;
+}
+
+.timer-row-scheduled {
+  margin-right: 1rem;
+}
+
+.timer-row-scheduled + div {
+  flex: 0 1 9rem;
+  min-width: 7rem;
+  text-align: left;
+}
+
+.timer-row-title {
+  flex: 0 0 8rem;
+  margin-left: 1rem;
+  text-align: left;
+}
+
+.timer-row-controls {
+  margin-left: auto;
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
