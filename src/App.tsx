@@ -1444,11 +1444,12 @@ function App() {
 
   const addTimer = (atIndex?: number) => {
     const newId = createId('timer');
-    // New timers inherit the 3 shared settings saved by "Apply to All"
-    // (Appearance, Font Height, Font Width). Everything else falls back
-    // to the built-in defaults.
+    // New timers inherit Apply All's visual defaults only within the current room.
+    // A new or unsaved room always starts from the built-in defaults.
     try {
-      const shared = readJsonStorage<Record<string, any>>('timerSharedDefaults', {});
+      const shared = currentRoomId
+        ? readJsonStorage<Record<string, any>>(`timerSharedDefaults_${currentRoomId}`, {})
+        : {};
       const defaults = {
         title: 'Timer',
         speaker: '',
@@ -1524,12 +1525,14 @@ function App() {
     // settings change can never reset any timer's elapsed/remaining time.
     const { mode, fontHeight, fontWidth } = sharedSettings || {};
     const visualOnly = { mode, fontHeight, fontWidth };
-    // Persist the shared defaults so that timers added AFTER this point
-    // also inherit these 3 settings automatically.
-    localStorage.setItem(
-      'timerSharedDefaults',
-      JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
-    );
+    // Persist shared defaults only for this saved room. Never use one global
+    // defaults key, so Apply All cannot leak into another room or a new room.
+    if (currentRoomId) {
+      localStorage.setItem(
+        `timerSharedDefaults_${currentRoomId}`,
+        JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
+      );
+    }
     timerIds.forEach(id => {
       const settings = readJsonStorage(`timerSettings_${id}`, {
         title: 'Timer',
