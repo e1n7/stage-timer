@@ -1006,7 +1006,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? onActivate : undefined} 
-      className={`timer-row group flex items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex min-w-0 items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1060,7 +1060,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Controls */}
-      <div className="timer-row-controls flex shrink-0 items-center gap-2 max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-controls flex min-w-0 max-w-full flex-wrap items-center gap-2 max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isActive ? (
           <button 
             type="button" 
