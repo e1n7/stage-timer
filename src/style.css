@@ -62,6 +62,45 @@
   }
 }
 
+@media (min-width: 641px) and (max-width: 1100px) {
+  .timer-row {
+    gap: 0.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .timer-row-scheduled {
+    width: 5rem;
+  }
+
+  .timer-row-title {
+    min-width: 4rem;
+    width: 5rem;
+    flex-basis: 5rem;
+  }
+
+  .timer-row-controls {
+    gap: 0.25rem;
+  }
+
+  .timer-row-controls > button {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .timer-row-controls > button:nth-of-type(3) {
+    width: 2.5rem;
+  }
+
+  .timer-row-more {
+    margin-left: 0;
+  }
+
+  .timer-row-more > button {
+    width: 1.75rem;
+  }
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
