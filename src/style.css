@@ -227,8 +227,13 @@
   text-align: left;
 }
 .timer-row-title {
-  flex: 0 0 5rem;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   margin-left: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
 }
 
@@ -245,6 +250,19 @@
 @container (min-width: 560px) {
   .timer-panel .timer-row-scheduled {
     display: flex !important;
+  }
+}
+
+@container (max-width: 559px) {
+  .timer-panel .timer-row-scheduled + div {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .timer-panel .timer-row-title {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
   }
 }
 
