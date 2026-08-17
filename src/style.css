@@ -171,6 +171,44 @@
   flex-wrap: nowrap !important;
 }
 
+/* Keep timer rows horizontal and keep control buttons at fixed sizes while resizing. */
+.timer-row {
+  flex-wrap: nowrap !important;
+}
+
+.timer-row-scheduled {
+  width: 8rem;
+  min-width: 8rem;
+  flex: 0 0 8rem;
+}
+
+.timer-row-controls {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+}
+
+.timer-row-controls > button {
+  flex: 0 0 2.5rem;
+  width: 2.5rem !important;
+  height: 2.25rem !important;
+}
+
+.timer-row-controls > button:nth-of-type(3) {
+  flex-basis: 3rem;
+  width: 3rem !important;
+}
+
+.timer-row-more {
+  flex: 0 0 2rem;
+  width: 2rem;
+}
+
+.timer-row-more > button {
+  width: 2rem !important;
+  height: 2.25rem !important;
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
