@@ -237,6 +237,17 @@
   margin-left: auto;
 }
 
+/* Hide scheduled time only when the timer card is narrower than 560px. */
+.timer-panel .timer-row-scheduled {
+  display: none !important;
+}
+
+@container (min-width: 560px) {
+  .timer-panel .timer-row-scheduled {
+    display: flex !important;
+  }
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
