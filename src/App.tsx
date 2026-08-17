@@ -944,7 +944,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(Math.max(0, secondsRef.current + (typeof payload === 'number' ? payload : 0))); break;
+          case 'ADJUST': setTime(secondsRef.current + (typeof payload === 'number' ? payload : 0)); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
@@ -976,7 +976,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(Math.max(0, secondsRef.current + (typeof payload === 'number' ? payload : 0))); break;
+          case 'ADJUST': setTime(secondsRef.current + (typeof payload === 'number' ? payload : 0)); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
@@ -2162,6 +2162,19 @@ function App() {
                   {/* Transparent Interaction Overlay */}
                   <div 
                     className="absolute inset-0 z-30 cursor-ew-resize"
+                    style={{ touchAction: 'none' }}
+                    onTouchStart={(e) => {
+                      if (activeTotalTime <= 0) return;
+                      e.preventDefault();
+                      setIsDraggingGrid(true);
+                      handleGridAction(e.touches[0].clientX);
+                    }}
+                    onTouchMove={(e) => {
+                      if (!isDraggingGrid || activeTotalTime <= 0 || e.touches.length === 0) return;
+                      e.preventDefault();
+                      handleGridAction(e.touches[0].clientX);
+                    }}
+                    onTouchEnd={() => setIsDraggingGrid(false)}
                     onMouseDown={(e) => {
                       if (activeTotalTime <= 0 || e.button !== 0) return;
                       e.preventDefault(); 
@@ -2290,7 +2303,7 @@ function App() {
                       onClick={() => setIsFollowEnabled(!isFollowEnabled)}
                       className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
                     >
-                      <span>Follow active timer</span>
+                      <span>Play in sequence</span>
                       <div className={`h-4 w-4 rounded border ${isFollowEnabled ? 'bg-[#22c55e] border-[#22c55e]' : 'border-[#555]'}`}>
                         {isFollowEnabled && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                       </div>

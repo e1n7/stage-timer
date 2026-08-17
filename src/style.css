@@ -32,6 +32,12 @@
   }
 }
 
+@media (max-width: 640px) {
+  .timer-output-display {
+    font-size: min(72vw, 30vh) !important;
+  }
+}
+
 @layer utilities {
   .bg-gradient-safe {
     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);

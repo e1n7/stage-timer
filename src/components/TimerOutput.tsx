@@ -273,7 +273,7 @@ export const TimerOutput = () => {
           <div className={`flex h-full w-full flex-col items-center justify-between transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
             <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
               <div
-                className="text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
+                className="timer-output-display text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
                 style={{
                   color: getTextColor(),
                   fontSize: 'min(92vw, 42vh)',
