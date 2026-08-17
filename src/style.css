@@ -70,7 +70,7 @@
   }
 
   .timer-row-scheduled {
-    width: 5rem;
+    display: none !important;
   }
 
   .timer-row-title {
