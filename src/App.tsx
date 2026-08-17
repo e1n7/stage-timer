@@ -1332,10 +1332,8 @@ function App() {
   // remain unchanged.
   useEffect(() => {
     const settings = activeTimerState?.settings;
-    if (!activeTimerId || !activeTimerState || activeTimerState.isRunning || settings?.scheduledStart === null || !Number.isFinite(settings?.scheduledStart)) return;
-    // Date-aware schedules use their selected date; legacy time-only schedules use today in the selected timezone.
-    const scheduledDate = settings.scheduledStartDate || new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
-    const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
+    if (!activeTimerId || !activeTimerState || activeTimerState.isRunning || !settings?.scheduledStartDate || settings.scheduledStart === null) return;
+    const scheduledAt = getZonedDateTimeTimestamp(settings.scheduledStartDate, settings.scheduledStart, selectedTimeZone);
     const isIdle = activeTimerState.syncState?.startTime === null && activeTimerState.seconds >= (settings.targetDuration || 0) - 0.1;
     if (Date.now() / 1000 < scheduledAt || !isIdle) return;
     const startCommand = { targetId: activeTimerId, command: 'START' };
