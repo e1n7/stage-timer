@@ -273,7 +273,7 @@ export const TimerOutput = () => {
         <div className="relative flex h-full w-full flex-col items-center justify-center">
           {/* Background Timer Layer (Blurred out when message is active) */}
           <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
-            <div className="mb-[8vh] flex w-full items-center justify-center overflow-visible">
+            <div className="mb-0 flex w-full items-center justify-center overflow-visible">
               <div
                 className="timer-output-display text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
                 style={{
