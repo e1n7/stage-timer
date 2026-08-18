@@ -295,13 +295,14 @@ export const useTimer = (id: string = 'default') => {
   const resetTimer = useCallback(() => {
     recordLog();
     const mode = settingsRef.current.mode || 'countdown';
-    setSyncState({
+    setSyncState(prev => ({
+      ...prev,
       startTime: null,
       initialSeconds: mode === 'countup' ? DEFAULT_TIME : settingsRef.current.targetDuration,
       isRunning: false,
       mode,
       lastUpdated: Date.now()
-    });
+    }));
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
     }, [recordLog]);
   const setTime = useCallback((newTime: number) => {
