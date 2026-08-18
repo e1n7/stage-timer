@@ -66,6 +66,7 @@ export interface SyncState {
   isRunning: boolean;
   mode: TimerMode;
   lastUpdated: number;
+  manualResetAt?: number | null;
 }
 
 export const useTimer = (id: string = 'default') => {
@@ -93,7 +94,8 @@ export const useTimer = (id: string = 'default') => {
     initialSeconds: settings.mode === 'countup' ? DEFAULT_TIME : settings.targetDuration,
     isRunning: false,
     mode: settings.mode || 'countdown',
-    lastUpdated: Date.now()
+    lastUpdated: Date.now(),
+    manualResetAt: null
   }));
 
   const lastBeepsRef = useRef<{ halfTime: boolean; oneMinute: boolean; reach: boolean }>({
@@ -301,7 +303,8 @@ export const useTimer = (id: string = 'default') => {
       initialSeconds: mode === 'countup' ? DEFAULT_TIME : settingsRef.current.targetDuration,
       isRunning: false,
       mode,
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
+      manualResetAt: Date.now() / 1000
     }));
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
     }, [recordLog]);

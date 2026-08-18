@@ -1364,8 +1364,15 @@ function App() {
     // Date-aware schedules use their selected date; legacy time-only schedules use today in the selected timezone.
     const scheduledDate = settings.scheduledStartDate || new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
     const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
-    const isIdle = activeTimerState.syncState?.startTime === null && activeTimerState.seconds >= (settings.targetDuration || 0) - 0.1;
-    if (Date.now() / 1000 < scheduledAt || !isIdle) return;
+    const syncState = activeTimerState.syncState;
+    const wasManuallyResetAfterSchedule = Number(syncState?.manualResetAt ?? 0) >= scheduledAt;
+    const targetDuration = Number(settings.targetDuration || 0);
+    const isIdle = syncState?.startTime === null && (
+      settings.mode === 'countup'
+        ? activeTimerState.seconds <= 0.1
+        : activeTimerState.seconds >= targetDuration - 0.1
+    );
+    if (Date.now() / 1000 < scheduledAt || wasManuallyResetAfterSchedule || !isIdle) return;
     const startCommand = { targetId: activeTimerId, command: 'START' };
     postSharedMessage(CONTROL_CHANNEL, startCommand);
     window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
