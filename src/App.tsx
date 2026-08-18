@@ -2028,7 +2028,7 @@ function App() {
   const renderedCountdownSeconds = displayProgressSeconds;
   const renderedDisplaySeconds = activeMode === 'countup'
     ? Math.max(0, displaySeconds)
-    : renderedCountdownSeconds;
+    : displaySeconds;
   const hoverDisplaySeconds = hoverTime !== null
     ? (activeMode === 'countup' ? activeTotalTime - hoverTime : hoverTime)
     : renderedDisplaySeconds;
