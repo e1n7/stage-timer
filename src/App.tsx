@@ -924,9 +924,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       setIsActionsOpen(false);
       setIsAdjustMenuOpen(false);
     };
+    const handleMenuOpen = (event: Event) => {
+      const menuId = (event as CustomEvent<string>).detail;
+      if (menuId !== id) setIsActionsOpen(false);
+    };
     window.addEventListener('click', handleGlobalClick);
-    return () => window.removeEventListener('click', handleGlobalClick);
-  }, []);
+    window.addEventListener('stage-timer-menu-open', handleMenuOpen);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('stage-timer-menu-open', handleMenuOpen);
+    };
+  }, [id]);
 
   const secondsRef = useRef(seconds);
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
@@ -1117,7 +1125,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <div className="timer-row-more relative ml-1 max-[639px]:ml-0">
           <button 
             type="button" 
-            onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 
+            onClick={(e) => {
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: id }));
+              setIsActionsOpen(!isActionsOpen);
+            }}
             className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
             title="Timer actions"
           >
@@ -1387,8 +1399,16 @@ function App() {
       setIsTimeZoneMenuOpen(false);
       setOpenAdjustMenu(null);
     };
+    const handleMenuOpen = (event: Event) => {
+      const menuId = (event as CustomEvent<string>).detail;
+      if (menuId !== 'header') setIsTimersMenuOpen(false);
+    };
     window.addEventListener('click', handleGlobalClick);
-    return () => window.removeEventListener('click', handleGlobalClick);
+    window.addEventListener('stage-timer-menu-open', handleMenuOpen);
+    return () => {
+      window.removeEventListener('click', handleGlobalClick);
+      window.removeEventListener('stage-timer-menu-open', handleMenuOpen);
+    };
   }, []);
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
@@ -2363,7 +2383,11 @@ function App() {
               <div className="relative">
                 <button 
                   type="button" 
-                  onClick={(e) => { e.stopPropagation(); setIsTimersMenuOpen(!isTimersMenuOpen); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: 'header' }));
+                    setIsTimersMenuOpen(!isTimersMenuOpen);
+                  }}
                   className={`flex h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore size={20} />
