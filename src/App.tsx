@@ -1787,10 +1787,21 @@ function App() {
     if (currentRoomId === room.id) setCurrentRoomId(null);
   }, [currentRoomId, rooms, setCurrentRoomId, setRooms]);
 
+  const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
     postSharedMessage(CHANNEL_NAME, payload);
+    const now = Date.now();
+    const lastUpdated = typeof payload.lastUpdated === 'number' ? payload.lastUpdated : null;
+    const isRunning = typeof payload.isRunning === 'boolean' ? payload.isRunning : null;
+    const controlStateChanged = lastUpdated !== lastOutputPersistRef.current.lastUpdated
+      || isRunning !== lastOutputPersistRef.current.isRunning;
+    const shouldPersist = payload.type === 'force-sync'
+      || controlStateChanged
+      || now - lastOutputPersistRef.current.lastPersistAt >= 1000;
+    if (!shouldPersist) return;
     try {
       localStorage.setItem('timerState', JSON.stringify(payload));
+      lastOutputPersistRef.current = { lastPersistAt: now, lastUpdated, isRunning };
     } catch { /* ignore */ }
   }, []);
 

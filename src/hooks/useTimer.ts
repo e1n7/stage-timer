@@ -77,6 +77,7 @@ export const useTimer = (id: string = 'default') => {
 
   const [seconds, setSeconds] = useState<number>(() => readJsonStorage<number>(secondsKey, DEFAULT_TIME));
   const secondsRef = useRef(seconds);
+  const lastPersistedSecondRef = useRef<number | null>(null);
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
   
   const [settings, setSettings] = useLocalStorage<TimerSettings>(settingsKey, DEFAULT_SETTINGS);
@@ -246,7 +247,11 @@ export const useTimer = (id: string = 'default') => {
       }
       const rounded = Math.round(currentSeconds * 10) / 10;
       setSeconds(rounded);
-      localStorage.setItem(secondsKey, JSON.stringify(rounded));
+      const persistedSecond = Math.floor(currentSeconds);
+      if (lastPersistedSecondRef.current !== persistedSecond) {
+        lastPersistedSecondRef.current = persistedSecond;
+        localStorage.setItem(secondsKey, JSON.stringify(rounded));
+      }
       checkWarnings(currentSeconds);
     };
     tick();
