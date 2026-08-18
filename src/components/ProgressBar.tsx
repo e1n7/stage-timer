@@ -9,7 +9,6 @@ interface ProgressBarProps {
   currentSeconds: number;
   totalSeconds: number;
   segments: ProgressSegment[];
-  mode?: 'countdown' | 'countup' | 'time';
   className?: string;
   height?: string;
 }
@@ -28,7 +27,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentSeconds,
   totalSeconds,
   segments,
-  mode = 'countdown',
   className = '',
   height = 'h-4',
 }) => {
@@ -86,9 +84,6 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
      // This part is actually handled by the loop (last segment to 0)
   }
 
-  // For countup, we reverse the logic: the bar grows from left to right.
-  const isCountup = mode === 'countup';
-
   return (
     <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
       {/* Background layer: All colored zones in their fixed positions */}
@@ -102,20 +97,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         ))}
       </div>
 
-      {/* Mask layer: Covers the "elapsed" or "future" part */}
-      {/* For Countdown: Mask starts at 0 width on the left and grows to the right */}
-      {!isCountup ? (
-        <div
-          className="absolute inset-y-0 left-0 bg-[#141414] transition-[width] duration-100 ease-linear z-10"
-          style={{ width: `${Math.max(0, Math.min(100, elapsedPercent))}%` }}
-        />
-      ) : (
-        /* For Countup: Mask starts at 100 width and shrinks to the left */
-        <div
-          className="absolute inset-y-0 right-0 bg-[#141414] transition-[width] duration-100 ease-linear z-10"
-          style={{ width: `${Math.max(0, Math.min(100, 100 - remainingPercent))}%` }}
-        />
-      )}
+      {/* Countdown mask is the single rendering path for every timer mode. */}
+      <div
+        className="absolute inset-y-0 left-0 bg-[#141414] transition-[width] duration-100 ease-linear z-10"
+        style={{ width: `${Math.max(0, Math.min(100, elapsedPercent))}%` }}
+      />
     </div>
   );
 };

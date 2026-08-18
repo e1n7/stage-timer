@@ -164,7 +164,7 @@
 .timer-row {
   height: 3rem;
   min-height: 3rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .timer-row-controls {

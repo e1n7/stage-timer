@@ -106,8 +106,7 @@ export const useTimer = (id: string = 'default') => {
 
   useEffect(() => {
     const nextMode = settings.mode || 'countdown';
-    const countupNeedsBaseline = nextMode === 'countup' && settings.targetDuration > 0 && syncState.initialSeconds === settings.targetDuration;
-    if (syncState.mode !== nextMode || countupNeedsBaseline) {
+    if (syncState.mode !== nextMode) {
       setSyncState(prev => ({
         ...prev,
         startTime: prev.isRunning ? Date.now() : null,
@@ -304,8 +303,7 @@ export const useTimer = (id: string = 'default') => {
       lastUpdated: Date.now()
     });
     lastBeepsRef.current = { halfTime: false, oneMinute: false, reach: false };
-  }, []);
-
+    }, [recordLog]);
   const setTime = useCallback((newTime: number) => {
     setSyncState(prev => ({
       ...prev,
@@ -319,11 +317,22 @@ export const useTimer = (id: string = 'default') => {
     setSettings(prev => ({ ...prev, ...newSettings }));
     if (newSettings.mode && newSettings.mode !== syncStateRef.current?.mode) {
       const nextMode = newSettings.mode;
-      const nextDuration = Number(newSettings.targetDuration ?? settingsRef.current.targetDuration) || 0;
+      const currentMode = syncStateRef.current?.mode || settingsRef.current.mode || 'countdown';
+      const currentDuration = Number(settingsRef.current.targetDuration) || 0;
+      const nextDuration = Number(newSettings.targetDuration ?? currentDuration) || 0;
+      const currentSeconds = Number(secondsRef.current) || 0;
+      const elapsedPosition = currentMode === 'countdown'
+        ? currentDuration - currentSeconds
+        : currentSeconds;
+      const preservedPosition = Math.max(0, Math.min(nextDuration, elapsedPosition));
+      const nextInitialSeconds = nextMode === 'countdown'
+        ? Math.max(0, nextDuration - preservedPosition)
+        : preservedPosition;
+
       setSyncState(prev => ({
         ...prev,
         startTime: prev.isRunning ? Date.now() : null,
-        initialSeconds: nextMode === 'countup' ? DEFAULT_TIME : nextDuration,
+        initialSeconds: nextInitialSeconds,
         mode: nextMode,
         lastUpdated: Date.now(),
       }));

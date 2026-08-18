@@ -194,7 +194,7 @@ export const TimerOutput = () => {
       unsubscribe();
       window.removeEventListener('storage', storageSync);
     };
-  }, []);
+  }, [triggerFlash, triggerMessageFlash]);
 
   useEffect(() => {
     const tick = () => {
@@ -220,11 +220,13 @@ export const TimerOutput = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  const currentMode = syncStateRef.current.mode;
+  const progressSeconds = syncStateRef.current.mode === 'countup'
+    ? Math.max(0, totalTime - seconds)
+    : seconds;
 
   const getTextColor = () => {
     if (isEmpty) return '#000000';
-    const rounded = Math.floor(seconds);
+    const rounded = Math.floor(progressSeconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
     for (const seg of sorted) {
@@ -293,7 +295,7 @@ export const TimerOutput = () => {
               </div>
             </div>
             <div className="w-full shrink-0 mb-0 mt-0">
-              <ProgressBar currentSeconds={seconds} totalSeconds={totalTime} segments={segments} mode={currentMode} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
+              <ProgressBar currentSeconds={progressSeconds} totalSeconds={totalTime} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
             </div>
           </div>
 

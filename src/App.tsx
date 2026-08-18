@@ -85,7 +85,7 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
       setMStr(pad(m));
       setSStr(pad(s));
     }
-  }, [value]);
+  }, [value, hStr, mStr, sStr]);
 
   const handleChange = (type: 'h'|'m'|'s', val: string) => {
     // Allow numbers only. Hours can be many digits, min/sec usually 2.
@@ -457,6 +457,10 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   const segments = Array.isArray(localSettings.segments) ? localSettings.segments : [];
   const yellowSegment = segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
   const redSegment = segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
+  const previewTotalSeconds = Math.max(1, Number(localSettings.targetDuration) || 0);
+  const previewRedWidth = Math.min(100, (Math.max(0, Number(redSegment.threshold) || 0) / previewTotalSeconds) * 100);
+  const previewYellowWidth = Math.min(100 - previewRedWidth, (Math.max(0, Number(yellowSegment.threshold) - Number(redSegment.threshold)) / previewTotalSeconds) * 100);
+  const previewGreenWidth = Math.max(0, 100 - previewYellowWidth - previewRedWidth);
   const updateWarningSegment = (color: string, threshold: number) => {
     const index = segments.findIndex((segment: any) => segment.color === color);
     const nextSegments = index >= 0
@@ -599,7 +603,13 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           <div className="flex items-center justify-between">
             <h3 className="text-[14px] font-bold text-white">Wrap-up times & actions</h3>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]"><div className="flex h-full w-full"><div className="h-full w-[80%] bg-[#22c55e]" /><div className="h-full w-[15%] bg-[#f08c00]" /><div className="h-full w-[5%] bg-[#fa5252]" /></div></div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]">
+            <div className="flex h-full w-full" aria-label="Configured timer color preview">
+              <div className="h-full" style={{ width: `${previewGreenWidth}%`, backgroundColor: '#22c55e' }} />
+              <div className="h-full" style={{ width: `${previewYellowWidth}%`, backgroundColor: yellowSegment.color }} />
+              <div className="h-full" style={{ width: `${previewRedWidth}%`, backgroundColor: redSegment.color }} />
+            </div>
+          </div>
           <div className="space-y-3">
             <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#22c55e]" />
@@ -902,14 +912,15 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const currentTime = formatClock(seconds);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
 
   useEffect(() => {
-    const handleGlobalClick = () => {
+    const handleGlobalClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.timer-row-more')) return;
       setIsActionsOpen(false);
       setIsAdjustMenuOpen(false);
     };
@@ -1051,7 +1062,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
-        {seconds < 0 && settings.mode === 'countdown' ? '+' + formatClock(Math.abs(seconds)) : currentTime}
+        {formatClock(settings.targetDuration)}
       </div>
 
       {/* Title */}
@@ -1103,22 +1114,34 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
-        
         <div className="timer-row-more relative ml-1 max-[639px]:ml-0">
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); setIsActionsOpen(!isActionsOpen); }} 
             className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
+            title="Timer actions"
           >
             <IconMore size={18} />
           </button>
           {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
-              <button onClick={() => { onAddAbove(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]"><span>↑</span> Add timer above</button>
-              <button onClick={() => { onAddBelow(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]"><span>↓</span> Add timer below</button>
-              <button onClick={() => { onDuplicate(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">Duplicate</button>
+            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-[250] mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
+              <button type="button" onClick={() => { onAddAbove(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/><path d="M4 21h16"/></svg>
+                <span>Add timer above</span>
+              </button>
+              <button type="button" onClick={() => { onAddBelow(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/><path d="M4 3h16"/></svg>
+                <span>Add timer below</span>
+              </button>
+              <button type="button" onClick={() => { onDuplicate(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Clone timer</span>
+              </button>
               <div className="my-1 border-t border-[#333]" />
-              <button onClick={() => { onDelete(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">Delete</button>
+              <button type="button" onClick={() => { onDelete(); setIsActionsOpen(false); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                <span>Delete timer</span>
+              </button>
             </div>
           )}
         </div>
@@ -1250,6 +1273,11 @@ function App() {
   const overUnder = useMemo(() => {
     if (!activeTimerState) return '--:--';
     const s = activeTimerState.seconds;
+    const mode = activeTimerState.syncState?.mode || activeTimerState.settings?.mode || 'countdown';
+    if (mode === 'countup') {
+      const delta = s - Math.max(0, Number(activeTimerState.settings?.targetDuration ?? 0));
+      return delta >= 0 ? `+${formatClock(delta, true)}` : `-${formatClock(Math.abs(delta), true)}`;
+    }
     return s < 0 ? `+${formatClock(Math.abs(s), true)}` : `-${formatClock(s)}`;
   }, [activeTimerState]);
 
@@ -1314,7 +1342,7 @@ function App() {
     }
     
     return result;
-  }, [timerIds, settingsVersion, selectedTimeZone, activeTimerId, activeTimerState]);
+  }, [timerIds, selectedTimeZone, activeTimerId, activeTimerState]);
 
   const formatScheduledTime = (timestamp: number | null) => {
     if (timestamp === null) return '---';
@@ -1368,6 +1396,7 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevIsRunningRef = useRef(false);
   const prevSecondsRef = useRef<number | null>(null);
+  const prevModeRef = useRef<string | null>(null);
   const autoFollowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Follow Active Timer Logic - advance countdown timers at the zero boundary.
@@ -1380,18 +1409,31 @@ function App() {
 
     const seconds = activeTimerState?.seconds;
     const previousSeconds = prevSecondsRef.current;
+    const mode = activeTimerState?.settings.mode || 'countdown';
+    const modeChanged = prevModeRef.current !== null && prevModeRef.current !== mode;
+    const targetDuration = Math.max(0, Number(activeTimerState?.settings.targetDuration ?? 0));
     const crossedZeroWhileRunning =
       isFollowEnabled &&
+      !modeChanged &&
       activeTimerState?.isRunning &&
-      activeTimerState?.settings.mode === 'countdown' &&
+      mode === 'countdown' &&
       typeof seconds === 'number' &&
       seconds <= 0 &&
       typeof previousSeconds === 'number' &&
       previousSeconds > 0;
+    const crossedTargetWhileRunning =
+      isFollowEnabled &&
+      !modeChanged &&
+      activeTimerState?.isRunning &&
+      mode === 'countup' &&
+      typeof seconds === 'number' &&
+      seconds >= targetDuration &&
+      typeof previousSeconds === 'number' &&
+      previousSeconds < targetDuration;
     const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.1;
-    const pausedAtZero = isFollowEnabled && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
+    const pausedAtZero = isFollowEnabled && !modeChanged && mode === 'countdown' && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
 
-    if (crossedZeroWhileRunning || pausedAtZero) {
+    if (crossedZeroWhileRunning || crossedTargetWhileRunning || pausedAtZero) {
       const currentIndex = timerIds.indexOf(activeTimerId);
       if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
         const nextId = timerIds[currentIndex + 1];
@@ -1408,11 +1450,16 @@ function App() {
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
           finally { autoFollowTimeoutRef.current = null; }
         }, 300);
+      } else if (currentIndex === timerIds.length - 1) {
+        const pauseCommand = { targetId: activeTimerId, command: 'PAUSE' };
+        postSharedMessage(CONTROL_CHANNEL, pauseCommand);
+        window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: pauseCommand }));
       }
     }
     prevSecondsRef.current = typeof seconds === 'number' ? seconds : null;
     prevIsRunningRef.current = activeTimerState?.isRunning || false;
-  }, [activeTimerState?.isRunning, activeTimerState?.seconds, activeTimerState?.settings.mode, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
+    prevModeRef.current = mode;
+  }, [activeTimerState?.isRunning, activeTimerState?.seconds, activeTimerState?.settings.mode, activeTimerState?.settings.targetDuration, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
 
   useEffect(() => () => {
     if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
@@ -1642,7 +1689,7 @@ function App() {
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [rooms, setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
+  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
@@ -1702,18 +1749,17 @@ function App() {
     })();
     
     const targetDuration = settings?.targetDuration || 0;
-    const mode = settings?.mode || 'countdown';
-    
     if (targetDuration <= 0) return;
 
-    // For countdown: left (0%) is targetDuration, right (100%) is 0
-    // For countup: left (0%) is 0, right (100%) is targetDuration
-    const targetTime = mode === 'countdown'
-      ? targetDuration * (1 - percentage)
-      : targetDuration * percentage;
+    // The scrubber always uses the countdown mapping - left is the target duration and right is zero.
+    const targetCountdownSeconds = targetDuration * (1 - percentage);
+    const mode = settings?.mode || 'countdown';
+    const targetTimerSeconds = mode === 'countup'
+      ? targetDuration - targetCountdownSeconds
+      : targetCountdownSeconds;
 
-    sendControl('SET', targetTime);
-    setHoverTime(targetTime);
+    sendControl('SET', targetTimerSeconds);
+    setHoverTime(targetCountdownSeconds);
   }, [activeTimerId, activeTimerState, sendControl]);
 
   useEffect(() => {
@@ -1736,9 +1782,8 @@ function App() {
         } else {
           // Refresh hover time based on current position to ensure it's accurate
           const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-          const mode = activeTimerState?.settings?.mode || 'countdown';
-          const targetDuration = activeTotalTime;
-          setHoverTime(mode === 'countdown' ? targetDuration * (1 - percentage) : targetDuration * percentage);
+          const targetDuration = Math.max(0, Number(activeTimerState?.settings?.targetDuration ?? 0));
+          setHoverTime(targetDuration * (1 - percentage));
         }
       } else {
         setHoverTime(null);
@@ -1755,7 +1800,29 @@ function App() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingGrid, handleGridAction]);
+  }, [isDraggingGrid, handleGridAction, activeTimerState?.settings?.targetDuration]);
+
+  const getActiveMessage = useCallback((): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean; messageFontHeight: number; messageFontWidth: number } => {
+    // Active message priority: currently flashing > shown
+    const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
+      : messageShownId;
+    const msg = activeId ? (messages.find(m => m.id === activeId) || null) : null;
+    const shownText = msg ? msg.text || '' : '';
+    const size = msg && typeof msg.messageSize === 'number' && msg.messageSize > 0 ? msg.messageSize : 1.0;
+    return {
+      messageText: shownText,
+      messageColor: msg?.color || '#ffffff',
+      messageBold: !!msg?.bold,
+      messageUppercase: !!msg?.uppercase,
+      messageSize: size,
+      messageFontHeight: (msg?.fontHeight ?? msg?.messageSize) ?? 1.0,
+      messageFontWidth: (msg?.fontWidth ?? msg?.messageSize) ?? 1.0,
+      messageShown: !!messageShownId || !!messageFlashId,
+      messageFlash: !!messageFlashId,
+      // Show now acts as maximize: message only, no timer on Output
+      messageMaximize: !!messageShownId || !!messageFlashId
+    };
+  }, [messageFlashId, messageShownId, messages]);
 
   useEffect(() => {
     if (activeTimerId && activeTimerState) {
@@ -1781,7 +1848,7 @@ function App() {
         ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, timerIds.length, messages, messageShownId, messageFlashId]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, timerIds.length, getActiveMessage]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -1884,26 +1951,6 @@ function App() {
     }
     setMessages(prev => prev.filter(m => m.id !== id));
   };
-  const getActiveMessage = (): { messageText: string; messageColor: string; messageBold: boolean; messageUppercase: boolean; messageSize: number; messageShown: boolean; messageFlash: boolean; messageMaximize: boolean; messageFontHeight: number; messageFontWidth: number } => {
-    // Active message priority: currently flashing > shown
-    const activeId = (messageFlashId && messages.some(m => m.id === messageFlashId)) ? messageFlashId
-      : messageShownId;
-    const msg = activeId ? (messages.find(m => m.id === activeId) || null) : null;
-    const shownText = msg ? msg.text || '' : '';
-    return {
-      messageText: shownText,
-      messageColor: msg?.color || '#ffffff',
-      messageBold: !!msg?.bold,
-      messageUppercase: !!msg?.uppercase,
-      messageSize: msg ? getMessageSize(msg) : 1.0,
-      messageFontHeight: (msg?.fontHeight ?? msg?.messageSize) ?? 1.0,
-      messageFontWidth: (msg?.fontWidth ?? msg?.messageSize) ?? 1.0,
-      messageShown: !!messageShownId || !!messageFlashId,
-      messageFlash: !!messageFlashId,
-      // Show now acts as maximize: message only, no timer on Output
-      messageMaximize: !!messageShownId || !!messageFlashId
-    };
-  };
   const showMessage = (id: string) => {
     // Toggle: if this message is currently shown, turn it off
     if (messageShownId === id) {
@@ -1967,16 +2014,29 @@ function App() {
     setActiveTimerId(timerIds[nextIndex]);
   };
 
-  const currentTime = activeTimerState ? formatClock(activeTimerState.seconds) : '--:--';
   const displaySeconds = activeTimerState ? activeTimerState.seconds : 0;
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
-  // Keep every dashboard progress calculation on the same assigned duration.
+
   const activeTotalTime = Math.max(0, Number(activeTimerState?.settings?.targetDuration ?? 0));
-  const activeProgressTotal = Math.max(activeTotalTime, 1);
+  const activeMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countdown';
+  const activeProgressTotal = activeTotalTime || 1;
+  const rawCountdownSeconds = activeMode === 'countup'
+    ? activeTotalTime - displaySeconds
+    : displaySeconds;
+  const displayProgressSeconds = Math.max(0, Math.min(activeTotalTime, rawCountdownSeconds));
+  // Hover is preview-only. The primary displays always use the committed timer state.
+  const renderedCountdownSeconds = displayProgressSeconds;
+  const renderedDisplaySeconds = activeMode === 'countup'
+    ? Math.max(0, displaySeconds)
+    : renderedCountdownSeconds;
+  const hoverDisplaySeconds = hoverTime !== null
+    ? (activeMode === 'countup' ? activeTotalTime - hoverTime : hoverTime)
+    : renderedDisplaySeconds;
+  const currentTime = activeTimerState ? formatClock(renderedDisplaySeconds) : '--:--';
 
   const getDashboardTextColor = () => {
     if (!activeTimerId) return '#333';
-    const rounded = Math.floor(displaySeconds);
+    const rounded = Math.floor(displayProgressSeconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...(displaySettings.segments || [])].sort((a, b) => a.threshold - b.threshold);
     for (const seg of sorted) {
@@ -2098,9 +2158,9 @@ function App() {
                     : 'none'
                 }}
               >
-                {displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime}
+                {renderedDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(renderedDisplaySeconds)) : currentTime}
               </div>
-              {activeTimerId && <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-5" className="rounded-sm" />}
+              {activeTimerId && <ProgressBar currentSeconds={displayProgressSeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} height="h-5" className="rounded-sm" />}
             </div>
 
             <MessageStage
@@ -2119,7 +2179,7 @@ function App() {
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
-                    {hoverTime !== null ? formatClock(hoverTime) : (displaySeconds < 0 && activeTimerState?.settings.mode === 'countdown' ? '+' + formatClock(Math.abs(displaySeconds)) : currentTime)}.{Math.floor(Math.abs(((hoverTime !== null ? hoverTime : displaySeconds) % 1) * 10))}
+                    {hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)}.{Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}
                   </span>
                 </div>
               </div>
@@ -2140,13 +2200,13 @@ function App() {
                     })}
                   </div>
                   
-                  <ProgressBar currentSeconds={displaySeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} mode={activeTimerState?.syncState?.mode || displaySettings.mode} height="h-[3px]" className="absolute bottom-0 left-0 right-0" />
+                  <ProgressBar currentSeconds={displayProgressSeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} height="h-[3px]" className="absolute bottom-0 left-0 right-0" />
                   
                   {/* Red Playhead Marker */}
                   <div 
                     className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-20"
                     style={{ 
-                      left: `${Math.max(0, Math.min(100, (1 - ((isDraggingGrid && hoverTime !== null ? hoverTime : displaySeconds) / activeProgressTotal)) * 100))}%`,
+                      left: `${Math.max(0, Math.min(100, (1 - ((isDraggingGrid && hoverTime !== null ? hoverTime : displayProgressSeconds) / activeProgressTotal)) * 100))}%`,
                       transition: (activeTimerState?.isRunning || isDraggingGrid) ? 'none' : 'left 0.1s linear'
                     }}
                   >
@@ -2192,8 +2252,7 @@ function App() {
                       const x = e.clientX - rect.left;
                       const percentage = Math.max(0, Math.min(1, x / rect.width));
                       const targetDuration = activeTotalTime;
-                      const mode = activeTimerState?.settings?.mode || 'countdown';
-                      const time = mode === 'countdown' ? targetDuration * (1 - percentage) : targetDuration * percentage;
+                      const time = targetDuration * (1 - percentage);
                       setHoverTime(time);
                       
                       if (isDraggingGrid) {
@@ -2399,10 +2458,15 @@ function App() {
           let elapsed = 0;
           for (let i = 0; i < Math.min(activeIdx, timerIds.length); i++) elapsed += durations[i];
           const activeDuration = activeIdx >= 0 ? (durations[activeIdx] || 0) : 0;
+          const timelineMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countdown';
           if (activeIdx >= 0 && total > 0) {
-            elapsed += Math.max(0, Math.min(activeDuration, activeDuration - displaySeconds));
+            const activeProgress = timelineMode === 'countup'
+              ? Math.max(0, Math.min(activeDuration, displaySeconds))
+              : Math.max(0, Math.min(activeDuration, activeDuration - displaySeconds));
+            elapsed += activeProgress;
           }
           const scrubberPct = total > 0 ? Math.min(1, Math.max(0, elapsed / total)) : 0;
+          const lowerTimelinePct = scrubberPct;
           const endLabel = total === 0 ? '0:00' : '-' + formatClock(total);
           // Left label: elapsed position (HH:MM:SS while running), or 0:00 before start
           const leftLabel = total > 0 && activeIdx >= 0 ? formatClock(Math.min(elapsed, total)) : '0:00';
@@ -2414,11 +2478,11 @@ function App() {
                 {/* Base track */}
                 <div className="absolute inset-y-0 my-auto h-1 w-full rounded-full bg-[#333]"></div>
                 {/* Elapsed portion (dark gray) — clipped at the scrubber, same baseline as track */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - scrubberPct * 100}% 0 0)` }}>
+                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - lowerTimelinePct * 100}% 0 0)` }}>
                   <div className="h-full w-full rounded-full bg-[#666]"></div>
                 </div>
                 {/* Remaining portion (white) — clipped after the scrubber */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 0 0 ${scrubberPct * 100}%)` }}>
+                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 0 0 ${lowerTimelinePct * 100}%)` }}>
                   <div className="h-full w-full rounded-full bg-white"></div>
                 </div>
                 {/* Thin vertical separators between stages — same height and baseline as the track */}
@@ -2429,7 +2493,7 @@ function App() {
                 {/* Blue position marker centered on the same baseline */}
                 <div 
                   className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg absolute my-auto -translate-x-1/2 z-20" 
-                  style={{ left: `${scrubberPct * 100}%` }}
+                  style={{ left: `${lowerTimelinePct * 100}%` }}
                 ></div>
               </div>
               <span className="tabular-nums shrink-0 text-white">{endLabel}</span>
