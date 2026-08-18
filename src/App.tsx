@@ -1451,6 +1451,7 @@ function App() {
   const prevSecondsRef = useRef<number | null>(null);
   const prevModeRef = useRef<string | null>(null);
   const autoFollowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sequenceCompletedRef = useRef(false);
 
   // Follow Active Timer Logic - advance countdown timers at the zero boundary.
   // Normal timer behavior, including overtime when follow is disabled, is unchanged.
@@ -1486,6 +1487,10 @@ function App() {
     const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.1;
     const pausedAtZero = isFollowEnabled && !modeChanged && mode === 'countdown' && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
 
+    if (activeTimerState?.isRunning && typeof seconds === 'number' && seconds > 0.1) {
+      sequenceCompletedRef.current = false;
+    }
+
     if (crossedZeroWhileRunning || crossedTargetWhileRunning || pausedAtZero) {
       const currentIndex = timerIds.indexOf(activeTimerId);
       if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
@@ -1494,7 +1499,7 @@ function App() {
         if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
         autoFollowTimeoutRef.current = setTimeout(() => {
           try {
-            if (!timerIds.includes(nextId)) return;
+            if (!timerIds.includes(nextId) || sequenceCompletedRef.current) return;
             const startCommand = { targetId: nextId, command: 'START' };
             postSharedMessage(CONTROL_CHANNEL, startCommand);
             window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
@@ -1504,6 +1509,11 @@ function App() {
           finally { autoFollowTimeoutRef.current = null; }
         }, 300);
       } else if (currentIndex === timerIds.length - 1) {
+        sequenceCompletedRef.current = true;
+        if (autoFollowTimeoutRef.current) {
+          clearTimeout(autoFollowTimeoutRef.current);
+          autoFollowTimeoutRef.current = null;
+        }
         const pauseCommand = { targetId: activeTimerId, command: 'PAUSE' };
         postSharedMessage(CONTROL_CHANNEL, pauseCommand);
         window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: pauseCommand }));
@@ -1786,6 +1796,11 @@ function App() {
 
   const sendControl = useCallback((command: string, payload?: any) => {
     if (!activeTimerId) return;
+    if (command === 'START') {
+      const pauseOthersCommand = { command: 'PAUSE_ALL_EXCEPT', payload: activeTimerId };
+      postSharedMessage(CONTROL_CHANNEL, pauseOthersCommand);
+      window.dispatchEvent(new CustomEvent('stage-timer-pause-all-except', { detail: activeTimerId }));
+    }
     const data = { targetId: activeTimerId, command, payload };
     postSharedMessage(CONTROL_CHANNEL, data);
     // Dispatch a local event so components in the same tab (like TimerRow) can respond instantly
@@ -2063,7 +2078,13 @@ function App() {
   const goToNextTimer = () => {
     if (timerIds.length <= 1) return;
     const currentIndex = timerIds.indexOf(activeTimerId);
-    const nextIndex = (currentIndex + 1) % timerIds.length;
+    if (currentIndex < 0 || currentIndex >= timerIds.length - 1) return;
+    const nextIndex = currentIndex + 1;
+    if (activeTimerState?.isRunning && activeTimerId) {
+      const pauseCommand = { targetId: activeTimerId, command: 'PAUSE' };
+      postSharedMessage(CONTROL_CHANNEL, pauseCommand);
+      window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: pauseCommand }));
+    }
     setActiveTimerId(timerIds[nextIndex]);
   };
 
@@ -2333,8 +2354,8 @@ function App() {
             <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors">{activeTimerState?.isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}</button>
             <button 
               onClick={goToNextTimer} 
-              disabled={timerIds.length <= 1}
-              className={`col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] transition-colors ${timerIds.length <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`} 
+              disabled={timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1}
+              className={`col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] transition-colors ${timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`}
               title="Next timer"
             >
               <IconSkipForward />
