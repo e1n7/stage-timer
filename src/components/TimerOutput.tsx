@@ -272,8 +272,8 @@ export const TimerOutput = () => {
       ) : (
         <div className="relative flex h-full w-full flex-col items-center justify-center">
           {/* Background Timer Layer (Blurred out when message is active) */}
-          <div className={`flex h-full w-full flex-col items-center justify-between transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
-            <div className="flex min-h-0 flex-1 w-full flex-col items-center justify-center overflow-visible">
+          <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
+            <div className="flex w-full items-center justify-center overflow-visible">
               <div
                 className="timer-output-display text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
                 style={{
@@ -294,9 +294,9 @@ export const TimerOutput = () => {
                 {isEmpty ? '00:00' : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds))}
               </div>
             </div>
-            <div className="w-full shrink-0 mb-0 mt-0">
-              <ProgressBar currentSeconds={progressSeconds} totalSeconds={totalTime} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
-            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 w-full">
+            <ProgressBar currentSeconds={progressSeconds} totalSeconds={totalTime} segments={segments} height="h-[6vh]" className="rounded-xl shadow-2xl border border-white/5" />
           </div>
 
           <MessageStage

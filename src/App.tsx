@@ -1405,6 +1405,7 @@ function App() {
       );
       if (nowSeconds < scheduledAt || wasManuallyResetAfterSchedule || !isIdle) continue;
 
+      setActiveTimerId(id);
       const startCommand = { targetId: id, command: 'START' };
       postSharedMessage(CONTROL_CHANNEL, startCommand);
       window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
@@ -1412,7 +1413,7 @@ function App() {
       window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
       break;
     }
-  }, [timerIds, activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion]);
+  }, [timerIds, activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion, setActiveTimerId]);
 
   useEffect(() => {
     const handleGlobalClick = () => {
