@@ -1371,26 +1371,48 @@ function App() {
   // This stays at the App boundary so the timer hook and progress calculation
   // remain unchanged.
   useEffect(() => {
-    const settings = activeTimerState?.settings;
-    if (!activeTimerId || !activeTimerState || activeTimerState.isRunning || settings?.scheduledStart === null || !Number.isFinite(settings?.scheduledStart)) return;
-    // Date-aware schedules use their selected date; legacy time-only schedules use today in the selected timezone.
-    const scheduledDate = settings.scheduledStartDate || new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
-    const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
-    const syncState = activeTimerState.syncState;
-    const wasManuallyResetAfterSchedule = Number(syncState?.manualResetAt ?? 0) >= scheduledAt;
-    const targetDuration = Number(settings.targetDuration || 0);
-    const isIdle = syncState?.startTime === null && (
-      settings.mode === 'countup'
-        ? activeTimerState.seconds <= 0.1
-        : activeTimerState.seconds >= targetDuration - 0.1
-    );
-    if (Date.now() / 1000 < scheduledAt || wasManuallyResetAfterSchedule || !isIdle) return;
-    const startCommand = { targetId: activeTimerId, command: 'START' };
-    postSharedMessage(CONTROL_CHANNEL, startCommand);
-    window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
-    postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: activeTimerId });
-    window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: activeTimerId }));
-  }, [activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion]);
+    const nowSeconds = Date.now() / 1000;
+    const scheduledDateForToday = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
+    const alreadyRunningId = timerIds.find(id => {
+      const state = id === activeTimerId && activeTimerState
+        ? activeTimerState.syncState
+        : readJsonStorage<any>(`timerSync_${id}`, null);
+      return state?.isRunning;
+    });
+
+    if (alreadyRunningId) return;
+
+    for (const id of timerIds) {
+      const settings = id === activeTimerId && activeTimerState
+        ? activeTimerState.settings
+        : readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+      if (settings?.scheduledStart === null || !Number.isFinite(settings?.scheduledStart)) continue;
+
+      const scheduledDate = settings.scheduledStartDate || scheduledDateForToday;
+      const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
+      const syncState = id === activeTimerId && activeTimerState
+        ? activeTimerState.syncState
+        : readJsonStorage<any>(`timerSync_${id}`, null);
+      const seconds = id === activeTimerId && activeTimerState
+        ? activeTimerState.seconds
+        : Number(readJsonStorage<number>(`timerSeconds_${id}`, settings.mode === 'countup' ? 0 : settings.targetDuration));
+      const wasManuallyResetAfterSchedule = Number(syncState?.manualResetAt ?? 0) >= scheduledAt;
+      const targetDuration = Number(settings.targetDuration || 0);
+      const isIdle = syncState?.startTime === null && (
+        settings.mode === 'countup'
+          ? seconds <= 0.1
+          : seconds >= targetDuration - 0.1
+      );
+      if (nowSeconds < scheduledAt || wasManuallyResetAfterSchedule || !isIdle) continue;
+
+      const startCommand = { targetId: id, command: 'START' };
+      postSharedMessage(CONTROL_CHANNEL, startCommand);
+      window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
+      postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: id });
+      window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
+      break;
+    }
+  }, [timerIds, activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion]);
 
   useEffect(() => {
     const handleGlobalClick = () => {
