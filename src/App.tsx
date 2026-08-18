@@ -1411,6 +1411,9 @@ function App() {
       window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: startCommand }));
       postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: id });
       window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
+      // Apply selection again after the control events so the newly playing
+      // scheduled row remains the selected row in the dashboard.
+      window.setTimeout(() => setActiveTimerId(id), 0);
       break;
     }
   }, [timerIds, activeTimerId, activeTimerState, selectedTimeZone, wallClock, settingsVersion, setActiveTimerId]);
