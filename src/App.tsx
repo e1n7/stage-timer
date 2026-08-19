@@ -1045,7 +1045,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start w-32">
+      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start w-auto">
         <div 
           onClick={(e) => { 
             e.stopPropagation(); 
@@ -1066,7 +1066,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`w-[5rem] shrink-0 text-center text-[16px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:w-[4.5rem] max-[639px]:text-[15px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className={`w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:text-[13px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
@@ -1074,8 +1074,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title min-w-0 flex-1 text-left text-[14px] font-bold truncate opacity-90 pr-2 max-[639px]:text-[12px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        {settings.title}
+      <div className="timer-row-title ml-0 min-w-0 flex-1 flex items-center justify-center overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+        <span className="block min-w-0 max-w-full truncate">{settings.title}</span>
       </div>
 
       {/* Controls */}
@@ -1216,13 +1216,14 @@ function App() {
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
+  const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
 
   useEffect(() => {
-    if (!currentRoomId) {
+    if (!currentRoomId && !isNewRoomDraft) {
       const matchingRoom = rooms.find(room => room.name === currentRoomName);
       if (matchingRoom) setCurrentRoomId(matchingRoom.id);
     }
-  }, [currentRoomId, currentRoomName, rooms, setCurrentRoomId]);
+  }, [currentRoomId, currentRoomName, rooms, isNewRoomDraft, setCurrentRoomId]);
 
   // Fix #4: cross-tab room/message sync — when another dashboard tab updates
   // timers/messages/room, broadcast the change so other open tabs reload too.
@@ -1270,6 +1271,7 @@ function App() {
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -1737,6 +1739,7 @@ function App() {
       });
     }
     setCurrentRoomId(room.id);
+    setIsNewRoomDraft(false);
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
@@ -1759,6 +1762,7 @@ function App() {
     const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
     const roomId = existingRoom?.id || currentRoomId || createId('room');
     setCurrentRoomId(roomId);
+    setIsNewRoomDraft(false);
     const timerSettings: Record<string, any> = {};
     timerIds.forEach(id => {
       const stored = localStorage.getItem(`timerSettings_${id}`);
@@ -1771,6 +1775,8 @@ function App() {
       if (existingIndex >= 0) next[existingIndex] = roomData; else next.push(roomData);
       return next;
     });
+    setSaveNotice('Room saved');
+    window.setTimeout(() => setSaveNotice(null), 2200);
   }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
   const deleteRoom = useCallback((room: Room) => {
@@ -2151,6 +2157,7 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
+      {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
         <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-full sm:w-64 text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
@@ -2167,16 +2174,10 @@ function App() {
                   </div>
                 ))}
                 <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
-                  // Cleanly reset all app state so a new room starts empty:
-                  // remove every per-timer key (settings/sync/seconds), clear the
-                  // timer list, active id, messages, and any shown message.
-                  Object.keys(localStorage).forEach(key => {
-                    if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_')) {
-                      localStorage.removeItem(key);
-                    }
-                  });
+                  // Reset only the active room state; preserve existing rooms and their timers.
                   localStorage.removeItem('stage-timer-message-shown-id');
-                  setCurrentRoomId(null);
+                  setCurrentRoomId(createId('room-draft'));
+                  setIsNewRoomDraft(true);
                   setCurrentRoomName('New Room');
                   setTimerIds([]);
                   setActiveTimerId('');
@@ -2231,7 +2232,7 @@ function App() {
 
             {/* Timer background layer; the shared message stage sits above it. */}
             <div className={`w-full flex flex-col items-center justify-center transition-all duration-300 ${getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
-              <div className="flex items-center justify-center text-[13px] mb-2"><span className="font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
+              <div className="flex w-full min-w-0 items-center justify-center text-center text-[13px] mb-2"><span className="block max-w-full truncate font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
               <div 
                 className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
                 style={{ 
@@ -2420,7 +2421,7 @@ function App() {
           </div>
         </aside>
 
-        <main className="timer-panel flex-1 flex flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar shrink-0 lg:shrink">
+        <main className="timer-panel min-w-0 flex-1 lg:min-w-[560px] flex flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Timers</h2>
             <div className="flex items-center gap-3">
