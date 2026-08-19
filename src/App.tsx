@@ -1025,7 +1025,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? onActivate : undefined} 
-      className={`timer-row group flex min-w-0 items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1045,7 +1045,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="timer-row-scheduled hidden sm:flex flex-col items-start w-32">
+      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start w-32">
         <div 
           onClick={(e) => { 
             e.stopPropagation(); 
@@ -1066,7 +1066,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation(); 
           setIsQuickSettingsOpen(true); 
         }}
-        className={`min-w-[5rem] flex-1 text-center text-[18px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:min-w-[4.5rem] max-[639px]:text-[16px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className={`w-[5rem] shrink-0 text-center text-[16px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:w-[4.5rem] max-[639px]:text-[15px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
@@ -1074,17 +1074,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title min-w-[4rem] w-32 flex-[0_1_8rem] text-right text-[15px] font-bold truncate opacity-90 pr-2 max-[639px]:w-16 max-[639px]:min-w-[3.5rem] max-[639px]:flex-[0_1_4rem] max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-title min-w-0 flex-1 text-left text-[14px] font-bold truncate opacity-90 pr-2 max-[639px]:text-[12px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {settings.title}
       </div>
 
       {/* Controls */}
-      <div className="timer-row-controls flex min-w-0 max-w-full flex-wrap items-center gap-2 max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-controls flex shrink-0 items-center gap-2 whitespace-nowrap max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isActive ? (
           <button 
             type="button" 
             onClick={resetTimer} 
-            className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+            className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
             title="Reset to assigned time"
           >
             <IconSkipBack size={16} />
@@ -1093,7 +1093,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           <button 
             type="button" 
             onClick={() => onActivate()}
-            className="flex h-9 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+            className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
             title="Select this timer"
           >
             <IconSelect size={16} />
@@ -1102,7 +1102,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <button 
           type="button" 
           onClick={() => setIsSettingsOpen(true)}
-          className={`flex h-9 w-10 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
           <IconSettings size={16} />
         </button>
@@ -1118,7 +1118,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
               pauseTimer();
             }
           }}
-          className="flex h-9 w-12 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
+          className="flex h-9 w-12 max-[639px]:h-8 max-[639px]:w-10 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
@@ -1130,7 +1130,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
               window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: id }));
               setIsActionsOpen(!isActionsOpen);
             }}
-            className="flex h-9 w-8 items-center justify-center text-white/40 hover:text-white transition-colors"
+            className="flex h-9 w-8 max-[639px]:h-8 max-[639px]:w-6 items-center justify-center text-white/40 hover:text-white transition-colors"
             title="Timer actions"
           >
             <IconMore size={18} />
@@ -1171,7 +1171,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           // Only reset the timer time when the actual duration changed.
           // Pure visual changes (font height/width, appearance) must never restart the timer.
           if (newSettings.targetDuration !== settings.targetDuration) {
-            setTime(newSettings.targetDuration);
+            setTime(newSettings.mode === 'countup' ? 0 : newSettings.targetDuration);
           }
           onSettingsUpdate();
         }}
@@ -1189,7 +1189,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           // Only reset the timer time when the actual duration changed.
           // Pure visual changes (font height/width, appearance) must never restart the timer.
           if (newSettings.targetDuration !== settings.targetDuration) {
-            setTime(newSettings.targetDuration);
+            setTime(newSettings.mode === 'countup' ? 0 : newSettings.targetDuration);
           }
           onSettingsUpdate();
         }}
@@ -1756,7 +1756,7 @@ function App() {
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
-    const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : rooms.find(room => room.name === roomName);
+    const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
     const roomId = existingRoom?.id || currentRoomId || createId('room');
     setCurrentRoomId(roomId);
     const timerSettings: Record<string, any> = {};
