@@ -962,8 +962,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         switch (command) {
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
+          case 'SCHEDULED_END':
+            resetTimer();
+            setTime(settings.mode === 'countup' ? Number(settings.targetDuration || 0) : 0);
+            break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(secondsRef.current + (typeof payload === 'number' ? payload : 0)); break;
+          case 'ADJUST': {
+            const adjustment = typeof payload === 'number' ? payload : 0;
+            if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
+            setTime(secondsRef.current + adjustment);
+            break;
+          }
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
@@ -994,8 +1003,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         switch (command) {
           case 'START': startTimer(); break;
           case 'PAUSE': pauseTimer(); break;
+          case 'SCHEDULED_END':
+            resetTimer();
+            setTime(settings.mode === 'countup' ? Number(settings.targetDuration || 0) : 0);
+            break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': setTime(secondsRef.current + (typeof payload === 'number' ? payload : 0)); break;
+          case 'ADJUST': {
+            const adjustment = typeof payload === 'number' ? payload : 0;
+            if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
+            setTime(secondsRef.current + adjustment);
+            break;
+          }
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS': 
           case 'REFRESH_SETTINGS': {
@@ -1012,7 +1030,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       window.removeEventListener('stage-timer-control', handleLocalControl);
       unsubscribe();
     };
-  }, [id, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
+  }, [id, isRunning, settings.mode, settings.targetDuration, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
 
   useEffect(() => {
     if (isActive) {
@@ -1217,6 +1235,7 @@ function App() {
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
+  const completedScheduledTimersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentRoomId && !isNewRoomDraft) {
@@ -1375,6 +1394,36 @@ function App() {
   useEffect(() => {
     const nowSeconds = Date.now() / 1000;
     const scheduledDateForToday = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
+
+    // A timer with Set Specific Start Time stops at its configured end.
+    // This guard is limited to scheduled timers so ordinary timers retain
+    // their existing overtime behavior.
+    if (activeTimerId && activeTimerState?.isRunning) {
+      const scheduledSettings = activeTimerState.settings;
+      const scheduledSeconds = Number(activeTimerState.seconds);
+      const scheduledTarget = Number(scheduledSettings?.targetDuration ?? 0);
+      const scheduledMode = scheduledSettings?.mode || 'countdown';
+      const hasScheduledStart = scheduledSettings?.scheduledStart !== null
+        && Number.isFinite(Number(scheduledSettings?.scheduledStart));
+      const scheduledDate = scheduledSettings?.scheduledStartDate || scheduledDateForToday;
+      const scheduledAt = hasScheduledStart
+        ? getZonedDateTimeTimestamp(scheduledDate, Number(scheduledSettings.scheduledStart), selectedTimeZone)
+        : null;
+      const scheduledKey = scheduledAt === null ? null : `${activeTimerId}:${scheduledAt}`;
+      const scheduledEndReached = hasScheduledStart && (
+        scheduledMode === 'countup'
+          ? scheduledTarget > 0 && scheduledSeconds >= scheduledTarget
+          : scheduledSeconds <= 0
+      );
+      if (scheduledEndReached) {
+        if (scheduledKey) completedScheduledTimersRef.current.add(scheduledKey);
+        const pauseCommand = { targetId: activeTimerId, command: 'SCHEDULED_END' };
+        postSharedMessage(CONTROL_CHANNEL, pauseCommand);
+        window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: pauseCommand }));
+        return;
+      }
+    }
+
     const alreadyRunningId = timerIds.find(id => {
       const state = id === activeTimerId && activeTimerState
         ? activeTimerState.syncState
@@ -1392,6 +1441,8 @@ function App() {
 
       const scheduledDate = settings.scheduledStartDate || scheduledDateForToday;
       const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
+      const scheduledKey = `${id}:${scheduledAt}`;
+      if (completedScheduledTimersRef.current.has(scheduledKey)) continue;
       const syncState = id === activeTimerId && activeTimerState
         ? activeTimerState.syncState
         : readJsonStorage<any>(`timerSync_${id}`, null);
@@ -2237,14 +2288,14 @@ function App() {
       : undefined;
   if (activeRoom) loadRoom(activeRoom);
 } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Import</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
                         const exportData = { rooms: rooms.map(r => r.id === currentRoomId ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
- const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
+ const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -2565,6 +2616,9 @@ function App() {
         <div className="flex items-center gap-4"></div>
         {(() => {
           const durations = timerIds.map(id => {
+            if (id === activeTimerId && activeTimerState?.settings) {
+              return Number(activeTimerState.settings.targetDuration || 0);
+            }
             return readJsonStorage<any>(`timerSettings_${id}`, null)?.targetDuration || 0;
           });
           const total = durations.reduce((a, b) => a + b, 0);
