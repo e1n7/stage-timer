@@ -781,7 +781,7 @@ interface TimerRowProps {
   scheduledStart: number | null;
   formatTime: (ts: number | null) => string;
   selectedTimeZone: string;
-  onActivate: () => void;
+  onActivate: (manualStart?: boolean) => void;
   onSync: (state: any) => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
@@ -1042,7 +1042,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     <div 
       ref={setNodeRef} 
       style={style} 
-      onClick={isActive ? onActivate : undefined} 
+      onClick={isActive ? () => onActivate(false) : undefined}
       className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
@@ -1110,7 +1110,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         ) : (
           <button 
             type="button" 
-            onClick={() => onActivate()}
+            onClick={() => onActivate(false)}
             className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
             title="Select this timer"
           >
@@ -1128,7 +1128,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           type="button" 
           onClick={() => {
             if (!isRunning) {
-              onActivate();
+              onActivate(true);
               window.dispatchEvent(new CustomEvent('stage-timer-reset-all-except', { detail: id }));
               postSharedMessage(CONTROL_CHANNEL, { command: 'RESET_ALL_EXCEPT', payload: id });
               startTimer();
@@ -1236,6 +1236,7 @@ function App() {
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
   const completedScheduledTimersRef = useRef<Set<string>>(new Set());
+  const manuallyStartedScheduledTimersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentRoomId && !isNewRoomDraft) {
@@ -1443,6 +1444,7 @@ function App() {
       const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, settings.scheduledStart, selectedTimeZone);
       const scheduledKey = `${id}:${scheduledAt}`;
       if (completedScheduledTimersRef.current.has(scheduledKey)) continue;
+      if (manuallyStartedScheduledTimersRef.current.has(scheduledKey)) continue;
       const syncState = id === activeTimerId && activeTimerState
         ? activeTimerState.syncState
         : readJsonStorage<any>(`timerSync_${id}`, null);
@@ -2549,7 +2551,18 @@ function App() {
                 scheduledStart={schedule[id]?.start ?? null}
                 formatTime={formatScheduledTime}
                 selectedTimeZone={selectedTimeZone}
-                onActivate={() => {
+                onActivate={(manualStart = false) => {
+                  if (manualStart) {
+                    const settings = id === activeTimerId && activeTimerState
+                      ? activeTimerState.settings
+                      : readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+                    if (settings?.scheduledStart !== null && Number.isFinite(Number(settings?.scheduledStart))) {
+                      const scheduledDateForToday = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
+                      const scheduledDate = settings.scheduledStartDate || scheduledDateForToday;
+                      const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, Number(settings.scheduledStart), selectedTimeZone);
+                      manuallyStartedScheduledTimersRef.current.add(`${id}:${scheduledAt}`);
+                    }
+                  }
                   // When a different timer is selected, stop the currently
                   // playing one so only one timer runs at a time, then move
                   // the selection to the newly chosen timer.
