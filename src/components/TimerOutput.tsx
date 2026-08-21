@@ -170,7 +170,9 @@ export const TimerOutput = () => {
             const elapsed = (Date.now() - data.startTime) / 1000;
             const next = data.mode === 'countdown'
               ? data.initialSeconds - elapsed
-              : data.initialSeconds + elapsed;
+              : data.mode === 'time'
+                ? Date.now() / 1000
+                : data.initialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
           } else {
             setSeconds(data.initialSeconds ?? DEFAULT_TIME);

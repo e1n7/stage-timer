@@ -1626,7 +1626,8 @@ function App() {
       setActiveTimerId('');
       setActiveTimerState(null);
     } else if (activeTimerId === id) {
-      // The active timer was deleted — fall back to the first available timer.
+      // The active timer was deleted — clear its view immediately, then fall back.
+      setActiveTimerState(null);
       setActiveTimerId(newIds[0]);
     }
   };
@@ -1728,14 +1729,16 @@ function App() {
         const settings = room.timerSettings![id];
         localStorage.setItem(`timerSettings_${id}`, JSON.stringify(settings));
         const target = settings?.targetDuration ?? 0;
+        const mode = settings?.mode || 'countdown';
+        const initialSeconds = mode === 'countup' ? 0 : target;
         localStorage.setItem(`timerSync_${id}`, JSON.stringify({
           startTime: null,
-          initialSeconds: target,
+          initialSeconds,
           isRunning: false,
-          mode: settings?.mode || 'countdown',
+          mode,
           lastUpdated: Date.now()
         }));
-        localStorage.setItem(`timerSeconds_${id}`, JSON.stringify(target));
+        localStorage.setItem(`timerSeconds_${id}`, JSON.stringify(initialSeconds));
       });
     }
     setCurrentRoomId(room.id);
@@ -1790,8 +1793,17 @@ function App() {
       }
     });
     setRooms(prev => prev.filter(candidate => candidate.id !== room.id));
-    if (currentRoomId === room.id) setCurrentRoomId(null);
-  }, [currentRoomId, rooms, setCurrentRoomId, setRooms]);
+    if (currentRoomId === room.id) {
+      setCurrentRoomId(null);
+      setIsNewRoomDraft(true);
+      setCurrentRoomName('Unnamed');
+      setTimerIds([]);
+      setActiveTimerId('');
+      setActiveTimerState(null);
+      setMessages([{ id: '1', text: '', color: '#ffffff' }]);
+      setMessageShownId(null);
+    }
+  }, [currentRoomId, rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
 
   const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -2191,25 +2203,37 @@ function App() {
             )}
           </div>
           <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { 
-  const importedRooms = imported.rooms.map((room: any, index: number) => ({
-    ...room,
-    id: room.id || `imported_${Date.now()}_${index}`,
-    timerSettings: room.timerSettings && typeof room.timerSettings === 'object'
-      ? Object.fromEntries(Object.entries(room.timerSettings).map(([id, settings]) => [
-          id,
-          normalizeTimerSettingsForTransfer((settings && typeof settings === 'object') ? settings as Record<string, any> : {}),
-        ]))
-      : room.timerSettings,
-  }));
-  setRooms(prev => {
-    const roomsById = new Map(prev.map(room => [room.id, room]));
-    importedRooms.forEach((room: Room) => roomsById.set(room.id, room));
-    return Array.from(roomsById.values());
-  }); 
+  const importedRoomIdMap = new Map<string, string>();
+  const importedRooms = imported.rooms.map((room: any, index: number) => {
+    const sourceRoomId = room.id || `imported_${Date.now()}_${index}`;
+    const importedRoomId = createId('imported_room');
+    importedRoomIdMap.set(sourceRoomId, importedRoomId);
+    const timerIdMap = new Map<string, string>();
+    const remapTimerId = (sourceTimerId: string) => {
+      if (!timerIdMap.has(sourceTimerId)) timerIdMap.set(sourceTimerId, createId('imported_timer'));
+      return timerIdMap.get(sourceTimerId)!;
+    };
+    const sourceTimerIds = Array.isArray(room.timerIds) ? room.timerIds : [];
+    const timerIds = sourceTimerIds.map((sourceTimerId: string) => remapTimerId(sourceTimerId));
+    const sourceSettings = room.timerSettings && typeof room.timerSettings === 'object' ? room.timerSettings : {};
+    const timerSettings = Object.fromEntries(Object.entries(sourceSettings).map(([sourceTimerId, settings]) => [
+      remapTimerId(sourceTimerId),
+      normalizeTimerSettingsForTransfer((settings && typeof settings === 'object') ? settings as Record<string, any> : {}),
+    ]));
+    return {
+      ...room,
+      id: importedRoomId,
+      timerIds,
+      activeTimerId: room.activeTimerId ? remapTimerId(room.activeTimerId) : '',
+      timerSettings,
+    } as Room;
+  });
+  setRooms(prev => [...prev, ...importedRooms]);
+  const activeRoomSourceId = imported.activeRoomId || imported.activeRoomName;
   const activeRoom = imported.activeRoomId
-    ? importedRooms.find((room: Room) => room.id === imported.activeRoomId)
-    : imported.activeRoomName
-      ? importedRooms.find((room: Room) => room.name === imported.activeRoomName)
+    ? importedRooms.find((room: Room) => room.id === importedRoomIdMap.get(imported.activeRoomId))
+    : activeRoomSourceId
+      ? importedRooms.find((room: Room) => room.name === activeRoomSourceId)
       : undefined;
   if (activeRoom) loadRoom(activeRoom);
 } } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
@@ -2219,7 +2243,7 @@ function App() {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
-                        const exportData = { rooms: rooms.map(r => (r.id === currentRoomId || (!currentRoomId && r.name === currentRoomName)) ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
+                        const exportData = { rooms: rooms.map(r => r.id === currentRoomId ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Export</button>
         </div>
       </header>
