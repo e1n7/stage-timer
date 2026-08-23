@@ -256,7 +256,7 @@ export const TimerOutput = () => {
 
   return (
     <div
-      className="group relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden transition-all duration-300"
+      className="group relative m-0 flex h-screen w-screen flex-col items-center justify-center overflow-hidden p-0 transition-all duration-300"
       style={{ backgroundColor: '#0a0a0a' }}
     >
 
@@ -275,16 +275,16 @@ export const TimerOutput = () => {
         <div className="relative flex h-full w-full flex-col items-center justify-center">
           {/* Background Timer Layer (Blurred out when message is active) */}
           <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${messageMaximize && messageText && !isEmpty ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
-            <div className="mb-[6vh] flex w-full items-center justify-center overflow-visible">
+            <div className="mb-[9vh] flex w-full items-center justify-center overflow-visible">
               <div
-                className="timer-output-display text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
+                className="timer-output-display max-w-full text-center font-bold tabular-nums tracking-tighter whitespace-nowrap transition-all duration-75"
                 style={{
                   color: getTextColor(),
-                  fontSize: 'min(92vw, 42vh)',
-                  lineHeight: 1,
+                  fontSize: 'min(100vw, 50vh)',
+                  lineHeight: 0.8,
                   fontFamily: 'Inter, system-ui, sans-serif',
-                  fontStretch: 'ultra-expanded',
-                  letterSpacing: '0.01em',
+                  fontStretch: 'normal',
+                  letterSpacing: '-0.02em',
                   opacity: isFlashing ? (flash ? 1 : 0.45) : 1,
                   textShadow: isFlashing && flash
                     ? `0 0 8px ${getTextColor()}`

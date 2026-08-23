@@ -85,7 +85,8 @@ export const useTimer = (id: string = 'default') => {
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   const [log, setLog] = useLocalStorage<LogEntry[]>(logKey, []);
   const [selectedTimeZone, setSelectedTimeZone] = useLocalStorage<string>('stage-timer-global-timezone', Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [now, setNow] = useState(new Date());
+  // Keep the first render deterministic for Next.js SSR; the client clock is set immediately after hydration.
+  const [now, setNow] = useState(() => new Date(0));
 
   const suppressSyncBroadcastRef = useRef(false);
   const syncStateRef = useRef<SyncState | null>(null);
@@ -144,6 +145,7 @@ export const useTimer = (id: string = 'default') => {
   }), [id]);
 
   useEffect(() => {
+    setNow(new Date());
     const wallTimer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(wallTimer);
   }, []);

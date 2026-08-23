@@ -1835,8 +1835,13 @@ function App() {
   }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
   const deleteRoom = useCallback((room: Room) => {
-    const remainingTimerIds = new Set(rooms.filter(candidate => candidate.id !== room.id).flatMap(candidate => candidate.timerIds || []));
-    (room.timerIds || []).forEach(timerId => {
+    // Re-read immediately before deleting so an older tab cannot overwrite
+    // rooms created or updated by another tab since this tab last rendered.
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
+    const roomToDelete = latestRooms.find(candidate => candidate.id === room.id) || room;
+    const nextRooms = latestRooms.filter(candidate => candidate.id !== room.id);
+    const remainingTimerIds = new Set(nextRooms.flatMap(candidate => candidate.timerIds || []));
+    (roomToDelete.timerIds || []).forEach(timerId => {
       if (!remainingTimerIds.has(timerId)) {
         localStorage.removeItem(`timerSettings_${timerId}`);
         localStorage.removeItem(`timerSync_${timerId}`);
@@ -1844,7 +1849,7 @@ function App() {
         localStorage.removeItem(`timerLog_${timerId}`);
       }
     });
-    setRooms(prev => prev.filter(candidate => candidate.id !== room.id));
+    setRooms(nextRooms);
     if (currentRoomId === room.id) {
       setCurrentRoomId(null);
       setIsNewRoomDraft(true);
@@ -1855,7 +1860,7 @@ function App() {
       setMessages([{ id: '1', text: '', color: '#ffffff' }]);
       setMessageShownId(null);
     }
-  }, [currentRoomId, rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
+  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
 
   const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -1908,7 +1913,11 @@ function App() {
       : targetCountdownSeconds;
 
     sendControl('SET', targetTimerSeconds);
-    setHoverTime(targetCountdownSeconds);
+    setHoverTime(previous => (
+      previous !== null && Math.abs(previous - targetCountdownSeconds) < 0.05
+        ? previous
+        : targetCountdownSeconds
+    ));
   }, [activeTimerId, activeTimerState, sendControl]);
 
   useEffect(() => {
@@ -2423,7 +2432,11 @@ function App() {
                       const percentage = Math.max(0, Math.min(1, x / rect.width));
                       const targetDuration = activeTotalTime;
                       const time = targetDuration * (1 - percentage);
-                      setHoverTime(time);
+                      setHoverTime(previous => (
+                        previous !== null && Math.abs(previous - time) < 0.05
+                          ? previous
+                          : time
+                      ));
                       
                       if (isDraggingGrid) {
                         handleGridAction(e.clientX);
