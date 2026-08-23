@@ -5,6 +5,7 @@ import { MessageStage } from './components/MessageStage';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import { readJsonStorage } from './lib/storage';
+import { mergeItemById, mergeItemsById } from './lib/roomStorage';
 import {
   DndContext,
   closestCenter,
@@ -1119,7 +1120,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         )}
         <button 
           type="button" 
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => {
+            setIsActionsOpen(false);
+            setIsSettingsOpen(true);
+          }}
           className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
           <IconSettings size={16} />
@@ -1824,13 +1828,12 @@ function App() {
       const stored = localStorage.getItem(`timerSettings_${id}`);
       if (stored) timerSettings[id] = readJsonStorage(`timerSettings_${id}`, null);
     });
-    setRooms(prev => {
-      const existingIndex = prev.findIndex(r => r.id === roomId);
-      const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
-      const next = existingIndex >= 0 ? [...prev] : [...prev];
-      if (existingIndex >= 0) next[existingIndex] = roomData; else next.push(roomData);
-      return next;
-    });
+    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
+    // Re-read the latest room list before saving so a stale tab cannot replace
+    // rooms created or updated by another tab since this tab last rendered.
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
+    const nextRooms = mergeItemById(latestRooms, roomData);
+    setRooms(nextRooms);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
   }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
@@ -2281,22 +2284,30 @@ function App() {
       timerSettings,
     } as Room;
   });
-  setRooms(prev => [...prev, ...importedRooms]);
-  const activeRoomSourceId = imported.activeRoomId || imported.activeRoomName;
-  const activeRoom = imported.activeRoomId
+  const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
+  const nextRooms = mergeItemsById(latestRooms, importedRooms);
+  setRooms(nextRooms);
+  const mappedActiveRoom = imported.activeRoomId
     ? importedRooms.find((room: Room) => room.id === importedRoomIdMap.get(imported.activeRoomId))
-    : activeRoomSourceId
-      ? importedRooms.find((room: Room) => room.name === activeRoomSourceId)
-      : undefined;
+    : undefined;
+  const activeRoom = mappedActiveRoom || (imported.activeRoomName
+    ? importedRooms.find((room: Room) => room.name === imported.activeRoomName)
+    : undefined);
   if (activeRoom) loadRoom(activeRoom);
-} } catch (err) { console.error(err); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
+  setSaveNotice('Room imported');
+  window.setTimeout(() => setSaveNotice(null), 2200);
+} } catch (err) { console.error(err); setSaveNotice('Import failed - invalid backup file'); window.setTimeout(() => setSaveNotice(null), 2600); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
-                        const exportData = { rooms: rooms.map(r => r.id === currentRoomId ? { ...r, name: currentRoomName, timerIds, activeTimerId, messages, timerSettings: exportTimerSettings } : r), activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
+                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
+                        const exportedRooms = activeRoomSnapshot
+                          ? mergeItemById(rooms, activeRoomSnapshot)
+                          : rooms;
+                        const exportData = { rooms: exportedRooms, activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
         </div>
       </header>
