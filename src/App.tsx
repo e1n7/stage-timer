@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
 import { MessageStage } from './components/MessageStage';
@@ -435,6 +436,17 @@ const TimeAdjustMenu = ({ direction, onSelect, onClose }: TimeAdjustMenuProps) =
   );
 };
 
+const ModalPortal = ({ children }: { children: React.ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+};
+
 interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -497,7 +509,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between border-b border-[#333] pb-3">
           <div className="flex items-center gap-3">
@@ -640,11 +653,11 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         </div>
 
         <div className="mt-12 flex gap-4"><button onClick={onClose} className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]">Cancel</button><button onClick={() => { onConfirm?.(localSettings); onClose(); }} className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]">Confirm</button></div>
+            </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 };
-
 const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
@@ -669,7 +682,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+    <ModalPortal>
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
       <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-6">
           <h3 className="text-[16px] font-bold text-white mb-4">Timing</h3>
@@ -771,7 +785,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ModalPortal>
   );
 };
 
@@ -793,6 +808,9 @@ interface TimerRowProps {
   isActionsOpen: boolean;
   onActionsToggle: () => void;
   onCloseActions: () => void;
+  openPanel: 'settings' | 'quick' | null;
+  onPanelOpen: (panel: 'settings' | 'quick') => void;
+  onPanelClose: () => void;
 }
 
 interface MessageRowProps {
@@ -897,7 +915,7 @@ const MessageRow = ({
   );
 };
 
-const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -911,8 +929,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     DEFAULT_TIME
   } = useTimer(id);
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isQuickSettingsOpen, setIsQuickSettingsOpen] = useState(false);
+  const isSettingsOpen = openPanel === 'settings';
+  const isQuickSettingsOpen = openPanel === 'quick';
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -1063,8 +1081,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start w-auto">
         <div 
           onClick={(e) => { 
-            e.stopPropagation(); 
-            setIsSettingsOpen(true); 
+            e.stopPropagation();
+            onPanelOpen('settings');
           }}
           className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
           title="Click to set start time"
@@ -1078,8 +1096,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       {/* Timer Display */}
       <div 
         onClick={(e) => { 
-          e.stopPropagation(); 
-          setIsQuickSettingsOpen(true); 
+          e.stopPropagation();
+          onPanelOpen('quick');
         }}
         className={`w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:text-[13px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
         onMouseEnter={(e) => e.stopPropagation()}
@@ -1117,8 +1135,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <button 
           type="button" 
           onClick={() => {
-            onCloseActions();
-            setIsSettingsOpen(true);
+            onPanelOpen('settings');
           }}
           className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
         >
@@ -1177,7 +1194,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
       <TimerSettingsModal 
         isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+        onClose={onPanelClose}
         settings={settings} 
         updateSettings={updateSettings} 
         onApplyToAll={onApplyToAll}
@@ -1195,7 +1212,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       />
       <QuickSettingsModal 
         isOpen={isQuickSettingsOpen} 
-        onClose={() => setIsQuickSettingsOpen(false)} 
+        onClose={onPanelClose}
         settings={settings} 
         updateSettings={updateSettings} 
         onApplyToAll={onApplyToAll}
@@ -1291,6 +1308,7 @@ function App() {
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [openActionsTimerId, setOpenActionsTimerId] = useState<string | null>(null);
+  const [openTimerPanel, setOpenTimerPanel] = useState<{ timerId: string; panel: 'settings' | 'quick' } | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
@@ -2568,8 +2586,19 @@ function App() {
                 id={id}
                 index={index}
                 isActionsOpen={openActionsTimerId === id}
-                onActionsToggle={() => setOpenActionsTimerId(current => current === id ? null : id)}
+                onActionsToggle={() => {
+                  setOpenTimerPanel(null);
+                  setOpenActionsTimerId(current => current === id ? null : id);
+                }}
                 onCloseActions={() => setOpenActionsTimerId(null)}
+                openPanel={openTimerPanel?.timerId === id ? openTimerPanel.panel : null}
+                onPanelOpen={(panel) => {
+                  setOpenActionsTimerId(null);
+                  setOpenTimerPanel({ timerId: id, panel });
+                }}
+                onPanelClose={() => {
+                  setOpenTimerPanel(current => current?.timerId === id ? null : current);
+                }}
                 isActive={activeTimerId === id}
                 scheduledStart={schedule[id]?.start ?? null}
                 formatTime={formatScheduledTime}
