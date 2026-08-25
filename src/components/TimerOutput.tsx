@@ -166,16 +166,21 @@ export const TimerOutput = () => {
             isRunning: newIsRunning
           };
 
+          const normalizedInitialSeconds = data.mode === 'countup'
+            ? Math.max(0, Number(data.initialSeconds) || 0)
+            : (data.initialSeconds ?? DEFAULT_TIME);
+          syncStateRef.current.initialSeconds = normalizedInitialSeconds;
+
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
             const next = data.mode === 'countdown'
-              ? data.initialSeconds - elapsed
+              ? normalizedInitialSeconds - elapsed
               : data.mode === 'time'
                 ? Date.now() / 1000
-                : data.initialSeconds + elapsed;
+                : normalizedInitialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
           } else {
-            setSeconds(data.initialSeconds ?? DEFAULT_TIME);
+            setSeconds(normalizedInitialSeconds);
           }
         }
       }
@@ -210,7 +215,7 @@ export const TimerOutput = () => {
         const elapsed = (Date.now() - startTime) / 1000;
         setSeconds(() => {
           if (mode === 'countdown') return Math.round((initialSeconds - elapsed) * 10) / 10;
-          if (mode === 'countup') return Math.round((initialSeconds + elapsed) * 10) / 10;
+          if (mode === 'countup') return Math.round((Math.max(0, initialSeconds) + elapsed) * 10) / 10;
           return Date.now() / 1000;
         });
       } else {
@@ -293,7 +298,7 @@ export const TimerOutput = () => {
                   transformOrigin: 'center center'
                 }}
               >
-                {isEmpty ? '00:00' : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds))}
+                {isEmpty ? '00:00' : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
               </div>
             </div>
           </div>

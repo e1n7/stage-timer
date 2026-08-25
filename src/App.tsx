@@ -985,7 +985,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'ADJUST': {
             const adjustment = typeof payload === 'number' ? payload : 0;
             if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
-            setTime(secondsRef.current + adjustment);
+            setTime(settings.mode === 'countup'
+              ? Math.max(0, secondsRef.current + adjustment)
+              : secondsRef.current + adjustment);
             break;
           }
           case 'SET': setTime(payload); break;
@@ -1026,7 +1028,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           case 'ADJUST': {
             const adjustment = typeof payload === 'number' ? payload : 0;
             if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
-            setTime(secondsRef.current + adjustment);
+            setTime(settings.mode === 'countup'
+              ? Math.max(0, secondsRef.current + adjustment)
+              : secondsRef.current + adjustment);
             break;
           }
           case 'SET': setTime(payload); break;
