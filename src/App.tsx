@@ -1124,7 +1124,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           e.stopPropagation();
           onPanelOpen('quick');
         }}
-        className={`w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer max-[639px]:text-[13px] ${seconds < 0 && settings.mode === 'countdown' ? 'text-[#fa5252] hover:text-[#ff8787]' : 'text-white hover:text-[#4a9eff]'}`}
+        className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff] max-[639px]:text-[13px]"
         onMouseEnter={(e) => e.stopPropagation()}
         onMouseLeave={(e) => e.stopPropagation()}
       >
@@ -1151,7 +1151,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           <button 
             type="button" 
             onClick={() => onActivate(false)}
-            className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] text-white/50 hover:bg-[#383838] hover:text-white transition-colors"
+            className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] text-white hover:bg-[#383838] hover:text-white transition-colors"
             title="Select this timer"
           >
             <IconSelect size={16} />
@@ -1338,6 +1338,7 @@ function App() {
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
+  const [mobileSection, setMobileSection] = useState<'timers' | 'messages'>('timers');
 
   const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone } = useTimer('global-helper');
 
@@ -2384,8 +2385,16 @@ function App() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
-        <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
+      <div className="relative flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
+        <div className="order-last flex w-14 shrink-0 flex-col items-center gap-5 border-l border-[#333] bg-[#1a1a1a] pt-8 min-[1400px]:hidden">
+          <button type="button" onClick={() => setMobileSection('timers')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'timers' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show timers" aria-label="Show timers" aria-pressed={mobileSection === 'timers'}>
+            <img src="/timer_section.svg" alt="" className="h-5 w-5 invert" />
+          </button>
+          <button type="button" onClick={() => setMobileSection('messages')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'messages' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show messages" aria-label="Show messages" aria-pressed={mobileSection === 'messages'}>
+            <img src="/message_section.svg" alt="" className="h-5 w-5 invert" />
+          </button>
+        </div>
+        <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
@@ -2585,7 +2594,7 @@ function App() {
           </div>
         </aside>
 
-        <main className="timer-panel min-w-0 flex-1 lg:min-w-[560px] flex flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
+        <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'timers' ? 'flex' : 'hidden'} min-[1400px]:flex`}>
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Timers</h2>
             <div className="flex items-center gap-3">
@@ -2696,7 +2705,7 @@ function App() {
           </div>
         </main>
 
-        <aside className="flex w-full lg:w-[340px] xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
+        <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} min-[1400px]:flex`}>
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
