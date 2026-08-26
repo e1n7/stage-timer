@@ -506,7 +506,7 @@ const TimerTitleEditModal = ({ isOpen, title, onClose, onSave }: TimerTitleEditM
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="timer-title-edit-heading" className="w-full max-w-[520px] rounded-lg border border-[#444] bg-[#242424] p-5 shadow-2xl">
           <h2 id="timer-title-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
           <label htmlFor="timer-title-edit-input" className="mb-2 block text-[12px] font-medium text-white/60">Title</label>
@@ -2735,6 +2735,7 @@ function App() {
                   onClick={(e) => {
                     e.stopPropagation();
                     window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: 'header' }));
+                    setOpenActionsTimerId(null);
                     setIsTimersMenuOpen(!isTimersMenuOpen);
                   }}
                   title="Open timer options"
@@ -2765,6 +2766,7 @@ function App() {
                 isActionsOpen={openActionsTimerId === id}
                 onActionsToggle={() => {
                   setOpenTimerPanel(null);
+                  setIsTimersMenuOpen(false);
                   setOpenActionsTimerId(current => current === id ? null : id);
                 }}
                 onCloseActions={() => setOpenActionsTimerId(null)}
