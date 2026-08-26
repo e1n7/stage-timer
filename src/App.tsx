@@ -1142,7 +1142,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           <button 
             type="button" 
             onClick={resetTimer} 
-            className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+            className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] transition-colors hover:bg-[#383838]`}
             title="Reset to assigned time"
           >
             <IconSkipBack size={16} />
@@ -1151,7 +1151,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           <button 
             type="button" 
             onClick={() => onActivate(false)}
-            className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+            className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] text-white/50 hover:bg-[#383838] hover:text-white transition-colors"
             title="Select this timer"
           >
             <IconSelect size={16} />
@@ -1162,7 +1162,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           onClick={() => {
             onPanelOpen('settings');
           }}
-          className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 transition-colors ${isActive ? 'bg-white/20 hover:bg-white/30' : 'bg-white/5 hover:bg-white/10'}`}
+          className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] transition-colors hover:bg-[#383838]`}
         >
           <IconSettings size={16} />
         </button>
@@ -1178,7 +1178,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
               pauseTimer();
             }
           }}
-          className="flex h-9 w-12 max-[639px]:h-8 max-[639px]:w-10 items-center justify-center rounded bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors"
+          className={`group flex h-9 w-12 max-[639px]:h-8 max-[639px]:w-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] shadow-md transition-colors ${isRunning ? 'text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
@@ -2527,7 +2527,7 @@ function App() {
             </div>
             <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
-            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors">{activeTimerState?.isRunning ? <IconPause /> : <IconPlay className="text-[#22c55e]" />}</button>
+            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className={`group col-span-1 flex h-10 items-center justify-center rounded transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause /> : <IconPlay />}</button>
             <button 
               onClick={goToNextTimer} 
               disabled={timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1}
