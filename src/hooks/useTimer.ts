@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
-import { readJsonStorage } from '../lib/storage';
+import { readJsonStorage, writeJsonStorage } from '../lib/storage';
 import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 0;
@@ -121,7 +121,7 @@ export const useTimer = (id: string = 'default') => {
       return;
     }
     syncStateRef.current = syncState;
-    localStorage.setItem(syncKey, JSON.stringify(syncState));
+    writeJsonStorage(syncKey, syncState);
     if (suppressSyncBroadcastRef.current) {
       suppressSyncBroadcastRef.current = false;
     } else {
@@ -252,7 +252,7 @@ export const useTimer = (id: string = 'default') => {
       const persistedSecond = Math.floor(currentSeconds);
       if (lastPersistedSecondRef.current !== persistedSecond) {
         lastPersistedSecondRef.current = persistedSecond;
-        localStorage.setItem(secondsKey, JSON.stringify(rounded));
+        writeJsonStorage(secondsKey, rounded);
       }
       checkWarnings(currentSeconds);
     };

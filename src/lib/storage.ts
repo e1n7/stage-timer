@@ -9,3 +9,13 @@ export const readJsonStorage = <T>(key: string, fallback: T): T => {
     return fallback;
   }
 };
+
+export const writeJsonStorage = <T>(key: string, value: T): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+};

@@ -1,13 +1,13 @@
 {
   "name": "stage-timer",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src/ --ext .js,.ts,.tsx,.jsx",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint src/ --ext .js,.ts,.tsx,.jsx",
     "format": "prettier --write src/",
     "type-check": "tsc --noEmit",
     "test": "vitest run"
@@ -24,6 +24,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "15.5.23",
     "@types/node": "20.17.6",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.8",

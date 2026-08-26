@@ -841,19 +841,21 @@ const MessageRow = ({
   };
   const mSize = getMessageSize(msg);
   const cardActive = isShown;
+  const [isSizeOpen, setIsSizeOpen] = useState(false);
+  const [sizeAnchor, setSizeAnchor] = useState<{ top: number; left: number } | null>(null);
 
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`group relative rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
+      className={`group relative w-full rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
     >
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <div 
-            {...attributes} 
-            {...listeners} 
-            className="group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing" 
+          <div
+            {...attributes}
+            {...listeners}
+            className="group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing"
             title="Drag to reorder"
           >
             <span className="group-hover/index:hidden">{idx + 1}</span>
@@ -882,27 +884,46 @@ const MessageRow = ({
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+        <div className="ml-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => onUpdateColor(msg.id, '#ffffff')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text">A</button>
-            <button type="button" onClick={() => onUpdateColor(msg.id, '#22c55e')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text">A</button>
-            <button type="button" onClick={() => onUpdateColor(msg.id, '#fa5252')} className={`pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text">A</button>
-            <button type="button" onClick={() => onToggleBold(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.bold ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Bold text">B</button>
-            <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`flex h-8 w-8 items-center justify-center rounded-md transition-all ${msg.uppercase ? 'bg-[#4a9eff] text-white' : 'bg-[#1c1c1c] text-[#8a8a8a] hover:bg-[#252525]'}`} style={{ fontWeight: 800 }} title="Uppercase text">AA</button>
-            <div className="flex items-center gap-1 ml-2 border-l border-[#444] pl-2">
-              <span className="text-[10px] uppercase text-[#666] mr-1">Size</span>
-              <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
-                <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white border-r border-[#444]">-</button>
-                <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-7 bg-transparent text-center font-mono text-[11px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center text-[#8a8a8a] hover:bg-[#252525] hover:text-white border-l border-[#444]">+</button>
-              </div>
-            </div>
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#ffffff')} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#ffffff' ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#ffffff' }} title="White text"><span aria-hidden="true" className="h-4 w-4 bg-current" style={{ WebkitMaskImage: "url('/colored_text.svg')", maskImage: "url('/colored_text.svg')", WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} /></button>
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#22c55e')} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text"><span aria-hidden="true" className="h-4 w-4 bg-current" style={{ WebkitMaskImage: "url('/colored_text.svg')", maskImage: "url('/colored_text.svg')", WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} /></button>
+            <button type="button" onClick={() => onUpdateColor(msg.id, '#fa5252')} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text"><span aria-hidden="true" className="h-4 w-4 bg-current" style={{ WebkitMaskImage: "url('/colored_text.svg')", maskImage: "url('/colored_text.svg')", WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} /></button>
+            <button type="button" onClick={() => onToggleBold(msg.id)} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} title="Bold text" aria-label="Bold text" aria-pressed={msg.bold}>
+              <img src="/bold-letter.svg" alt="" className={`h-4 w-4 invert transition-opacity ${msg.bold ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
+            </button>
+            <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} title="Caps Lock text" aria-label="Caps Lock text" aria-pressed={msg.uppercase}>
+              <img src="/caps-lock.svg" alt="" className={`h-4 w-4 invert transition-opacity ${msg.uppercase ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
+            </button>
+            <button type="button" onClick={(e) => {
+              if (isSizeOpen) {
+                setIsSizeOpen(false);
+                setSizeAnchor(null);
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setSizeAnchor({ top: rect.top - 4, left: rect.left });
+                setIsSizeOpen(true);
+              }
+            }} className="transition-opacity" title="Edit message size" aria-label="Edit message size" aria-expanded={isSizeOpen}>
+              <img src="/filter.svg" alt="" className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
+            </button>
+            {isSizeOpen && sizeAnchor && typeof document !== 'undefined' && createPortal(
+              <div className="fixed z-[1000] flex items-center gap-1 rounded border border-[#444] bg-[#1c1c1c] px-2 py-1 shadow-lg" style={{ top: sizeAnchor.top, left: sizeAnchor.left, transform: 'translateY(-100%)' }}>
+                <span className="mr-1 text-[10px] uppercase text-[#666]">Size</span>
+                <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
+                  <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center border-r border-[#444] text-[#8a8a8a] hover:bg-[#252525] hover:text-white">-</button>
+                  <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-7 bg-transparent text-center font-mono text-[11px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center border-l border-[#444] text-[#8a8a8a] hover:bg-[#252525] hover:text-white">+</button>
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
           <div className="ml-auto flex shrink-0 items-center overflow-hidden rounded-md border border-[#444]">
             <button
               type="button"
               onClick={() => onShow(msg.id)}
-              className={`flex items-center gap-1.5 px-2 py-1 text-[12px] font-bold transition-colors ${messageShownId === msg.id ? 'bg-[#e5484d]/90 text-white' : 'bg-[#1c1c1c] text-white hover:bg-[#252525]'}`}
+              className="flex items-center gap-1.5 bg-[#1c1c1c] px-2 py-1 text-[12px] font-bold text-white transition-colors hover:bg-[#252525]"
               title="Show message on screen (message only, no timer)"
             >
               <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
@@ -2083,11 +2104,35 @@ function App() {
   };
   const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
   const updateMessageColor = (id: string, color: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, color } : m));
-  const toggleMessageBold = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: !m.bold, text: m.text || '' } : m));
-  const toggleMessageUppercase = (id: string) => setMessages(prev => prev.map(m => {
-    if (m.id !== id) return m;
-    return { ...m, uppercase: !m.uppercase, text: m.uppercase ? (m.text || '').toLowerCase() : (m.text || '').toUpperCase() };
-  }));
+  const syncVisibleMessageUpdate = (msg: any, updates: Record<string, unknown>) => {
+    if (messageShownId !== msg.id && messageFlashId !== msg.id) return;
+    syncOutput({
+      messageText: updates.text ?? msg.text ?? '',
+      messageColor: updates.color ?? msg.color ?? '#ffffff',
+      messageBold: updates.bold ?? !!msg.bold,
+      messageUppercase: updates.uppercase ?? !!msg.uppercase,
+      messageSize: getMessageSize(msg),
+      messageShown: true,
+      messageMaximize: true,
+      ...(messageFlashId === msg.id ? { messageFlash: true } : {}),
+      type: 'force-sync'
+    });
+  };
+  const toggleMessageBold = (id: string) => {
+    const msg = messages.find(m => m.id === id);
+    if (!msg) return;
+    const nextBold = !msg.bold;
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: nextBold, text: m.text || '' } : m));
+    syncVisibleMessageUpdate(msg, { bold: nextBold, text: msg.text || '' });
+  };
+  const toggleMessageUppercase = (id: string) => {
+    const msg = messages.find(m => m.id === id);
+    if (!msg) return;
+    const nextUppercase = !msg.uppercase;
+    const nextText = nextUppercase ? (msg.text || '').toUpperCase() : (msg.text || '').toLowerCase();
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: nextUppercase, text: nextText } : m));
+    syncVisibleMessageUpdate(msg, { uppercase: nextUppercase, text: nextText });
+  };
   const updateMessageSize = (id: string, value: number) => {
     const nextSize = Math.min(10, Math.max(0.1, Number.isFinite(value) ? value : 1.0));
     setMessages(prev => prev.map(m => m.id === id ? { ...m, messageSize: nextSize } : m));
