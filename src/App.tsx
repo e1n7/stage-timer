@@ -198,7 +198,7 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   );
 };
 
-const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string }) => {
+const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showToggle = true, indent = true }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string, showToggle?: boolean, indent?: boolean }) => {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: selectedTimeZone,
@@ -229,18 +229,20 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone }: { valu
 
   return (
     <div className="flex flex-col items-end gap-3">
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <input
-          type="checkbox"
-          id="manual-start"
-          checked={value !== null}
-          onChange={(e) => onChange(e.target.checked ? displayValue : null, e.target.checked ? selectedDate : null)}
-          className="h-4 w-4 rounded border-[#333] bg-[#141414] accent-[#4a9eff]"
-        />
-        <label htmlFor="manual-start" className="cursor-pointer text-[13px] text-[#8a8a8a]">Set Specific Start Time</label>
-      </div>
-      {value !== null && (
-        <div className="ml-6 flex flex-col gap-3">
+      {showToggle && (
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <input
+            type="checkbox"
+            id="manual-start"
+            checked={value !== null}
+            onChange={(e) => onChange(e.target.checked ? displayValue : null, e.target.checked ? selectedDate : null)}
+            className="h-4 w-4 rounded border-[#333] bg-[#141414] accent-[#4a9eff]"
+          />
+          <label htmlFor="manual-start" className="cursor-pointer text-[13px] text-[#8a8a8a]">Set Specific Start Time</label>
+        </div>
+      )}
+      {(showToggle ? value !== null : true) && (
+        <div className={`${indent ? 'ml-6 ' : ''}flex min-w-0 flex-col gap-3`}>
           <div className="flex items-center gap-2 rounded border border-[#333] bg-[#141414] p-2">
             <select value={hour12} onChange={(e) => update(Number(e.target.value), minute, second, period)} className={selectClass} aria-label="Start hour">
               {Array.from({ length: 12 }, (_, index) => index + 1).map(hour => <option key={hour} value={hour}>{pad(hour)}</option>)}
@@ -472,6 +474,61 @@ const ModalPortal = ({ children }: { children: React.ReactNode }) => {
   return createPortal(children, document.body);
 };
 
+interface TimerTitleEditModalProps {
+  isOpen: boolean;
+  title: string;
+  onClose: () => void;
+  onSave: (title: string) => void;
+}
+
+const TimerTitleEditModal = ({ isOpen, title, onClose, onSave }: TimerTitleEditModalProps) => {
+  const [draftTitle, setDraftTitle] = useState(title);
+
+  useEffect(() => {
+    if (isOpen) setDraftTitle(title);
+  }, [isOpen, title]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    const nextTitle = draftTitle.trim();
+    if (nextTitle) onSave(nextTitle);
+  };
+
+  return (
+    <ModalPortal>
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="timer-title-edit-heading" className="w-full max-w-[520px] rounded-lg border border-[#444] bg-[#242424] p-5 shadow-2xl">
+          <h2 id="timer-title-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
+          <label htmlFor="timer-title-edit-input" className="mb-2 block text-[12px] font-medium text-white/60">Title</label>
+          <input
+            id="timer-title-edit-input"
+            type="text"
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Enter') handleSave(); }}
+            autoFocus
+            className="h-10 w-full rounded-md border border-[#444] bg-[#171717] px-3 text-[14px] text-white outline-none transition-colors focus:border-[#666]"
+          />
+          <div className="mt-5 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] px-4 text-[13px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+            <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-9 rounded-md border border-[#2f9e44] px-4 text-[13px] text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+};
+
 interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -683,7 +740,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
     </ModalPortal>
   );
 };
-const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
+const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -692,124 +749,62 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
   if (!isOpen) return null;
 
-  const formatHHMMSS = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${pad(h)} : ${pad(m)} : ${pad(s)}`;
-  };
-
-  const parseHHMMSS = (val: string) => {
-    const parts = val.split(':').map(p => parseInt(p.trim()) || 0);
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 0;
-  };
-
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
-      <div className="w-full max-w-lg rounded-lg border border-[#333] bg-[#1a1a1a] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-6">
-          <h3 className="text-[16px] font-bold text-white mb-4">Timing</h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="flex items-center gap-1 text-[13px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
-              <StartTimeInput 
-                value={localSettings.scheduledStart} 
+      <div
+        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="timer-duration-edit-heading"
+          className="w-full max-w-[480px] rounded-lg border border-[#333] bg-[#242424] p-4 shadow-2xl"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <h2 id="timer-duration-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
+
+          <div className="mt-4 space-y-4">
+            <div className="flex items-start justify-between gap-6 pb-3">
+              <span className="flex items-center gap-1 pt-1 text-[13px] text-[#8a8a8a]">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
+              <StartTimeInput
+                value={localSettings.scheduledStart}
                 dateValue={localSettings.scheduledStartDate}
-                onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
+                onChange={(value, date) => setLocalSettings({ ...localSettings, scheduledStart: value, scheduledStartDate: date })}
                 selectedTimeZone={selectedTimeZone}
+                showToggle={false}
+                indent={false}
               />
             </div>
 
-            <div className="flex items-center justify-between gap-6 py-2">
-              <span className="flex items-center gap-1 text-[13px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
-              <DurationInput 
-                value={localSettings.targetDuration || 0} 
-                onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[13px] text-[#8a8a8a]">Appearance</span>
-              <select 
-                value={localSettings.mode || 'countdown'} 
-                onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
-                className="flex-1 rounded border border-[#333] bg-[#141414] px-4 py-2 text-[14px] text-white focus:outline-none"
-              >
-                <option value="countdown">Countdown</option>
-                <option value="countup">Countup</option>
-              </select>
-            </div>
+          </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[13px] text-[#8a8a8a]">Font Height</span>
-              <div className="flex flex-1 items-center gap-3">
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="3.0" 
-                  step="0.1"
-                  value={localSettings.fontHeight || 1.6} 
-                  onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })}
-                  className="flex-1 accent-[#4a9eff]"
-                />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[13px] text-[#8a8a8a]">Font Width</span>
-              <div className="flex flex-1 items-center gap-3">
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="2.0" 
-                  step="0.1"
-                  value={localSettings.fontWidth || 1.0} 
-                  onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })}
-                  className="flex-1 accent-[#4a9eff]"
-                />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
-              </div>
-            </div>
-            
-            <div className="flex justify-end">
-              <button 
-                type="button"
-                onClick={() => {
-                  onApplyToAll?.({ 
-                    mode: localSettings.mode,
-                    fontHeight: localSettings.fontHeight,
-                    fontWidth: localSettings.fontWidth
-                  });
-                  onSettingsUpdate();
-                }}
-                className="text-[12px] text-[#4a9eff] hover:underline"
-              >
-                Apply to all
-              </button>
-            </div>
+          <div className="mt-5 flex justify-end gap-2 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-[#555] px-4 py-2 text-[14px] font-medium text-white/80 hover:bg-[#333] hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm?.({
+                  ...localSettings,
+                  targetDuration: Math.max(0, Number(localSettings.targetDuration) || 0),
+                  mode: localSettings.mode || 'countdown',
+                });
+                onClose();
+              }}
+              className="rounded border border-[#228b3a] bg-[#141414] px-4 py-2 text-[14px] font-medium text-[#22c55e] hover:bg-[#1a1a1a]"
+            >
+              Save
+            </button>
           </div>
         </div>
-
-        <div className="mt-10 flex gap-4 border-t border-[#333] pt-6">
-          <button 
-            onClick={onClose} 
-            className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-2.5 text-[14px] font-bold text-white hover:bg-[#383838]"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => { onConfirm?.(localSettings); onClose(); }} 
-            className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-2.5 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]"
-          >
-            Save
-          </button>
-        </div>
-      </div>
       </div>
     </ModalPortal>
   );
@@ -873,7 +868,7 @@ const MessageRow = ({
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`group relative w-full rounded-lg px-3 py-2 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
+      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
     >
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
@@ -979,6 +974,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const isQuickSettingsOpen = openPanel === 'quick';
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
@@ -1108,7 +1104,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? () => onActivate(false) : undefined}
-      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-3 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1128,12 +1124,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start justify-center w-auto">
-        <span className="text-[12px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
+      <div className="timer-row-scheduled relative hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 w-auto text-center">
+        <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
         <div 
           onClick={(e) => { 
             e.stopPropagation();
-            onPanelOpen('settings');
+            onPanelOpen('quick');
           }}
           className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
           title="Click to set start time"
@@ -1145,33 +1141,36 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Timer Display */}
-      <div className="hidden sm:flex shrink-0 flex-col items-start justify-center">
-        <span className="text-[12px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Duration</span>
+      <div className="relative hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 text-center">
+        <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Duration</span>
         <div
           onClick={(e) => {
             e.stopPropagation();
             onPanelOpen('quick');
           }}
-          className="w-auto shrink-0 text-left text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff]"
+          className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff]"
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseLeave={(e) => e.stopPropagation()}
         >
           {formatClock(settings.targetDuration)}
         </div>
-        <select
-          value={settings.mode || 'countdown'}
-          onChange={(e) => {
-            e.stopPropagation();
-            updateSettings({ mode: e.target.value as 'countdown' | 'countup' });
-            onSettingsUpdate();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="pointer-events-none h-4 min-w-[92px] -ml-1 border-0 bg-transparent p-0 text-[13px] leading-none text-white/55 opacity-0 outline-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100"
-          aria-label="Timer mode"
-        >
-          <option value="countdown" className="bg-[#1a1a1a] text-white">Countdown</option>
-          <option value="countup" className="bg-[#1a1a1a] text-white">Countup</option>
-        </select>
+        <div className="absolute left-1/2 top-full flex h-4 min-w-[92px] -translate-x-1/2 items-center justify-center pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+          <select
+            value={settings.mode || 'countdown'}
+            onChange={(e) => {
+              e.stopPropagation();
+              updateSettings({ mode: e.target.value as 'countdown' | 'countup' });
+              onSettingsUpdate();
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-full appearance-none border-0 bg-transparent p-0 pr-4 text-center text-[12px] leading-none text-white/55 outline-none"
+            aria-label="Timer mode"
+          >
+            <option value="countdown" className="bg-[#1a1a1a] text-white">Countdown</option>
+            <option value="countup" className="bg-[#1a1a1a] text-white">Countup</option>
+          </select>
+          <img src="/caret_down.svg" alt="" aria-hidden="true" className="pointer-events-none absolute right-0 h-3 w-3 brightness-0 invert opacity-50" />
+        </div>
       </div>
 
       {/* Title */}
@@ -1181,7 +1180,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onPanelOpen('settings');
+            setIsTitleEditOpen(true);
           }}
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
           title="Edit timer title"
@@ -1252,11 +1251,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           {isActionsOpen && (
             <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-[250] mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
               <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/><path d="M4 21h16"/></svg>
+                <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
               </button>
               <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/><path d="M4 3h16"/></svg>
+                <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert" />
                 <span>Add timer below</span>
               </button>
               <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
@@ -1272,6 +1271,16 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           )}
         </div>
       </div>
+      <TimerTitleEditModal
+        isOpen={isTitleEditOpen}
+        title={settings.title || ''}
+        onClose={() => setIsTitleEditOpen(false)}
+        onSave={(title) => {
+          updateSettings({ title });
+          onSettingsUpdate();
+          setIsTitleEditOpen(false);
+        }}
+      />
       <TimerSettingsModal 
         isOpen={isSettingsOpen} 
         onClose={onPanelClose}
@@ -2355,7 +2364,7 @@ function App() {
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} className="bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors w-full sm:w-64 text-center sm:text-left" placeholder="Unnamed" />
+        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} onFocus={() => { if (currentRoomName === 'Unnamed' || currentRoomName === 'New Room') setCurrentRoomName(''); }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
           <div className="relative">
