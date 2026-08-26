@@ -28,6 +28,31 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
+const InfoHint = ({ text }: { text: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <span className="group relative inline-flex align-middle">
+      <button
+        type="button"
+        aria-label={text}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+        onBlur={() => setIsOpen(false)}
+        className="inline-flex h-4 w-4 items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#4a9eff]"
+      >
+        <img src="/info.svg" alt="" aria-hidden="true" className="h-3.5 w-3.5 invert opacity-75 transition-opacity group-hover:opacity-100" />
+      </button>
+      <span
+        role="tooltip"
+        className={`pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 rounded border border-[#444] bg-[#252525] px-2.5 py-2 text-left text-[11px] leading-relaxed text-white shadow-lg transition-opacity ${isOpen ? 'visible opacity-100' : 'invisible opacity-0 group-hover:visible group-hover:opacity-100'}`}
+      >
+        {text}
+      </span>
+    </span>
+  );
+};
+
 const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: number, timeZone: string): number => {
   const [year, month, day] = dateValue.split('-').map(Number);
   const hours = Math.floor(secondsSinceMidnight / 3600) % 24;
@@ -203,8 +228,8 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone }: { valu
   const options = (count: number, padValue = true) => Array.from({ length: count }, (_, index) => ({ value: index, label: padValue ? pad(index) : String(index) }));
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col items-end gap-3">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <input
           type="checkbox"
           id="manual-start"
@@ -535,7 +560,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <h3 className="text-[14px] font-bold text-white">Timing</h3>
             
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="text-[12px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
+              <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
                 dateValue={localSettings.scheduledStartDate}
@@ -545,7 +570,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             </div>
 
             <div className="flex items-center justify-between gap-6 py-2">
-              <span className="text-[12px] text-[#8a8a8a]" title="The total amount of time this timer runs.">Duration ⓘ</span>
+              <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
               <DurationInput 
                 value={localSettings.targetDuration || 0} 
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
@@ -690,7 +715,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="text-[13px] text-[#8a8a8a] pt-1" title="When enabled, this timer starts at the selected time in the chosen timezone.">Start Time ⓘ</span>
+              <span className="flex items-center gap-1 text-[13px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
               <StartTimeInput 
                 value={localSettings.scheduledStart} 
                 dateValue={localSettings.scheduledStartDate}
@@ -700,7 +725,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             </div>
 
             <div className="flex items-center justify-between gap-6 py-2">
-              <span className="text-[13px] text-[#8a8a8a]" title="The total amount of time this timer runs.">Duration ⓘ</span>
+              <span className="flex items-center gap-1 text-[13px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
               <DurationInput 
                 value={localSettings.targetDuration || 0} 
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
@@ -1083,7 +1108,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? () => onActivate(false) : undefined}
-      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-1.5 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-3 text-white shadow-lg transition-all max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1103,7 +1128,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start w-auto">
+      <div className="timer-row-scheduled hidden sm:flex shrink-0 flex-col items-start justify-center w-auto">
+        <span className="text-[12px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
         <div 
           onClick={(e) => { 
             e.stopPropagation();
@@ -1119,21 +1145,50 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Timer Display */}
-      <div 
-        onClick={(e) => { 
-          e.stopPropagation();
-          onPanelOpen('quick');
-        }}
-        className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff] max-[639px]:text-[13px]"
-        onMouseEnter={(e) => e.stopPropagation()}
-        onMouseLeave={(e) => e.stopPropagation()}
-      >
-        {formatClock(settings.targetDuration)}
+      <div className="hidden sm:flex shrink-0 flex-col items-start justify-center">
+        <span className="text-[12px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Duration</span>
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            onPanelOpen('quick');
+          }}
+          className="w-auto shrink-0 text-left text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff]"
+          onMouseEnter={(e) => e.stopPropagation()}
+          onMouseLeave={(e) => e.stopPropagation()}
+        >
+          {formatClock(settings.targetDuration)}
+        </div>
+        <select
+          value={settings.mode || 'countdown'}
+          onChange={(e) => {
+            e.stopPropagation();
+            updateSettings({ mode: e.target.value as 'countdown' | 'countup' });
+            onSettingsUpdate();
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="pointer-events-none h-4 min-w-[92px] -ml-1 border-0 bg-transparent p-0 text-[13px] leading-none text-white/55 opacity-0 outline-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100"
+          aria-label="Timer mode"
+        >
+          <option value="countdown" className="bg-[#1a1a1a] text-white">Countdown</option>
+          <option value="countup" className="bg-[#1a1a1a] text-white">Countup</option>
+        </select>
       </div>
 
       {/* Title */}
-      <div className="timer-row-title ml-0 min-w-0 flex-1 flex items-center justify-center overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-title ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         <span className="block min-w-0 max-w-full truncate">{settings.title}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPanelOpen('settings');
+          }}
+          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          title="Edit timer title"
+          aria-label="Edit timer title"
+        >
+          <img src="/edit.svg" alt="" aria-hidden="true" className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
+        </button>
       </div>
 
       {/* Controls */}
