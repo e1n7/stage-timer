@@ -538,6 +538,7 @@ interface TimerSettingsModalProps {
   onConfirm?: (settings: any) => void;
   onSettingsUpdate: () => void;
   selectedTimeZone: string;
+  section?: 'start' | 'duration';
 }
 
 const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
@@ -740,7 +741,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
     </ModalPortal>
   );
 };
-const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
+const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone, section = 'start' }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -764,22 +765,61 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           className="relative w-full max-w-[480px] rounded-lg border border-[#333] bg-[#242424] p-4 shadow-2xl"
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <h2 id="timer-duration-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
+          <h2 id="timer-duration-edit-heading" className="mb-4 text-[16px] font-semibold text-white">{section === 'duration' ? 'Timer settings' : 'Edit timer'}</h2>
 
-          <div className="mt-4 space-y-4">
-            <div className="flex items-start justify-between gap-6 pb-3">
-              <span className="flex items-center gap-1 pt-1 text-[13px] text-[#8a8a8a]">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
-              <StartTimeInput
-                value={localSettings.scheduledStart}
-                dateValue={localSettings.scheduledStartDate}
-                onChange={(value, date) => setLocalSettings({ ...localSettings, scheduledStart: value, scheduledStartDate: date })}
-                selectedTimeZone={selectedTimeZone}
-                showToggle={false}
-                indent={false}
-              />
+          {section === 'duration' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-6 py-2">
+                <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
+                <DurationInput
+                  value={localSettings.targetDuration || 0}
+                  onChange={(value) => setLocalSettings({ ...localSettings, targetDuration: value })}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
+                <select
+                  value={localSettings.mode || 'countdown'}
+                  onChange={(event) => setLocalSettings({ ...localSettings, mode: event.target.value as any })}
+                  className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
+                >
+                  <option value="countdown">Countdown</option>
+                  <option value="countup">Countup</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[12px] text-[#8a8a8a]">Font Height</span>
+                <div className="flex flex-1 items-center gap-3">
+                  <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(event) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(event.target.value) })} className="flex-1 accent-[#4a9eff]" />
+                  <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[12px] text-[#8a8a8a]">Font Width</span>
+                <div className="flex flex-1 items-center gap-3">
+                  <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(event) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(event.target.value) })} className="flex-1 accent-[#4a9eff]" />
+                  <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button type="button" onClick={() => { onApplyToAll?.({ mode: localSettings.mode, fontHeight: localSettings.fontHeight, fontWidth: localSettings.fontWidth }); onSettingsUpdate(); }} className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button>
+              </div>
             </div>
-
-          </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start justify-between gap-6 pb-3">
+                <span className="flex items-center gap-1 pt-1 text-[13px] text-[#8a8a8a]">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
+                <StartTimeInput
+                  value={localSettings.scheduledStart}
+                  dateValue={localSettings.scheduledStartDate}
+                  onChange={(value, date) => setLocalSettings({ ...localSettings, scheduledStart: value, scheduledStartDate: date })}
+                  selectedTimeZone={selectedTimeZone}
+                  showToggle={false}
+                  indent={false}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 flex justify-end gap-2 pt-4">
             <button
@@ -829,7 +869,7 @@ interface TimerRowProps {
   onActionsToggle: () => void;
   onCloseActions: () => void;
   openPanel: 'settings' | 'quick' | null;
-  onPanelOpen: (panel: 'settings' | 'quick') => void;
+  onPanelOpen: (panel: 'settings' | 'quick', section?: 'start' | 'duration') => void;
   onPanelClose: () => void;
 }
 
@@ -975,6 +1015,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
+  const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
@@ -1129,7 +1170,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <div 
           onClick={(e) => { 
             e.stopPropagation();
-            onPanelOpen('quick');
+            setQuickSection('start');
+            onPanelOpen('quick', 'start');
           }}
           className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
           title="Click to set start time"
@@ -1146,7 +1188,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <div
           onClick={(e) => {
             e.stopPropagation();
-            onPanelOpen('quick');
+            setQuickSection('duration');
+            onPanelOpen('quick', 'duration');
           }}
           className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff]"
           onMouseEnter={(e) => e.stopPropagation()}
@@ -1310,6 +1353,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         onApplyToAll={onApplyToAll}
         onSettingsUpdate={onSettingsUpdate}
         selectedTimeZone={selectedTimeZone}
+        section={quickSection}
         onConfirm={(newSettings) => {
           updateSettings(newSettings);
           // Only reset the timer time when the actual duration changed.
