@@ -66,7 +66,7 @@ The application uses browser messaging for cross-tab synchronization. Room save 
 
 ## PWA Updates
 
-The current application version is **1.0.2**. When releasing a new deployed version, update the version values in `package.json` and `public/manifest.json`. Also advance the cache-busting marker in `app/layout.tsx`, including the `appVersion` value and versioned icon URLs. This allows existing PWA clients to invalidate stale caches and load the latest application assets.
+The current application version is **1.0.4**. When releasing a new deployed version, update the version values in `package.json` and `public/manifest.json`. Also advance the cache-busting marker in `app/layout.tsx`, including the `appVersion` value and versioned icon URLs. This allows existing PWA clients to invalidate stale caches and load the latest application assets.
 
 ## Deployment
 
