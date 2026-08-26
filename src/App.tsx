@@ -593,7 +593,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between border-b border-[#333] pb-3">
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
@@ -761,7 +761,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           role="dialog"
           aria-modal="true"
           aria-labelledby="timer-duration-edit-heading"
-          className="w-full max-w-[480px] rounded-lg border border-[#333] bg-[#242424] p-4 shadow-2xl"
+          className="relative w-full max-w-[480px] rounded-lg border border-[#333] bg-[#242424] p-4 shadow-2xl"
           onMouseDown={(event) => event.stopPropagation()}
         >
           <h2 id="timer-duration-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
@@ -1104,7 +1104,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? () => onActivate(false) : undefined}
-      className={`timer-row group flex min-w-0 overflow-hidden items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
@@ -1216,6 +1216,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           onClick={() => {
             onPanelOpen('settings');
           }}
+          title="Timer settings"
           className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] transition-colors hover:bg-[#383838]`}
         >
           <IconSettings size={16} />
@@ -1232,6 +1233,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
               pauseTimer();
             }
           }}
+          title={isRunning ? 'Pause timer' : 'Start timer'}
           className={`group flex h-9 w-12 max-[639px]:h-8 max-[639px]:w-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] shadow-md transition-colors ${isRunning ? 'text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
@@ -1249,21 +1251,22 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <IconMore size={18} />
           </button>
           {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-[250] mt-2 w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
-              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
+              <span aria-hidden="true" className={`pointer-events-none absolute right-3 z-[-1] h-4 w-4 rotate-45 bg-[#242424] ${index < 4 ? '-top-2 border-l border-t border-[#444]' : '-bottom-2 border-r border-b border-[#444]'}`} />
+              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
                 <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
               </button>
-              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
                 <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert" />
                 <span>Add timer below</span>
               </button>
-              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 <span>Clone timer</span>
               </button>
               <div className="my-1 border-t border-[#333]" />
-              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">
+              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} title="Delete timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                 <span>Delete timer</span>
               </button>
@@ -1340,6 +1343,7 @@ function App() {
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
+  const roomNameInputRef = useRef<HTMLInputElement>(null);
   const completedScheduledTimersRef = useRef<Set<string>>(new Set());
   const manuallyStartedScheduledTimersRef = useRef<Set<string>>(new Set());
 
@@ -2364,18 +2368,18 @@ function App() {
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <input type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} onFocus={() => { if (currentRoomName === 'Unnamed' || currentRoomName === 'New Room') setCurrentRoomName(''); }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors text-center sm:text-left" placeholder="Unnamed" />
+        <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') setCurrentRoomName(''); }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <button type="button" onClick={saveRoom} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
+          <button type="button" onClick={saveRoom} title="Save room" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
           <div className="relative">
-            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
             {isRoomMenuOpen && (
               <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
                 {rooms.map((room) => (
-                  <div key={room.id} onClick={() => loadRoom(room)} className="group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer">
+                  <div key={room.id} onClick={() => loadRoom(room)} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer ${currentRoomId === room.id ? 'bg-[#22c55e] text-[#101820]' : ''}`}>
                     <span className="truncate">{room.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
+                    <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} title="Delete saved room" className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
                 ))}
                 <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
@@ -2391,7 +2395,11 @@ function App() {
                   setMessageShownId(null);
                   setMessageFlashId(null);
                   setIsRoomMenuOpen(false);
-                }} className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
+                  requestAnimationFrame(() => {
+                    roomNameInputRef.current?.focus();
+                    roomNameInputRef.current?.select();
+                  });
+                }} title="Create a new room" className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
               </div>
             )}
           </div>
@@ -2434,7 +2442,7 @@ function App() {
   setSaveNotice('Room imported');
   window.setTimeout(() => setSaveNotice(null), 2200);
 } } catch (err) { console.error(err); setSaveNotice('Import failed - invalid backup file'); window.setTimeout(() => setSaveNotice(null), 2600); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} title="Import room backup" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
@@ -2445,7 +2453,7 @@ function App() {
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
                         const exportData = { rooms: exportedRooms, activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
- const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
+ const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -2459,7 +2467,7 @@ function App() {
           </button>
         </div>
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} title="Open output links" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
           <div className={`relative flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
 
@@ -2494,7 +2502,6 @@ function App() {
           {activeTimerId && (
             <>
               <div className="mt-4 flex items-center justify-center gap-4 text-[13px]">
-                <span className="inline-block rounded border border-[#444] px-2 py-[1px] text-[10px] font-bold tracking-wider text-[#8a8a8a]">ON AIR</span>
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
@@ -2595,12 +2602,12 @@ function App() {
           )}
           <div className="mt-4 grid grid-cols-7 gap-2">
             <div className="relative">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} title="Decrease timer adjustment options" className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
               {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full left-0 z-50 mb-1"><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
-            <button onClick={() => sendControl('ADJUST', -60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
+            <button onClick={() => sendControl('ADJUST', -60)} title="Subtract one minute" className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
-            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} className={`group col-span-1 flex h-10 items-center justify-center rounded transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause /> : <IconPlay />}</button>
+            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} title={activeTimerState?.isRunning ? 'Pause timer' : 'Start timer'} className={`group col-span-1 flex h-10 items-center justify-center rounded transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause /> : <IconPlay />}</button>
             <button 
               onClick={goToNextTimer} 
               disabled={timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1}
@@ -2609,9 +2616,9 @@ function App() {
             >
               <IconSkipForward />
             </button>
-            <button onClick={() => sendControl('ADJUST', 60)} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
+            <button onClick={() => sendControl('ADJUST', 60)} title="Add one minute" className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} title="Increase timer adjustment options" className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
               {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full right-0 z-50 mb-1"><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
           </div>
@@ -2665,6 +2672,7 @@ function App() {
               <button 
                 type="button" 
                 onClick={() => setIsBlackout(!isBlackout)} 
+                title="Toggle blackout mode"
                 className={`flex h-8 items-center gap-2 rounded-lg border px-4 text-[13px] font-bold transition-all ${isBlackout ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-[#2d2d2d] text-white border-[#444] hover:bg-[#383838]'}`}
               >
                 <IconCircle /> Blackout
@@ -2672,6 +2680,7 @@ function App() {
               <button 
                 type="button" 
                 onClick={handleFlash} 
+                title="Flash active timer"
                 className="flex h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold text-white hover:bg-[#383838] transition-all"
               >
                 <IconFlash /> Flash
@@ -2684,6 +2693,7 @@ function App() {
                     window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: 'header' }));
                     setIsTimersMenuOpen(!isTimersMenuOpen);
                   }}
+                  title="Open timer options"
                   className={`flex h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore size={20} />
@@ -2692,6 +2702,7 @@ function App() {
                   <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                     <button 
                       onClick={() => setIsFollowEnabled(!isFollowEnabled)}
+                      title="Toggle play in sequence"
                       className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
                     >
                       <span>Play in sequence</span>
@@ -2762,6 +2773,7 @@ function App() {
             <button 
               type="button" 
               onClick={() => addTimer()} 
+              title="Add a new timer"
               className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#262626] px-6 py-2 text-[14px] font-bold text-white hover:bg-[#2d2d2d] hover:border-[#555] transition-all shadow-md active:scale-95"
             >
               + Add Timer
@@ -2795,7 +2807,7 @@ function App() {
               </div>
             </SortableContext>
           </DndContext>
-          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
+          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} title="Add a new message" className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
         </aside>
       </div>
 
