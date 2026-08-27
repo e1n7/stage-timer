@@ -2544,7 +2544,7 @@ function App() {
       </header>
 
       <div className="relative flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
-        <div className="order-last flex w-14 shrink-0 flex-col items-center gap-5 border-l border-[#333] bg-[#1a1a1a] pt-8 min-[1400px]:hidden">
+        <div className="order-last flex w-14 shrink-0 flex-col items-center gap-5 border-l border-[#333] bg-[#1a1a1a] pt-8 max-lg:hidden min-[1400px]:hidden">
           <button type="button" onClick={() => setMobileSection('timers')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'timers' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show timers" aria-label="Show timers" aria-pressed={mobileSection === 'timers'}>
             <img src="/timer_section.svg" alt="" className="h-5 w-5 invert" />
           </button>
@@ -2751,7 +2751,7 @@ function App() {
           </div>
         </aside>
 
-        <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'timers' ? 'flex' : 'hidden'} min-[1400px]:flex`}>
+        <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'timers' ? 'flex' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Timers</h2>
             <div className="flex items-center gap-3">
@@ -2869,7 +2869,7 @@ function App() {
           </div>
         </main>
 
-        <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} min-[1400px]:flex`}>
+        <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
           <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className="flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent text-white hover:bg-[#333]" title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
