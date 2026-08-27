@@ -1140,18 +1140,31 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     }
   }, [isActive, seconds, isRunning, settings, syncState, DEFAULT_TIME, onSync]);
 
+  const rowTotalDuration = Math.max(0, Number(settings.targetDuration) || 0);
+  const rowCurrentSeconds = Number.isFinite(seconds) ? seconds : 0;
+  const rowProgressPercent = rowTotalDuration > 0
+    ? settings.mode === 'countup'
+      ? Math.max(0, Math.min(100, (rowCurrentSeconds / rowTotalDuration) * 100))
+      : Math.max(0, Math.min(100, ((rowTotalDuration - rowCurrentSeconds) / rowTotalDuration) * 100))
+    : 0;
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
       onClick={isActive ? () => onActivate(false) : undefined}
-      className={`timer-row group flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
+        style={{ width: `${rowProgressPercent}%` }}
+      />
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
       <div 
         {...attributes} 
         {...listeners} 
-        className="group/index flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
+        className="group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
         onClick={(e) => e.stopPropagation()}
       >
         {isDragging ? (
@@ -1165,7 +1178,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Scheduled Time Display */}
-      <div className="timer-row-scheduled relative hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 w-auto text-center">
+      <div className="timer-row-scheduled relative z-10 hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 w-auto text-center">
         <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
         <div 
           onClick={(e) => { 
@@ -1183,7 +1196,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Timer Display */}
-      <div className="relative hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 text-center">
+      <div className="relative z-10 hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 text-center">
         <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Duration</span>
         <div
           onClick={(e) => {
@@ -1217,7 +1230,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         <span className="block min-w-0 max-w-full truncate">{settings.title}</span>
         <button
           type="button"
@@ -1234,7 +1247,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Controls */}
-      <div className="timer-row-controls flex shrink-0 items-center gap-2 whitespace-nowrap max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="timer-row-controls relative z-10 flex shrink-0 items-center gap-2 whitespace-nowrap max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isActive ? (
           <button 
             type="button" 
