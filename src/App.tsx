@@ -26,6 +26,35 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
+const writeStorageItem = (key: string, value: string): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const removeStorageItem = (key: string): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const getStorageKeys = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    return Object.keys(window.localStorage);
+  } catch {
+    return [];
+  }
+};
+
 const pad = (value: number) => value.toString().padStart(2, '0');
 
 const InfoHint = ({ text }: { text: string }) => {
@@ -1806,9 +1835,9 @@ function App() {
         ]
       };
       const merged = { ...defaults, ...shared };
-      localStorage.setItem(`timerSettings_${newId}`, JSON.stringify(merged));
-      localStorage.setItem(`timerSeconds_${newId}`, JSON.stringify(0));
-      localStorage.setItem(`timerSync_${newId}`, JSON.stringify({
+      writeStorageItem(`timerSettings_${newId}`, JSON.stringify(merged));
+      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(0));
+      writeStorageItem(`timerSync_${newId}`, JSON.stringify({
         startTime: null,
         initialSeconds: 0,
         isRunning: false,
@@ -1835,10 +1864,10 @@ function App() {
     // Remove the timer's own stored state so it leaves no residue,
     // but never touch any other timer's state — playback of other
     // timers (including the active one) keeps running.
-    try { localStorage.removeItem(`timerSettings_${id}`); } catch { /* ignore */ }
-    try { localStorage.removeItem(`timerSeconds_${id}`); } catch { /* ignore */ }
-    try { localStorage.removeItem(`timerSync_${id}`); } catch { /* ignore */ }
-    try { localStorage.removeItem(`timerLog_${id}`); } catch { /* ignore */ }
+    try { removeStorageItem(`timerSettings_${id}`); } catch { /* ignore */ }
+    try { removeStorageItem(`timerSeconds_${id}`); } catch { /* ignore */ }
+    try { removeStorageItem(`timerSync_${id}`); } catch { /* ignore */ }
+    try { removeStorageItem(`timerLog_${id}`); } catch { /* ignore */ }
     try {
       postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' });
     } catch { /* ignore */ }
@@ -1863,7 +1892,7 @@ function App() {
     // Persist shared defaults only for this saved room. Never use one global
     // defaults key, so Apply All cannot leak into another room or a new room.
     if (currentRoomId) {
-      localStorage.setItem(
+      writeStorageItem(
         `timerSharedDefaults_${currentRoomId}`,
         JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
       );
@@ -1878,7 +1907,7 @@ function App() {
           { threshold: 10, color: '#fa5252' }
         ]
       });
-      localStorage.setItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
+      writeStorageItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
     });
     // Force a settings refresh (without resetting time) everywhere:
     // BroadcastChannel reaches other tabs/windows; the local window event
@@ -1895,10 +1924,10 @@ function App() {
   const deleteAllTimers = () => {
     try {
       timerIds.forEach(id => {
-        localStorage.removeItem(`timerSettings_${id}`);
-        localStorage.removeItem(`timerSeconds_${id}`);
-        localStorage.removeItem(`timerSync_${id}`);
-        localStorage.removeItem(`timerLog_${id}`);
+        removeStorageItem(`timerSettings_${id}`);
+        removeStorageItem(`timerSeconds_${id}`);
+        removeStorageItem(`timerSync_${id}`);
+        removeStorageItem(`timerLog_${id}`);
       });
       timerIds.forEach(id => postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }));
     } catch { /* ignore */ }
@@ -1917,10 +1946,10 @@ function App() {
     const originalSeconds = readJsonStorage<number>(`timerSeconds_${id}`, 0);
     const originalSync = readJsonStorage<any | null>(`timerSync_${id}`, null);
     if (originalSettings) {
-      localStorage.setItem(`timerSettings_${newId}`, JSON.stringify(originalSettings));
+      writeStorageItem(`timerSettings_${newId}`, JSON.stringify(originalSettings));
     }
-    localStorage.setItem(`timerSeconds_${newId}`, JSON.stringify(originalSeconds));
-    localStorage.setItem(`timerSync_${newId}`, JSON.stringify(originalSync || {
+    writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(originalSeconds));
+    writeStorageItem(`timerSync_${newId}`, JSON.stringify(originalSync || {
       startTime: null,
       initialSeconds: originalSeconds,
       isRunning: false,
@@ -1937,10 +1966,10 @@ function App() {
     // legacy rooms, so loading one room must not erase another room's state.
     const knownTimerIds = new Set(rooms.flatMap(candidate => candidate.timerIds || []));
     (room.timerIds || []).forEach(id => knownTimerIds.add(id));
-    Object.keys(localStorage).forEach(key => {
+    getStorageKeys().forEach(key => {
       if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_') || key.startsWith('timerLog_')) {
         const tid = key.substring(key.indexOf('_') + 1);
-        if (!knownTimerIds.has(tid)) localStorage.removeItem(key);
+        if (!knownTimerIds.has(tid)) removeStorageItem(key);
       }
     });
     // Apply saved per-timer settings for this room's timers, and refresh
@@ -1949,18 +1978,18 @@ function App() {
     if (room.timerSettings) {
       Object.keys(room.timerSettings).forEach(id => {
         const settings = room.timerSettings![id];
-        localStorage.setItem(`timerSettings_${id}`, JSON.stringify(settings));
+        writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
         const target = settings?.targetDuration ?? 0;
         const mode = settings?.mode || 'countdown';
         const initialSeconds = mode === 'countup' ? 0 : target;
-        localStorage.setItem(`timerSync_${id}`, JSON.stringify({
+        writeStorageItem(`timerSync_${id}`, JSON.stringify({
           startTime: null,
           initialSeconds,
           isRunning: false,
           mode,
           lastUpdated: Date.now()
         }));
-        localStorage.setItem(`timerSeconds_${id}`, JSON.stringify(initialSeconds));
+        writeStorageItem(`timerSeconds_${id}`, JSON.stringify(initialSeconds));
       });
     }
     setCurrentRoomId(room.id);
@@ -1990,8 +2019,8 @@ function App() {
     setIsNewRoomDraft(false);
     const timerSettings: Record<string, any> = {};
     timerIds.forEach(id => {
-      const stored = localStorage.getItem(`timerSettings_${id}`);
-      if (stored) timerSettings[id] = readJsonStorage(`timerSettings_${id}`, null);
+      const storedSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+      if (storedSettings) timerSettings[id] = storedSettings;
     });
     const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
     // Re-read the latest room list before saving so a stale tab cannot replace
@@ -2012,10 +2041,10 @@ function App() {
     const remainingTimerIds = new Set(nextRooms.flatMap(candidate => candidate.timerIds || []));
     (roomToDelete.timerIds || []).forEach(timerId => {
       if (!remainingTimerIds.has(timerId)) {
-        localStorage.removeItem(`timerSettings_${timerId}`);
-        localStorage.removeItem(`timerSync_${timerId}`);
-        localStorage.removeItem(`timerSeconds_${timerId}`);
-        localStorage.removeItem(`timerLog_${timerId}`);
+        removeStorageItem(`timerSettings_${timerId}`);
+        removeStorageItem(`timerSync_${timerId}`);
+        removeStorageItem(`timerSeconds_${timerId}`);
+        removeStorageItem(`timerLog_${timerId}`);
       }
     });
     setRooms(nextRooms);
@@ -2044,7 +2073,7 @@ function App() {
       || now - lastOutputPersistRef.current.lastPersistAt >= 1000;
     if (!shouldPersist) return;
     try {
-      localStorage.setItem('timerState', JSON.stringify(payload));
+      writeStorageItem('timerState', JSON.stringify(payload));
       lastOutputPersistRef.current = { lastPersistAt: now, lastUpdated, isRunning };
     } catch { /* ignore */ }
   }, []);
@@ -2441,7 +2470,7 @@ function App() {
                 ))}
                 <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
                   // Reset only the active room state; preserve existing rooms and their timers.
-                  localStorage.removeItem('stage-timer-message-shown-id');
+                  removeStorageItem('stage-timer-message-shown-id');
                   setCurrentRoomId(createId('room-draft'));
                   setIsNewRoomDraft(true);
                   setCurrentRoomName('New Room');
