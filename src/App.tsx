@@ -986,7 +986,7 @@ const MessageRow = ({
               className="flex items-center gap-1.5 bg-[#1c1c1c] px-2 py-1 text-[12px] font-bold text-white transition-colors hover:bg-[#252525]"
               title="Show message on screen (message only, no timer)"
             >
-              <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#4a9eff]' : 'bg-[#555]'}`} />
+              <span className={`inline-block h-2 w-2 rounded-full ${messageShownId === msg.id ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#555]'}`} />
               Show
             </button>
           </div>
@@ -2547,7 +2547,7 @@ function App() {
             <>
               <div className="mt-4 flex items-center justify-center gap-4 text-[13px]">
                 <div className="flex items-center gap-2 text-white">
-                  <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-[#444]'}`}></div>
+                  <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : activeTimerState?.isRunning ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
                     {hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)}.{Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}
                   </span>
