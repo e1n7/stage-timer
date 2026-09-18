@@ -57,6 +57,11 @@ const getStorageKeys = (): string[] => {
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
+const getStoredMessageSize = (message: any): number => {
+  const value = message?.messageSize;
+  return typeof value === 'number' && value > 0 ? value : 1.0;
+};
+
 const InfoHint = ({ text }: { text: string }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -1490,9 +1495,76 @@ function App() {
   const [openTimerPanel, setOpenTimerPanel] = useState<{ timerId: string; panel: 'settings' | 'quick' } | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
+  const [timeZoneSearch, setTimeZoneSearch] = useState('');
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [mobileSection, setMobileSection] = useState<'timers' | 'messages'>('timers');
+  const [timerChangesNeedSave, setTimerChangesNeedSave] = useState(false);
+  const markTimerChanged = useCallback(() => setTimerChangesNeedSave(true), []);
+  const draftBaselineSignatureRef = useRef<string | null>(null);
+
+  const currentRoomSignature = useMemo(() => {
+    void settingsVersion;
+    const timerSettings = Object.fromEntries(timerIds.map(id => [
+      id,
+      readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null),
+    ]));
+    const normalizedMessages = messages.map(message => ({
+      id: message.id,
+      text: message.text || '',
+      color: message.color || '#ffffff',
+      bold: !!message.bold,
+      uppercase: !!message.uppercase,
+      messageSize: getStoredMessageSize(message),
+    }));
+    return JSON.stringify({
+      name: currentRoomName.trim(),
+      timerIds,
+      activeTimerId,
+      messages: normalizedMessages,
+      timerSettings,
+    });
+  }, [currentRoomName, timerIds, activeTimerId, messages, settingsVersion]);
+
+  const savedRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
+  const savedRoomSignature = useMemo(() => {
+    if (!savedRoom) return null;
+    const normalizedMessages = (savedRoom.messages || []).map(message => ({
+      id: message.id,
+      text: message.text || '',
+      color: message.color || '#ffffff',
+      bold: !!message.bold,
+      uppercase: !!message.uppercase,
+      messageSize: getStoredMessageSize(message),
+    }));
+    return JSON.stringify({
+      name: savedRoom.name.trim(),
+      timerIds: savedRoom.timerIds || [],
+      activeTimerId: savedRoom.activeTimerId || '',
+      messages: normalizedMessages,
+      timerSettings: savedRoom.timerSettings || {},
+    });
+  }, [savedRoom]);
+
+  useEffect(() => {
+    if (isNewRoomDraft) {
+      if (draftBaselineSignatureRef.current === null) draftBaselineSignatureRef.current = currentRoomSignature;
+    } else {
+      draftBaselineSignatureRef.current = null;
+    }
+  }, [isNewRoomDraft, currentRoomSignature]);
+
+  const hasUnsavedChanges = timerChangesNeedSave;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return undefined;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone } = useTimer('global-helper');
 
@@ -1786,6 +1858,7 @@ function App() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
+      markTimerChanged();
       setTimerIds((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
@@ -1858,6 +1931,7 @@ function App() {
     if (!activeTimerId && timerIds.length === 0) {
       setActiveTimerId(newId);
     }
+    markTimerChanged();
   };
 
   const deleteTimer = (id: string) => {
@@ -1881,6 +1955,7 @@ function App() {
       setActiveTimerState(null);
       setActiveTimerId(newIds[0]);
     }
+    markTimerChanged();
   };
 
   const applyToAllSettings = (sharedSettings: any) => {
@@ -1935,6 +2010,7 @@ function App() {
     setActiveTimerId('');
     setActiveTimerState(null);
     setIsTimersMenuOpen(false);
+    markTimerChanged();
   };
 
   const duplicateTimer = (id: string, index: number) => {
@@ -1959,6 +2035,7 @@ function App() {
 
     setTimerIds(newIds);
     setActiveTimerId(newId);
+    markTimerChanged();
   };
 
   const loadRoom = useCallback((room: Room) => {
@@ -2028,6 +2105,7 @@ function App() {
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
     const nextRooms = mergeItemById(latestRooms, roomData);
     setRooms(nextRooms);
+    setTimerChangesNeedSave(false);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
   }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
@@ -2449,6 +2527,7 @@ function App() {
     'Europe/Amsterdam', 'Europe/Berlin', 'Europe/Brussels', 'Europe/London', 'Europe/Madrid', 'Europe/Moscow', 'Europe/Paris', 'Europe/Rome', 'Europe/Zurich',
     'Pacific/Auckland', 'Pacific/Honolulu', 'Pacific/Tahiti'
   ];
+  const filteredTimeZones = TIMEZONES.filter((tz) => tz.toLowerCase().includes(timeZoneSearch.trim().toLowerCase()));
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
@@ -2456,7 +2535,7 @@ function App() {
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
         <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') setCurrentRoomName(''); }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors text-center sm:text-left" placeholder="Unnamed" />
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <button type="button" onClick={saveRoom} title="Save room" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconSave className="mr-1" /> Save</button>
+          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md px-4 text-[13px] text-white hover:bg-[#383838] ${hasUnsavedChanges ? 'border border-[#d69e2e] bg-[#4a3415]' : 'bg-[#2d2d2d]'}`}><IconSave className="mr-1" /> Save{hasUnsavedChanges ? ' *' : ''}</button>
           <div className="relative">
             <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
             {isRoomMenuOpen && (
@@ -2723,17 +2802,27 @@ function App() {
                   <IconChevronDown />
                 </button>
                 {isTimeZoneMenuOpen && (
-                  <div className="absolute bottom-full left-1/2 z-50 mb-1 max-h-64 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
+                  <div className="absolute bottom-full left-1/2 z-50 mb-1 max-h-72 w-64 -translate-x-1/2 overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl custom-scrollbar">
                     <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Select Timezone</div>
-                    {TIMEZONES.map((tz) => (
+                    <input
+                      type="search"
+                      value={timeZoneSearch}
+                      onChange={(event) => setTimeZoneSearch(event.target.value)}
+                      onClick={(event) => event.stopPropagation()}
+                      placeholder="Search timezones..."
+                      aria-label="Search timezones"
+                      className="mb-1 w-full rounded border border-[#444] bg-[#181818] px-2 py-1.5 text-[12px] text-white outline-none placeholder:text-[#777] focus:border-[#4a9eff]"
+                    />
+                    {filteredTimeZones.map((tz) => (
                       <div 
                         key={tz} 
-                        onClick={() => { setSelectedTimeZone(tz); setIsTimeZoneMenuOpen(false); }}
+                        onClick={() => { setSelectedTimeZone(tz); setTimeZoneSearch(''); setIsTimeZoneMenuOpen(false); }}
                         className={`rounded px-2 py-1.5 text-left text-[12px] hover:bg-[#383838] cursor-pointer ${selectedTimeZone === tz ? 'text-[#22c55e] bg-[#2d2d2d]' : 'text-white'}`}
                       >
                         {tz.replace('_', ' ')}
                       </div>
                     ))}
+                    {filteredTimeZones.length === 0 && <div className="px-2 py-2 text-[12px] text-[#777]">No timezones found</div>}
                   </div>
                 )}
               </div>
@@ -2788,7 +2877,7 @@ function App() {
                 {isTimersMenuOpen && (
                   <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                     <button 
-                      onClick={() => setIsFollowEnabled(!isFollowEnabled)}
+                      onClick={() => { setIsFollowEnabled(!isFollowEnabled); markTimerChanged(); }}
                       title="Toggle play in sequence"
                       className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
                     >
@@ -2855,7 +2944,7 @@ function App() {
                 onDuplicate={() => duplicateTimer(id, index)}
                 onDelete={() => deleteTimer(id)}
                 onApplyToAll={applyToAllSettings}
-                onSettingsUpdate={() => setSettingsVersion(v => v + 1)}
+                onSettingsUpdate={() => { setSettingsVersion(v => v + 1); markTimerChanged(); }}
               />))}</div></SortableContext></DndContext>
           <div className="mt-10 flex justify-center">
             <button 
