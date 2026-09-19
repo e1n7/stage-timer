@@ -461,11 +461,17 @@ const IconMaximize = ({ size = 12 }: IconProps) => (
 const IconSquare = ({ size = 8 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
 );
+const IconTrash = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+);
+const IconDuplicate = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+);
 const IconAddTimer = ({ size = 24 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="12" r="7.5" /><path d="M11 8v8M7 12h8M17 4v4M15 6h4" /></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10.5" cy="12" r="8.5" /><path d="M10.5 7.5v4l-3.5 3.5" /></svg>
 );
 const IconLayers = ({ size = 24 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m4 12 8 4.5 8-4.5M4 16l8 5 8-5" /></svg>
+  <svg width={size} height={size} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" aria-hidden="true"><path d="m1.75 11 6.25 3.25 6.25-3.25m-12.5-3 6.25 3.25 6.25-3.25m-6.25-6.25-6.25 3.25 6.25 3.25 6.25-3.25z" /></svg>
 );
 const IconLogo = ({ size = 20 }: IconProps) => (
   <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Timer--Streamline-Radix" height={size} width={size}>
@@ -912,6 +918,9 @@ interface TimerRowProps {
   openPanel: 'settings' | 'quick' | null;
   onPanelOpen: (panel: 'settings' | 'quick', section?: 'start' | 'duration') => void;
   onPanelClose: () => void;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 interface TimerHeader {
@@ -921,7 +930,7 @@ interface TimerHeader {
   timerIds: string[];
 }
 
-const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void }) => {
+const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
   const { setNodeRef, isOver } = useDroppable({ id: `header:${header.id}` });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
@@ -953,11 +962,14 @@ interface MessageRowProps {
   onUpdateSize: (id: string, value: number) => void;
   onShow: (id: string) => void;
   getMessageSize: (msg: any) => number;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 const MessageRow = ({ 
   msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor, 
-  onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize 
+  onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize, isSelectMode, isSelected, onSelect
 }: MessageRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
   const style = { 
@@ -975,11 +987,19 @@ const MessageRow = ({
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'}`}
+      onClick={(event) => {
+        if (!isSelectMode || !onSelect) return;
+        const target = event.target as HTMLElement;
+        if (target.closest('button, textarea, input, select')) return;
+        onSelect();
+      }}
+      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'border border-[#22c55e] bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <div
+          {isSelectMode ? (
+            <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`flex h-4 w-4 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected message' : 'Select message'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
+          ) : <div
             {...attributes}
             {...listeners}
             className="group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing"
@@ -987,7 +1007,7 @@ const MessageRow = ({
           >
             <span className="group-hover/index:hidden">{idx + 1}</span>
             <span className="hidden group-hover/index:inline text-[18px] font-light leading-none">=</span>
-          </div>
+          </div>}
           <textarea
             value={msg.text}
             onChange={(e) => onUpdate(msg.id, e.target.value)}
@@ -1063,7 +1083,7 @@ const MessageRow = ({
   );
 };
 
-const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -1219,8 +1239,15 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     <div 
       ref={setNodeRef} 
       style={style} 
-      onClick={isActive ? () => onActivate(false) : undefined}
-      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''}`}
+      onClick={(event) => {
+        if (isSelectMode && onSelect) {
+          const target = event.target as HTMLElement;
+          if (!target.closest('button, input, select, textarea')) onSelect();
+          return;
+        }
+        if (isActive) onActivate(false);
+      }}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div
         aria-hidden="true"
@@ -1228,21 +1255,16 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         style={{ width: `${rowProgressPercent}%` }}
       />
       {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
-      <div 
+      {isSelectMode ? (
+        <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected timer' : 'Select timer'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
+      ) : <div 
         {...attributes} 
         {...listeners} 
         className="group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {isDragging ? (
-          <span className="text-[24px] font-light leading-none">=</span>
-        ) : (
-          <>
-            <span className="group-hover/index:hidden">{index + 1}</span>
-            <span className="hidden group-hover/index:inline text-[24px] font-light leading-none">=</span>
-          </>
-        )}
-      </div>
+        {isDragging ? <span className="text-[24px] font-light leading-none">=</span> : <><span className="group-hover/index:hidden">{index + 1}</span><span className="hidden group-hover/index:inline text-[24px] font-light leading-none">=</span></>}
+      </div>}
 
       {/* Scheduled Time Display */}
       <div className="timer-row-scheduled relative z-10 hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 w-auto text-center">
@@ -1534,6 +1556,10 @@ function App() {
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [mobileSection, setMobileSection] = useState<'timers' | 'messages'>('timers');
+  const [isTimerSelectMode, setIsTimerSelectMode] = useState(false);
+  const [selectedTimerIds, setSelectedTimerIds] = useState<string[]>([]);
+  const [isMessageSelectMode, setIsMessageSelectMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [timerChangesNeedSave, setTimerChangesNeedSave] = useState(false);
   const markTimerChanged = useCallback(() => setTimerChangesNeedSave(true), []);
   const draftBaselineSignatureRef = useRef<string | null>(null);
@@ -2096,6 +2122,44 @@ function App() {
     setActiveTimerId(newId);
     markTimerChanged();
   };
+  const duplicateSelectedTimers = () => {
+    const selected = new Set(selectedTimerIds);
+    const nextIds = [...timerIds];
+    selectedTimerIds.forEach((id) => {
+      const originalIndex = timerIds.indexOf(id);
+      if (originalIndex === -1) return;
+      const newId = createId('timer_dup');
+      const originalSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+      const originalSeconds = readJsonStorage<number>(`timerSeconds_${id}`, 0);
+      const originalSync = readJsonStorage<any | null>(`timerSync_${id}`, null);
+      if (originalSettings) writeStorageItem(`timerSettings_${newId}`, JSON.stringify(originalSettings));
+      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(originalSeconds));
+      writeStorageItem(`timerSync_${newId}`, JSON.stringify(originalSync || { startTime: null, initialSeconds: originalSeconds, isRunning: false, mode: originalSettings?.mode || 'countdown', lastUpdated: Date.now() }));
+      const insertAt = Math.min(nextIds.length, nextIds.indexOf(id) + 1);
+      nextIds.splice(insertAt, 0, newId);
+    });
+    if (selected.size > 0) {
+      setTimerIds(nextIds);
+      markTimerChanged();
+    }
+  };
+  const deleteSelectedTimers = () => {
+    const selected = new Set(selectedTimerIds);
+    if (selected.size === 0) return;
+    selected.forEach(id => {
+      removeStorageItem(`timerSettings_${id}`); removeStorageItem(`timerSeconds_${id}`); removeStorageItem(`timerSync_${id}`); removeStorageItem(`timerLog_${id}`);
+      try { postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }); } catch { /* ignore */ }
+    });
+    const newIds = timerIds.filter(id => !selected.has(id));
+    setTimerIds(newIds);
+    setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => !selected.has(id)) })));
+    if (selected.has(activeTimerId)) {
+      setActiveTimerId(newIds[0] || '');
+      setActiveTimerState(null);
+    }
+    setSelectedTimerIds([]);
+    markTimerChanged();
+  };
 
   const loadRoom = useCallback((room: Room) => {
     // Remove only genuinely orphaned timer state. Timer IDs can be shared by
@@ -2469,6 +2533,15 @@ function App() {
       syncOutput({ messageText: '', messageShown: false, messageFlash: false, messageMaximize: false, type: 'force-sync' });
     }
     setMessages(prev => prev.filter(m => m.id !== id));
+    setSelectedMessageIds(current => current.filter(messageId => messageId !== id));
+  };
+  const duplicateMessage = (id: string) => {
+    const index = messages.findIndex(message => message.id === id);
+    if (index === -1) return;
+    const original = messages[index];
+    const duplicate = { ...original, id: createId('message') };
+    setMessages(prev => { const next = [...prev]; next.splice(index + 1, 0, duplicate); return next; });
+    setSelectedMessageIds(current => [...current, duplicate.id]);
   };
   const showMessage = (id: string) => {
     // Toggle: if this message is currently shown, turn it off
@@ -2601,6 +2674,9 @@ function App() {
       openPanel={openTimerPanel?.timerId === id ? openTimerPanel.panel : null}
       onPanelOpen={(panel) => { setOpenActionsTimerId(null); setOpenTimerPanel({ timerId: id, panel }); }}
       onPanelClose={() => { setOpenTimerPanel(current => current?.timerId === id ? null : current); }}
+      isSelectMode={isTimerSelectMode}
+      isSelected={selectedTimerIds.includes(id)}
+      onSelect={() => setSelectedTimerIds(current => current.includes(id) ? current.filter(timerId => timerId !== id) : [...current, id])}
       isActive={activeTimerId === id}
       scheduledStart={schedule[id]?.start ?? null}
       formatTime={formatScheduledTime}
@@ -2626,7 +2702,7 @@ function App() {
       onAddAbove={() => addTimer(index)}
       onAddBelow={() => addTimer(index + 1)}
       onDuplicate={() => duplicateTimer(id, index)}
-      onDelete={() => { deleteTimer(id); setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) }))); }}
+      onDelete={() => { deleteTimer(id); setSelectedTimerIds(current => current.filter(timerId => timerId !== id)); setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) }))); }}
       onApplyToAll={applyToAllSettings}
       onSettingsUpdate={() => { setSettingsVersion(v => v + 1); markTimerChanged(); }}
     />
@@ -2954,11 +3030,12 @@ function App() {
           <div className="mb-8 flex items-center justify-between">
             <h2 className="text-[17px] font-bold text-white">Timers</h2>
             <div className="flex items-center gap-3">
+              <button type="button" onClick={() => { setIsTimerSelectMode(current => !current); setSelectedTimerIds([]); }} title="Select a timer" className={`group relative rounded px-2 py-1 text-[13px] font-bold text-white transition-all hover:bg-[#383838] ${isTimerSelectMode ? 'bg-[#383838]' : ''}`}>Select<span className="pointer-events-none absolute right-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a timer</span></button>
               <button 
                 type="button" 
                 onClick={() => setIsBlackout(!isBlackout)} 
                 title="Toggle blackout mode"
-                className="flex h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold text-white transition-all hover:bg-[#383838]"
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold text-white transition-all hover:bg-[#383838]`}
               >
                 <span className={`inline-block h-2 w-2 rounded-full ${isBlackout ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#555]'}`} /> Blackout
               </button>
@@ -2966,7 +3043,7 @@ function App() {
                 type="button" 
                 onClick={handleFlash} 
                 title="Flash active timer"
-                className={`flex h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold transition-all hover:bg-[#383838] ${isFlashing && isFlash ? 'text-[#ffd43b]' : 'text-white'}`}
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold transition-all hover:bg-[#383838] ${isFlashing && isFlash ? 'text-[#ffd43b]' : 'text-white'}`}
               >
                 <IconFlash /> Flash
               </button>
@@ -2980,7 +3057,7 @@ function App() {
                     setIsTimersMenuOpen(!isTimersMenuOpen);
                   }}
                   title="Open timer options"
-                  className={`flex h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                  className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore size={20} />
                 </button>
@@ -2999,7 +3076,12 @@ function App() {
 
                   </div>
                 )}
-              </div></div></div>
+              </div>
+              {isTimerSelectMode && <>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button>
+              </>}
+              </div></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
               <div className="space-y-4">
@@ -3022,15 +3104,14 @@ function App() {
               </div>
             </SortableContext>
           </DndContext>
-          <div className="mt-10 flex items-center gap-4 rounded-lg border border-[#333] bg-[#191919] p-3 shadow-inner">
-            <span className="shrink-0 px-1 text-[13px] font-bold uppercase tracking-wider text-[#8a8a8a]">Quick Actions</span>
-            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg border border-[#666] bg-[#5b5b5b] px-4 text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_12px_rgba(255,255,255,0.12)] hover:bg-[#686868] active:scale-[0.99]"><IconAddTimer size={24} /> Add New Timer</button>
-            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg border border-[#666] bg-[#5b5b5b] px-4 text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_12px_rgba(255,255,255,0.12)] hover:bg-[#686868] active:scale-[0.99]"><IconLayers size={24} /> Add New Section</button>
+          <div className="mx-auto mt-10 flex w-[calc(100%-2rem)] max-w-[30rem] flex-nowrap items-center justify-center gap-3 rounded-lg border border-[#333] bg-[#191919]/95 p-3 shadow-inner">
+            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add New Timer</span></button>
+            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconLayers size={18} /> <span className="whitespace-nowrap">Add New Section</span></button>
           </div>
         </main>
 
         <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
-          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2></div><button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button></div>
+          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(current => !current); setSelectedMessageIds([]); }} title="Select a message" className={`group relative rounded px-2 py-1 text-[13px] font-bold text-white transition-all hover:bg-[#383838] ${isMessageSelectMode ? 'bg-[#383838]' : ''}`}>Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button>}</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
@@ -3050,6 +3131,9 @@ function App() {
                     onUpdateSize={updateMessageSize}
                     onShow={showMessage}
                     getMessageSize={getMessageSize}
+                    isSelectMode={isMessageSelectMode}
+                    isSelected={selectedMessageIds.includes(msg.id)}
+                    onSelect={() => setSelectedMessageIds(current => current.includes(msg.id) ? current.filter(messageId => messageId !== msg.id) : [...current, msg.id])}
                   />
                 ))}
               </div>
