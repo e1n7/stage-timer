@@ -461,6 +461,12 @@ const IconMaximize = ({ size = 12 }: IconProps) => (
 const IconSquare = ({ size = 8 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
 );
+const IconCheckbox = ({ checked, size = 13 }: IconProps & { checked: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill={checked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" />{checked && <path d="m7 12 3 3 7-7" fill="none" stroke="#2d2d2d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}</svg>
+);
+const IconClose = ({ size = 16 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+);
 const IconTrash = ({ size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
 );
@@ -939,14 +945,19 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
-          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || 'Untitled section'); setEditing(false); }} onKeyDown={(event) => { if (event.key === 'Enter') { onRename(draft.trim() || 'Untitled section'); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
-        ) : <button type="button" onClick={() => setEditing(true)} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff]" title="Edit section header">{header.title}</button>}
+          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
+        ) : <button type="button" onClick={() => { setDraft(header.title === 'New Section' || header.title === 'Untitled section' ? '' : header.title); setEditing(true); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4" title="Edit section header">{header.title}</button>}
         <span className="text-[11px] text-[#888]">{header.timerIds.length}</span>
         <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b]" title="Add a sub-timer">+ Add Row</button>
         <button type="button" onClick={onDelete} className="rounded px-2 py-1 text-[12px] text-[#999] hover:bg-[#3a2020] hover:text-[#ff8b8b]" title="Delete section">×</button>
       </div>
     </div>
   );
+};
+
+const TimerTopLevelDropZone = ({ headerId, placement }: { headerId: string; placement: 'before' | 'after' }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: `${placement}-header:${headerId}` });
+  return <div ref={setNodeRef} className={`h-2 rounded transition-colors ${isOver ? 'bg-[#4a9eff]' : 'bg-transparent'}`} aria-hidden="true" />;
 };
 
 interface MessageRowProps {
@@ -1424,8 +1435,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         title={settings.title || ''}
         onClose={() => setIsTitleEditOpen(false)}
         onSave={(title) => {
-          updateSettings({ title });
-          onSettingsUpdate();
+          if (title !== (settings.title || '')) {
+            updateSettings({ title });
+            onSettingsUpdate();
+          }
           setIsTitleEditOpen(false);
         }}
       />
@@ -1479,6 +1492,7 @@ interface Room {
   timerSettings?: Record<string, any>;
   activeRoomSettings?: any;
   timerHeaders?: TimerHeader[];
+  timerTopLevelItems?: string[];
 }
 
 function App() {
@@ -1487,11 +1501,22 @@ function App() {
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
   const [timerHeaders, setTimerHeaders] = useLocalStorage<TimerHeader[]>('stage-timer-timer-headers', []);
+  const [timerTopLevelItems, setTimerTopLevelItems] = useLocalStorage<string[]>('stage-timer-timer-top-level-items', []);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
+  const topLevelItems = useMemo(() => [
+    ...timerTopLevelItems.filter((item, index, items) => {
+      if (items.indexOf(item) !== index) return false;
+      if (item.startsWith('header:')) return timerHeaders.some(header => `header:${header.id}` === item);
+      return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item));
+    }),
+    ...timerHeaders.map(header => `header:${header.id}`).filter(item => !timerTopLevelItems.includes(item)),
+    ...timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id)) && !timerTopLevelItems.includes(id)),
+  ], [timerTopLevelItems, timerHeaders, timerIds]);
   const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
   const roomNameInputRef = useRef<HTMLInputElement>(null);
+  const roomNamePlaceholderRef = useRef<string | null>(null);
   const completedScheduledTimersRef = useRef<Set<string>>(new Set());
   const manuallyStartedScheduledTimersRef = useRef<Set<string>>(new Set());
 
@@ -1560,6 +1585,10 @@ function App() {
   const [selectedTimerIds, setSelectedTimerIds] = useState<string[]>([]);
   const [isMessageSelectMode, setIsMessageSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const allTimersSelected = timerIds.length > 0 && selectedTimerIds.length === timerIds.length;
+  const allMessagesSelected = messages.length > 0 && selectedMessageIds.length === messages.length;
+  const toggleAllTimers = () => setSelectedTimerIds(allTimersSelected ? [] : timerIds);
+  const toggleAllMessages = () => setSelectedMessageIds(allMessagesSelected ? [] : messages.map(message => message.id));
   const [timerChangesNeedSave, setTimerChangesNeedSave] = useState(false);
   const markTimerChanged = useCallback(() => setTimerChangesNeedSave(true), []);
   const draftBaselineSignatureRef = useRef<string | null>(null);
@@ -1918,18 +1947,42 @@ function App() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    const activeId = active.id as string;
     if (over && String(over.id).startsWith('header:')) {
       const headerId = String(over.id).slice('header:'.length);
-      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.id === headerId ? [...new Set([...header.timerIds, active.id as string])] : header.timerIds.filter(id => id !== active.id) })));
+      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.id === headerId ? [...new Set([...header.timerIds, activeId])] : header.timerIds.filter(id => id !== activeId) })));
+      markTimerChanged();
+      return;
+    }
+    if (over && (String(over.id).startsWith('before-header:') || String(over.id).startsWith('after-header:'))) {
+      const placement = String(over.id).startsWith('after-header:') ? 'after' : 'before';
+      const headerItem = `header:${String(over.id).slice(`${placement}-header:`.length)}`;
+      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
+      setTimerTopLevelItems((items) => {
+        const next = items.filter(item => item !== activeId);
+        const targetIndex = next.indexOf(headerItem);
+        const insertIndex = targetIndex === -1 ? next.length : targetIndex + (placement === 'after' ? 1 : 0);
+        next.splice(insertIndex, 0, activeId);
+        return next;
+      });
       markTimerChanged();
       return;
     }
     if (over && active.id !== over.id) {
       markTimerChanged();
+      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
       setTimerIds((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
-        return arrayMove(items, oldIndex, newIndex);
+        const next = arrayMove(items, oldIndex, newIndex);
+        setTimerTopLevelItems((topItems) => {
+          const topWithoutActive = topItems.filter(item => item !== activeId);
+          const targetIndex = topWithoutActive.indexOf(over.id as string);
+          if (targetIndex === -1) return [...topWithoutActive, activeId];
+          topWithoutActive.splice(targetIndex, 0, activeId);
+          return topWithoutActive;
+        });
+        return next;
       });
     }
   };
@@ -1946,14 +1999,17 @@ function App() {
   };
 
   const addTimerHeader = () => {
-    const header: TimerHeader = { id: createId('header'), title: 'New Section', collapsed: false, timerIds: [] };
+    const header: TimerHeader = { id: createId('header'), title: 'Untitled section', collapsed: false, timerIds: [] };
     setTimerHeaders((headers) => [...headers, header]);
+    setTimerTopLevelItems((items) => [...items, `header:${header.id}`]);
     markTimerChanged();
   };
 
   const updateTimerHeader = (id: string, updates: Partial<TimerHeader>) => {
+    const currentHeader = timerHeaders.find(header => header.id === id);
+    const hasActualChange = currentHeader && Object.entries(updates).some(([key, value]) => currentHeader[key as keyof TimerHeader] !== value);
     setTimerHeaders((headers) => headers.map(header => header.id === id ? { ...header, ...updates } : header));
-    markTimerChanged();
+    if (hasActualChange && Object.keys(updates).some(key => key !== 'collapsed')) markTimerChanged();
   };
 
   const deleteTimerHeader = (id: string) => {
@@ -2008,6 +2064,7 @@ function App() {
     } else {
       setTimerIds([...timerIds, newId]);
     }
+    setTimerTopLevelItems((items) => items.includes(newId) ? items : [...items, newId]);
     // Keep the currently selected/playing timer active — adding a timer
     // must never steal the selection. If nothing is selected yet and there
     // are no timers at all, pick the newly added one as the first active.
@@ -2196,7 +2253,12 @@ function App() {
     setIsNewRoomDraft(false);
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
-    setTimerHeaders((room.timerHeaders || []).map(header => ({ ...header, timerIds: (header.timerIds || []).filter(id => (room.timerIds || []).includes(id)) })));
+    const nextHeaders = (room.timerHeaders || []).map(header => ({ ...header, timerIds: (header.timerIds || []).filter(id => (room.timerIds || []).includes(id)) }));
+    setTimerHeaders(nextHeaders);
+    setTimerTopLevelItems(room.timerTopLevelItems || [
+      ...(room.timerIds || []).filter(id => !nextHeaders.some(header => header.timerIds.includes(id))),
+      ...nextHeaders.map(header => `header:${header.id}`),
+    ]);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
     setActiveTimerState(null);
     setMessages((room.messages || [{ id: '1', text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]).map(message => ({
@@ -2210,7 +2272,7 @@ function App() {
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
+  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
@@ -2223,7 +2285,7 @@ function App() {
       const storedSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
       if (storedSettings) timerSettings[id] = storedSettings;
     });
-    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], activeTimerId, messages: [...messages], timerSettings };
+    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings };
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
@@ -2232,7 +2294,7 @@ function App() {
     setTimerChangesNeedSave(false);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
-  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, activeTimerId, messages, setCurrentRoomId, setRooms]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
   const deleteRoom = useCallback((room: Room) => {
     // Re-read immediately before deleting so an older tab cannot overwrite
@@ -2712,16 +2774,16 @@ function App() {
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => setCurrentRoomName(e.target.value)} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') setCurrentRoomName(''); }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-[#8a8a8a] outline-none focus:text-white transition-colors text-center sm:text-left" placeholder="Unnamed" />
+        <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors text-center sm:text-left" />
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md px-4 text-[13px] text-white hover:bg-[#383838] ${hasUnsavedChanges ? 'border border-[#d69e2e] bg-[#4a3415]' : 'bg-[#2d2d2d]'}`}><IconSave className="mr-1" /> Save{hasUnsavedChanges ? ' *' : ''}</button>
+          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md px-4 text-[13px] text-white hover:bg-[#383838] ${hasUnsavedChanges ? 'border border-[#d69e2e] bg-[#4a3415]' : 'bg-[#2d2d2d]'}`}><IconSave className="mr-1" /> Save</button>
           <div className="relative">
-            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown /></button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && (
               <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
                 {rooms.map((room) => (
-                  <div key={room.id} onClick={() => loadRoom(room)} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer ${currentRoomId === room.id ? 'bg-[#22c55e] text-[#101820]' : ''}`}>
+                  <div key={room.id} onClick={() => loadRoom(room)} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer ${currentRoomId === room.id ? 'bg-[#3a3a3a] text-white' : ''}`}>
                     <span className="truncate">{room.name}</span>
                     <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} title="Delete saved room" className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
@@ -2734,6 +2796,7 @@ function App() {
                   setCurrentRoomName('New Room');
                   setTimerIds([]);
                   setTimerHeaders([]);
+                  setTimerTopLevelItems([]);
                   setActiveTimerId('');
                   setActiveTimerState(null);
                   setMessages([{ id: '1', text: '', color: '#ffffff' }]);
@@ -2771,12 +2834,20 @@ function App() {
       id: createId('imported_header'),
       timerIds: (header.timerIds || []).map(remapTimerId),
     })) : [];
+    const importedHeaderIds = new Map((Array.isArray(room.timerHeaders) ? room.timerHeaders : []).map((header: TimerHeader, index: number) => [header.id, timerHeaders[index]?.id]));
+    const timerTopLevelItems = Array.isArray(room.timerTopLevelItems)
+      ? room.timerTopLevelItems.map((item: string) => item.startsWith('header:') ? `header:${importedHeaderIds.get(item.slice('header:'.length)) || ''}` : remapTimerId(item)).filter(Boolean)
+      : [
+        ...timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id))),
+        ...timerHeaders.map(header => `header:${header.id}`),
+      ];
     return {
       ...room,
       id: importedRoomId,
       timerIds,
       activeTimerId: room.activeTimerId ? remapTimerId(room.activeTimerId) : '',
       timerHeaders,
+      timerTopLevelItems,
       timerSettings,
     } as Room;
   });
@@ -3028,9 +3099,19 @@ function App() {
 
         <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'timers' ? 'flex' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-[17px] font-bold text-white">Timers</h2>
+            {isTimerSelectMode ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
+                <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 items-center gap-1 rounded border border-[#444] bg-[#2d2d2d] px-2 text-[13px] text-white hover:bg-[#383838]"><IconCheckbox checked={allTimersSelected} size={13} /> {allTimersSelected ? 'Deselect All' : 'Select All'}</button>
+                <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedTimerIds.length} of {timerIds.length} selected</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <h2 className="text-[17px] font-bold text-white">Timers</h2>
+                <button type="button" onClick={() => { setIsTimerSelectMode(true); setSelectedTimerIds([]); }} title="Select a timer" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a timer</span></button>
+              </div>
+            )}
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => { setIsTimerSelectMode(current => !current); setSelectedTimerIds([]); }} title="Select a timer" className={`group relative rounded px-2 py-1 text-[13px] font-bold text-white transition-all hover:bg-[#383838] ${isTimerSelectMode ? 'bg-[#383838]' : ''}`}>Select<span className="pointer-events-none absolute right-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a timer</span></button>
               <button 
                 type="button" 
                 onClick={() => setIsBlackout(!isBlackout)} 
@@ -3078,29 +3159,31 @@ function App() {
                 )}
               </div>
               {isTimerSelectMode && <>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#444] bg-[#2d2d2d] px-2.5 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /> Delete</button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#444] bg-[#2d2d2d] px-2.5 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /> Duplicate</button>
               </>}
               </div></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
               <div className="space-y-4">
-                {timerHeaders.map((header) => (
-                  <div key={header.id} className="space-y-2">
-                    <TimerHeaderRow
+                {topLevelItems.map(item => {
+                  if (item.startsWith('header:')) {
+                    const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
+                    if (!header) return null;
+                    return <div key={header.id} className="space-y-2"><TimerTopLevelDropZone headerId={header.id} placement="before" /><TimerHeaderRow
                       header={header}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
                       onDelete={() => deleteTimerHeader(header.id)}
                       onAddTimer={() => {
                         const newId = addTimer();
-                        setTimerHeaders(headers => headers.map(item => item.id === header.id ? { ...item, timerIds: [...item.timerIds, newId] } : item));
+                        setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
+                        setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />
-                    {!header.collapsed && <div className="ml-4 space-y-3 border-l border-[#333] pl-3">{header.timerIds.filter(id => timerIds.includes(id)).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>}
-                  </div>
-                ))}
-                <div className="space-y-3">{timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id))).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>
+                    />{!header.collapsed && <div className="ml-4 space-y-3 border-l border-[#333] pl-3">{header.timerIds.filter(id => timerIds.includes(id)).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>}<TimerTopLevelDropZone headerId={header.id} placement="after" /></div>;
+                  }
+                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, timerIds.indexOf(item))}</div> : null;
+                })}
               </div>
             </SortableContext>
           </DndContext>
@@ -3111,7 +3194,15 @@ function App() {
         </main>
 
         <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
-          <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(current => !current); setSelectedMessageIds([]); }} title="Select a message" className={`group relative rounded px-2 py-1 text-[13px] font-bold text-white transition-all hover:bg-[#383838] ${isMessageSelectMode ? 'bg-[#383838]' : ''}`}>Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button>}</div>
+          <div className="mb-4 flex items-center justify-between">{isMessageSelectMode ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <button type="button" onClick={() => { setIsMessageSelectMode(false); setSelectedMessageIds([]); }} title="Exit message selection mode" aria-label="Exit message selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
+              <button type="button" onClick={toggleAllMessages} title={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} aria-label={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconCheckbox checked={allMessagesSelected} size={13} /></button>
+              <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedMessageIds.length} of {messages.length} selected</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(true); setSelectedMessageIds([]); }} title="Select a message" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>
+          )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button>}</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
