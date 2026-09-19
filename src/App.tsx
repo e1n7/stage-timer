@@ -14,6 +14,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -458,7 +459,13 @@ const IconMaximize = ({ size = 12 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 );
 const IconSquare = ({ size = 8 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="1"/></svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
+);
+const IconAddTimer = ({ size = 24 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="12" r="7.5" /><path d="M11 8v8M7 12h8M17 4v4M15 6h4" /></svg>
+);
+const IconLayers = ({ size = 24 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m4 12 8 4.5 8-4.5M4 16l8 5 8-5" /></svg>
 );
 const IconLogo = ({ size = 20 }: IconProps) => (
   <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Timer--Streamline-Radix" height={size} width={size}>
@@ -906,6 +913,32 @@ interface TimerRowProps {
   onPanelOpen: (panel: 'settings' | 'quick', section?: 'start' | 'duration') => void;
   onPanelClose: () => void;
 }
+
+interface TimerHeader {
+  id: string;
+  title: string;
+  collapsed: boolean;
+  timerIds: string[];
+}
+
+const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: `header:${header.id}` });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(header.title);
+  return (
+    <div ref={setNodeRef} className={`rounded-lg border px-3 py-2 transition-colors ${isOver ? 'border-[#4a9eff] bg-[#23324a]' : 'border-[#3b3b3b] bg-[#202020]'}`}>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
+        {editing ? (
+          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || 'Untitled section'); setEditing(false); }} onKeyDown={(event) => { if (event.key === 'Enter') { onRename(draft.trim() || 'Untitled section'); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
+        ) : <button type="button" onClick={() => setEditing(true)} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff]" title="Edit section header">{header.title}</button>}
+        <span className="text-[11px] text-[#888]">{header.timerIds.length}</span>
+        <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b]" title="Add a sub-timer">+ Add Row</button>
+        <button type="button" onClick={onDelete} className="rounded px-2 py-1 text-[12px] text-[#999] hover:bg-[#3a2020] hover:text-[#ff8b8b]" title="Delete section">×</button>
+      </div>
+    </div>
+  );
+};
 
 interface MessageRowProps {
   msg: any;
@@ -1423,6 +1456,7 @@ interface Room {
   messages: Array<{ id: string; text: string; color: string; bold?: boolean; uppercase?: boolean; messageSize?: number; fontHeight?: number; fontWidth?: number; }>;
   timerSettings?: Record<string, any>;
   activeRoomSettings?: any;
+  timerHeaders?: TimerHeader[];
 }
 
 function App() {
@@ -1430,6 +1464,7 @@ function App() {
   const [currentRoomId, setCurrentRoomId] = useLocalStorage<string | null>('stage-timer-current-id', null);
   const [currentRoomName, setCurrentRoomName] = useLocalStorage<string>('stage-timer-current-name', 'Unnamed');
   const [timerIds, setTimerIds] = useLocalStorage<string[]>('stage-timer-timer-ids', []);
+  const [timerHeaders, setTimerHeaders] = useLocalStorage<TimerHeader[]>('stage-timer-timer-headers', []);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
@@ -1857,6 +1892,12 @@ function App() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    if (over && String(over.id).startsWith('header:')) {
+      const headerId = String(over.id).slice('header:'.length);
+      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.id === headerId ? [...new Set([...header.timerIds, active.id as string])] : header.timerIds.filter(id => id !== active.id) })));
+      markTimerChanged();
+      return;
+    }
     if (over && active.id !== over.id) {
       markTimerChanged();
       setTimerIds((items) => {
@@ -1876,6 +1917,22 @@ function App() {
         return arrayMove(items, oldIndex, newIndex);
       });
     }
+  };
+
+  const addTimerHeader = () => {
+    const header: TimerHeader = { id: createId('header'), title: 'New Section', collapsed: false, timerIds: [] };
+    setTimerHeaders((headers) => [...headers, header]);
+    markTimerChanged();
+  };
+
+  const updateTimerHeader = (id: string, updates: Partial<TimerHeader>) => {
+    setTimerHeaders((headers) => headers.map(header => header.id === id ? { ...header, ...updates } : header));
+    markTimerChanged();
+  };
+
+  const deleteTimerHeader = (id: string) => {
+    setTimerHeaders((headers) => headers.filter(header => header.id !== id));
+    markTimerChanged();
   };
 
   const addTimer = (atIndex?: number) => {
@@ -1932,6 +1989,7 @@ function App() {
       setActiveTimerId(newId);
     }
     markTimerChanged();
+    return newId;
   };
 
   const deleteTimer = (id: string) => {
@@ -2007,6 +2065,7 @@ function App() {
       timerIds.forEach(id => postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }));
     } catch { /* ignore */ }
     setTimerIds([]);
+    setTimerHeaders([]);
     setActiveTimerId('');
     setActiveTimerState(null);
     setIsTimersMenuOpen(false);
@@ -2073,6 +2132,7 @@ function App() {
     setIsNewRoomDraft(false);
     setCurrentRoomName(room.name);
     setTimerIds(room.timerIds || []);
+    setTimerHeaders((room.timerHeaders || []).map(header => ({ ...header, timerIds: (header.timerIds || []).filter(id => (room.timerIds || []).includes(id)) })));
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
     setActiveTimerState(null);
     setMessages((room.messages || [{ id: '1', text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]).map(message => ({
@@ -2086,7 +2146,7 @@ function App() {
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
+  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
@@ -2099,7 +2159,7 @@ function App() {
       const storedSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
       if (storedSettings) timerSettings[id] = storedSettings;
     });
-    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings };
+    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], activeTimerId, messages: [...messages], timerSettings };
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
@@ -2108,7 +2168,7 @@ function App() {
     setTimerChangesNeedSave(false);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
-  }, [currentRoomId, currentRoomName, rooms, timerIds, activeTimerId, messages, setCurrentRoomId, setRooms]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, activeTimerId, messages, setCurrentRoomId, setRooms]);
 
   const deleteRoom = useCallback((room: Room) => {
     // Re-read immediately before deleting so an older tab cannot overwrite
@@ -2131,12 +2191,13 @@ function App() {
       setIsNewRoomDraft(true);
       setCurrentRoomName('Unnamed');
       setTimerIds([]);
+      setTimerHeaders([]);
       setActiveTimerId('');
       setActiveTimerState(null);
       setMessages([{ id: '1', text: '', color: '#ffffff' }]);
       setMessageShownId(null);
     }
-  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
+  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
 
   const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -2529,6 +2590,48 @@ function App() {
   ];
   const filteredTimeZones = TIMEZONES.filter((tz) => tz.toLowerCase().includes(timeZoneSearch.trim().toLowerCase()));
 
+  const renderTimerRow = (id: string, index: number) => (
+    <TimerRow
+      key={id}
+      id={id}
+      index={index}
+      isActionsOpen={openActionsTimerId === id}
+      onActionsToggle={() => { setOpenTimerPanel(null); setIsTimersMenuOpen(false); setOpenActionsTimerId(current => current === id ? null : id); }}
+      onCloseActions={() => setOpenActionsTimerId(null)}
+      openPanel={openTimerPanel?.timerId === id ? openTimerPanel.panel : null}
+      onPanelOpen={(panel) => { setOpenActionsTimerId(null); setOpenTimerPanel({ timerId: id, panel }); }}
+      onPanelClose={() => { setOpenTimerPanel(current => current?.timerId === id ? null : current); }}
+      isActive={activeTimerId === id}
+      scheduledStart={schedule[id]?.start ?? null}
+      formatTime={formatScheduledTime}
+      selectedTimeZone={selectedTimeZone}
+      onActivate={(manualStart = false) => {
+        if (manualStart) {
+          const settings = id === activeTimerId && activeTimerState ? activeTimerState.settings : readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+          if (settings?.scheduledStart !== null && Number.isFinite(Number(settings?.scheduledStart))) {
+            const scheduledDateForToday = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
+            const scheduledDate = settings.scheduledStartDate || scheduledDateForToday;
+            const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, Number(settings.scheduledStart), selectedTimeZone);
+            manuallyStartedScheduledTimersRef.current.add(`${id}:${scheduledAt}`);
+          }
+        }
+        const currentlyRunning = activeTimerState?.isRunning;
+        if (currentlyRunning && activeTimerId && activeTimerId !== id) {
+          try { postSharedMessage(CONTROL_CHANNEL, { targetId: activeTimerId, command: 'PAUSE' }); postSharedMessage(CONTROL_CHANNEL, { command: 'PAUSE_ALL_EXCEPT', payload: id }); } catch { /* ignore */ }
+          window.dispatchEvent(new CustomEvent('stage-timer-pause-all-except', { detail: id }));
+        }
+        setActiveTimerId(id);
+      }}
+      onSync={setActiveTimerState}
+      onAddAbove={() => addTimer(index)}
+      onAddBelow={() => addTimer(index + 1)}
+      onDuplicate={() => duplicateTimer(id, index)}
+      onDelete={() => { deleteTimer(id); setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) }))); }}
+      onApplyToAll={applyToAllSettings}
+      onSettingsUpdate={() => { setSettingsVersion(v => v + 1); markTimerChanged(); }}
+    />
+  );
+
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
@@ -2554,6 +2657,7 @@ function App() {
                   setIsNewRoomDraft(true);
                   setCurrentRoomName('New Room');
                   setTimerIds([]);
+                  setTimerHeaders([]);
                   setActiveTimerId('');
                   setActiveTimerState(null);
                   setMessages([{ id: '1', text: '', color: '#ffffff' }]);
@@ -2586,11 +2690,17 @@ function App() {
       remapTimerId(sourceTimerId),
       normalizeTimerSettingsForTransfer((settings && typeof settings === 'object') ? settings as Record<string, any> : {}),
     ]));
+    const timerHeaders = Array.isArray(room.timerHeaders) ? room.timerHeaders.map((header: TimerHeader) => ({
+      ...header,
+      id: createId('imported_header'),
+      timerIds: (header.timerIds || []).map(remapTimerId),
+    })) : [];
     return {
       ...room,
       id: importedRoomId,
       timerIds,
       activeTimerId: room.activeTimerId ? remapTimerId(room.activeTimerId) : '',
+      timerHeaders,
       timerSettings,
     } as Room;
   });
@@ -2613,7 +2723,7 @@ function App() {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
-                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
+                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
                         const exportedRooms = activeRoomSnapshot
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
@@ -2890,71 +3000,32 @@ function App() {
                   </div>
                 )}
               </div></div></div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}><SortableContext items={timerIds} strategy={verticalListSortingStrategy}><div className="space-y-4">{timerIds.map((id, index) => (              <TimerRow
-                key={id}
-                id={id}
-                index={index}
-                isActionsOpen={openActionsTimerId === id}
-                onActionsToggle={() => {
-                  setOpenTimerPanel(null);
-                  setIsTimersMenuOpen(false);
-                  setOpenActionsTimerId(current => current === id ? null : id);
-                }}
-                onCloseActions={() => setOpenActionsTimerId(null)}
-                openPanel={openTimerPanel?.timerId === id ? openTimerPanel.panel : null}
-                onPanelOpen={(panel) => {
-                  setOpenActionsTimerId(null);
-                  setOpenTimerPanel({ timerId: id, panel });
-                }}
-                onPanelClose={() => {
-                  setOpenTimerPanel(current => current?.timerId === id ? null : current);
-                }}
-                isActive={activeTimerId === id}
-                scheduledStart={schedule[id]?.start ?? null}
-                formatTime={formatScheduledTime}
-                selectedTimeZone={selectedTimeZone}
-                onActivate={(manualStart = false) => {
-                  if (manualStart) {
-                    const settings = id === activeTimerId && activeTimerState
-                      ? activeTimerState.settings
-                      : readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
-                    if (settings?.scheduledStart !== null && Number.isFinite(Number(settings?.scheduledStart))) {
-                      const scheduledDateForToday = new Intl.DateTimeFormat('en-CA', { timeZone: selectedTimeZone }).format(new Date());
-                      const scheduledDate = settings.scheduledStartDate || scheduledDateForToday;
-                      const scheduledAt = getZonedDateTimeTimestamp(scheduledDate, Number(settings.scheduledStart), selectedTimeZone);
-                      manuallyStartedScheduledTimersRef.current.add(`${id}:${scheduledAt}`);
-                    }
-                  }
-                  // When a different timer is selected, stop the currently
-                  // playing one so only one timer runs at a time, then move
-                  // the selection to the newly chosen timer.
-                  const currentlyRunning = activeTimerState?.isRunning;
-                  if (currentlyRunning && activeTimerId && activeTimerId !== id) {
-                    try {
-                      postSharedMessage(CONTROL_CHANNEL, { targetId: activeTimerId, command: 'PAUSE' });
-                      postSharedMessage(CONTROL_CHANNEL, { command: 'PAUSE_ALL_EXCEPT', payload: id });
-                    } catch { /* ignore */ }
-                    window.dispatchEvent(new CustomEvent('stage-timer-pause-all-except', { detail: id }));
-                  }
-                  setActiveTimerId(id);
-                }}
-                onSync={setActiveTimerState}
-                onAddAbove={() => addTimer(index)}
-                onAddBelow={() => addTimer(index + 1)}
-                onDuplicate={() => duplicateTimer(id, index)}
-                onDelete={() => deleteTimer(id)}
-                onApplyToAll={applyToAllSettings}
-                onSettingsUpdate={() => { setSettingsVersion(v => v + 1); markTimerChanged(); }}
-              />))}</div></SortableContext></DndContext>
-          <div className="mt-10 flex justify-center">
-            <button 
-              type="button" 
-              onClick={() => addTimer()} 
-              title="Add a new timer"
-              className="flex items-center gap-2 rounded-lg border border-[#444] bg-[#262626] px-6 py-2 text-[14px] font-bold text-white hover:bg-[#2d2d2d] hover:border-[#555] transition-all shadow-md active:scale-95"
-            >
-              + Add Timer
-            </button>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+            <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {timerHeaders.map((header) => (
+                  <div key={header.id} className="space-y-2">
+                    <TimerHeaderRow
+                      header={header}
+                      onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
+                      onRename={(title) => updateTimerHeader(header.id, { title })}
+                      onDelete={() => deleteTimerHeader(header.id)}
+                      onAddTimer={() => {
+                        const newId = addTimer();
+                        setTimerHeaders(headers => headers.map(item => item.id === header.id ? { ...item, timerIds: [...item.timerIds, newId] } : item));
+                      }}
+                    />
+                    {!header.collapsed && <div className="ml-4 space-y-3 border-l border-[#333] pl-3">{header.timerIds.filter(id => timerIds.includes(id)).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>}
+                  </div>
+                ))}
+                <div className="space-y-3">{timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id))).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>
+              </div>
+            </SortableContext>
+          </DndContext>
+          <div className="mt-10 flex items-center gap-4 rounded-lg border border-[#333] bg-[#191919] p-3 shadow-inner">
+            <span className="shrink-0 px-1 text-[13px] font-bold uppercase tracking-wider text-[#8a8a8a]">Quick Actions</span>
+            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg border border-[#666] bg-[#5b5b5b] px-4 text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_12px_rgba(255,255,255,0.12)] hover:bg-[#686868] active:scale-[0.99]"><IconAddTimer size={24} /> Add New Timer</button>
+            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-12 min-w-0 flex-1 items-center justify-center gap-3 rounded-lg border border-[#666] bg-[#5b5b5b] px-4 text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_12px_rgba(255,255,255,0.12)] hover:bg-[#686868] active:scale-[0.99]"><IconLayers size={24} /> Add New Section</button>
           </div>
         </main>
 
