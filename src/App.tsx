@@ -1591,8 +1591,12 @@ function App() {
   const toggleAllTimers = () => setSelectedTimerIds(allTimersSelected ? [] : timerIds);
   const toggleAllMessages = () => setSelectedMessageIds(allMessagesSelected ? [] : messages.map(message => message.id));
   const [timerChangesNeedSave, setTimerChangesNeedSave] = useState(false);
-  const markTimerChanged = useCallback(() => setTimerChangesNeedSave(true), []);
+  const markTimerChanged = useCallback(() => {
+    writeStorageItem('stage-timer-unsaved-draft', '1');
+    setTimerChangesNeedSave(true);
+  }, []);
   const draftBaselineSignatureRef = useRef<string | null>(null);
+  const initialRoomRestoredRef = useRef(false);
 
   const currentRoomSignature = useMemo(() => {
     void settingsVersion;
@@ -1647,15 +1651,69 @@ function App() {
 
   const hasUnsavedChanges = timerChangesNeedSave;
 
+  const restoreUnsavedDraft = useCallback(() => {
+    const savedTimerIds = savedRoom?.timerIds || [];
+    const savedHeaders = (savedRoom?.timerHeaders || []).map(header => ({
+      ...header,
+      timerIds: (header.timerIds || []).filter(id => savedTimerIds.includes(id)),
+    }));
+    const savedTopLevelItems = savedRoom?.timerTopLevelItems || [
+      ...savedTimerIds.filter(id => !savedHeaders.some(header => header.timerIds.includes(id))),
+      ...savedHeaders.map(header => `header:${header.id}`),
+    ];
+    const knownTimerIds = new Set(rooms.flatMap(room => room.timerIds || []));
+    savedTimerIds.forEach(id => knownTimerIds.add(id));
+
+    // Remove timer state created by an unsaved add/duplicate. Never remove a
+    // timer that belongs to another saved room because IDs may be shared.
+    getStorageKeys().forEach(key => {
+      if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_') || key.startsWith('timerLog_')) {
+        const timerId = key.substring(key.indexOf('_') + 1);
+        if (!knownTimerIds.has(timerId)) removeStorageItem(key);
+      }
+    });
+
+    if (savedRoom) {
+      Object.entries(savedRoom.timerSettings || {}).forEach(([id, settings]) => {
+        writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
+      });
+      writeStorageItem('stage-timer-current-id', JSON.stringify(savedRoom.id));
+      writeStorageItem('stage-timer-current-name', JSON.stringify(savedRoom.name));
+      writeStorageItem('stage-timer-timer-ids', JSON.stringify(savedTimerIds));
+      writeStorageItem('stage-timer-timer-headers', JSON.stringify(savedHeaders));
+      writeStorageItem('stage-timer-timer-top-level-items', JSON.stringify(savedTopLevelItems));
+      writeStorageItem('stage-timer-active-id', JSON.stringify(savedRoom.activeTimerId || savedTimerIds[0] || ''));
+      writeStorageItem('stage-timer-messages', JSON.stringify(savedRoom.messages || [{ id: '1', text: '', color: '#ffffff' }]));
+      removeStorageItem('stage-timer-unsaved-draft');
+      return;
+    }
+
+    // A new room has no saved snapshot, so discard its draft completely.
+    writeStorageItem('stage-timer-current-id', JSON.stringify(null));
+    writeStorageItem('stage-timer-current-name', JSON.stringify('Unnamed'));
+    writeStorageItem('stage-timer-timer-ids', JSON.stringify([]));
+    writeStorageItem('stage-timer-timer-headers', JSON.stringify([]));
+    writeStorageItem('stage-timer-timer-top-level-items', JSON.stringify([]));
+    writeStorageItem('stage-timer-active-id', JSON.stringify(''));
+    writeStorageItem('stage-timer-messages', JSON.stringify([{ id: '1', text: '', color: '#ffffff' }]));
+    removeStorageItem('stage-timer-unsaved-draft');
+  }, [rooms, savedRoom]);
+
   useEffect(() => {
     if (!hasUnsavedChanges) return undefined;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      restoreUnsavedDraft();
       event.preventDefault();
       event.returnValue = '';
     };
+    const handlePageHide = () => restoreUnsavedDraft();
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges]);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [hasUnsavedChanges, restoreUnsavedDraft]);
 
   const { wallClock, timeZone, selectedTimeZone, setSelectedTimeZone } = useTimer('global-helper');
 
@@ -2301,6 +2359,36 @@ function App() {
     setIsRoomMenuOpen(false);
   }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
+  // Live edits are kept in localStorage for cross-tab timer operation, but the
+  // saved room snapshot is the source of truth across an app restart. This
+  // restores rows/settings that were changed or deleted without pressing Save.
+  useEffect(() => {
+    if (initialRoomRestoredRef.current) return;
+    if (rooms.length === 0 && !currentRoomId) {
+      initialRoomRestoredRef.current = true;
+      return;
+    }
+    const savedRoomAtStartup = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
+    if (savedRoomAtStartup) {
+      initialRoomRestoredRef.current = true;
+      loadRoom(savedRoomAtStartup);
+      setTimerChangesNeedSave(false);
+      return;
+    }
+    if (!currentRoomId) {
+      initialRoomRestoredRef.current = true;
+      setIsNewRoomDraft(true);
+      setCurrentRoomName('Unnamed');
+      setTimerIds([]);
+      setTimerHeaders([]);
+      setTimerTopLevelItems([]);
+      setActiveTimerId('');
+      setActiveTimerState(null);
+      setMessages([{ id: '1', text: '', color: '#ffffff' }]);
+      setTimerChangesNeedSave(false);
+    }
+  }, [rooms, currentRoomId, loadRoom, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
+
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
     const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
@@ -2318,6 +2406,7 @@ function App() {
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
     const nextRooms = mergeItemById(latestRooms, roomData);
     setRooms(nextRooms);
+    removeStorageItem('stage-timer-unsaved-draft');
     setTimerChangesNeedSave(false);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
@@ -2801,14 +2890,18 @@ function App() {
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
       {sectionDeleteTarget && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="section-delete-title">
-        <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] p-5 shadow-2xl">
-          <button type="button" onClick={() => setSectionDeleteTarget(null)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-[#999] hover:bg-[#383838] hover:text-white" aria-label="Close delete section dialog" title="Close">×</button>
-          <h2 id="section-delete-title" className="pr-8 text-[16px] font-bold text-white">Delete “{sectionDeleteTarget.title}”?</h2>
-          <p className="mt-2 text-[13px] leading-5 text-[#aaa]">This section contains {sectionDeleteTarget.timerIds.filter(id => timerIds.includes(id)).length} timer row(s). Choose what should happen to them.</p>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => setSectionDeleteTarget(null)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-3 py-2 text-[13px] text-white hover:bg-[#383838]">Cancel</button>
-            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, false)} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-3 py-2 text-[13px] font-bold text-white hover:bg-[#315276]">Delete Section Only</button>
-            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, true)} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-3 py-2 text-[13px] font-bold text-[#ffb0b0] hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+        <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
+          <button type="button" onClick={() => setSectionDeleteTarget(null)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close delete section dialog" title="Close"><IconClose size={16} /></button>
+          <div className="flex items-center gap-3 pr-8">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#ff8b8b]"><IconTrash size={22} /></span>
+            <h2 id="section-delete-title" className="text-[17px] font-bold tracking-tight text-white">Delete “{sectionDeleteTarget.title}”?</h2>
+          </div>
+          <div className="my-4 h-px bg-[#333]" />
+          <p className="text-[13px] leading-5 text-[#aaa]">This section contains <strong className="font-bold text-white">{sectionDeleteTarget.timerIds.filter(id => timerIds.includes(id)).length}</strong> timer row(s). Choose what should happen to them.</p>
+          <div className="mt-4 flex flex-col gap-2">
+            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, true)} className="h-10 rounded-md border border-[#8b3d3d] bg-[#542626] px-3 text-[13px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, false)} className="h-10 rounded-md border border-[#4b79a8] bg-[#263d59] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
+            <button type="button" onClick={() => setSectionDeleteTarget(null)} className="h-10 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
           </div>
         </div>
       </div>}
@@ -2909,7 +3002,7 @@ function App() {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
-                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
+                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
                         const exportedRooms = activeRoomSnapshot
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
@@ -3141,7 +3234,7 @@ function App() {
             {isTimerSelectMode ? (
               <div className="flex min-w-0 items-center gap-2">
                 <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
-                <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 items-center gap-1 rounded border border-[#444] bg-[#2d2d2d] px-2 text-[13px] text-white hover:bg-[#383838]"><IconCheckbox checked={allTimersSelected} size={13} /> {allTimersSelected ? 'Deselect All' : 'Select All'}</button>
+                <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 w-8 items-center justify-center gap-1 rounded border border-[#444] bg-[#2d2d2d] px-0 text-[13px] text-white hover:bg-[#383838] sm:w-auto sm:justify-start sm:px-2"><IconCheckbox checked={allTimersSelected} size={13} /><span className="hidden sm:inline">{allTimersSelected ? 'Deselect All' : 'Select All'}</span></button>
                 <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedTimerIds.length} of {timerIds.length} selected</span>
               </div>
             ) : (
@@ -3198,8 +3291,8 @@ function App() {
                 )}
               </div>
               {isTimerSelectMode && <>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#444] bg-[#2d2d2d] px-2.5 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /> Delete</button>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#444] bg-[#2d2d2d] px-2.5 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /> Duplicate</button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconDuplicate size={15} /><span className="hidden sm:inline">Duplicate</span></button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
               </>}
               </div></div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
