@@ -1585,6 +1585,7 @@ function App() {
   const [selectedTimerIds, setSelectedTimerIds] = useState<string[]>([]);
   const [isMessageSelectMode, setIsMessageSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const [sectionDeleteTarget, setSectionDeleteTarget] = useState<TimerHeader | null>(null);
   const allTimersSelected = timerIds.length > 0 && selectedTimerIds.length === timerIds.length;
   const allMessagesSelected = messages.length > 0 && selectedMessageIds.length === messages.length;
   const toggleAllTimers = () => setSelectedTimerIds(allTimersSelected ? [] : timerIds);
@@ -2012,9 +2013,35 @@ function App() {
     if (hasActualChange && Object.keys(updates).some(key => key !== 'collapsed')) markTimerChanged();
   };
 
-  const deleteTimerHeader = (id: string) => {
-    setTimerHeaders((headers) => headers.filter(header => header.id !== id));
+  const deleteTimerHeader = (id: string, deleteTimers = false) => {
+    const header = timerHeaders.find(item => item.id === id);
+    if (!header) return;
+    const childIds = header.timerIds.filter(timerId => timerIds.includes(timerId));
+    if (deleteTimers) {
+      childIds.forEach(timerId => {
+        removeStorageItem(`timerSettings_${timerId}`);
+        removeStorageItem(`timerSeconds_${timerId}`);
+        removeStorageItem(`timerSync_${timerId}`);
+        removeStorageItem(`timerLog_${timerId}`);
+        try { postSharedMessage(CONTROL_CHANNEL, { targetId: timerId, command: 'DESTROY' }); } catch { /* ignore */ }
+      });
+      setTimerIds(ids => ids.filter(timerId => !childIds.includes(timerId)));
+      setSelectedTimerIds(ids => ids.filter(timerId => !childIds.includes(timerId)));
+      if (childIds.includes(activeTimerId)) {
+        setActiveTimerId('');
+        setActiveTimerState(null);
+      }
+    } else {
+      setTimerTopLevelItems(items => {
+        const next = items.filter(item => item !== `header:${id}`);
+        const headerIndex = items.indexOf(`header:${id}`);
+        next.splice(Math.max(0, Math.min(headerIndex, next.length)), 0, ...childIds);
+        return next;
+      });
+    }
+    setTimerHeaders(headers => headers.filter(item => item.id !== id));
     markTimerChanged();
+    setSectionDeleteTarget(null);
   };
 
   const addTimer = (atIndex?: number) => {
@@ -2773,6 +2800,18 @@ function App() {
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
+      {sectionDeleteTarget && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="section-delete-title">
+        <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] p-5 shadow-2xl">
+          <button type="button" onClick={() => setSectionDeleteTarget(null)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[18px] leading-none text-[#999] hover:bg-[#383838] hover:text-white" aria-label="Close delete section dialog" title="Close">×</button>
+          <h2 id="section-delete-title" className="pr-8 text-[16px] font-bold text-white">Delete “{sectionDeleteTarget.title}”?</h2>
+          <p className="mt-2 text-[13px] leading-5 text-[#aaa]">This section contains {sectionDeleteTarget.timerIds.filter(id => timerIds.includes(id)).length} timer row(s). Choose what should happen to them.</p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => setSectionDeleteTarget(null)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-3 py-2 text-[13px] text-white hover:bg-[#383838]">Cancel</button>
+            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, false)} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-3 py-2 text-[13px] font-bold text-white hover:bg-[#315276]">Delete Section Only</button>
+            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, true)} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-3 py-2 text-[13px] font-bold text-[#ffb0b0] hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+          </div>
+        </div>
+      </div>}
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
         <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors text-center sm:text-left" />
         <div className="flex flex-wrap items-center justify-center gap-2">
@@ -3174,7 +3213,7 @@ function App() {
                       header={header}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
-                      onDelete={() => deleteTimerHeader(header.id)}
+                      onDelete={() => setSectionDeleteTarget(header)}
                       onAddTimer={() => {
                         const newId = addTimer();
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
