@@ -106,6 +106,11 @@
   container-type: inline-size;
 }
 
+/* Keep the timer list scrollbar beside the content instead of overlaying it. */
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+}
+
 /* Scheduled time is reserved for wide desktop layouts only. */
 .timer-row-scheduled {
   display: none !important;

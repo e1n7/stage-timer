@@ -10,13 +10,11 @@ import { mergeItemById, mergeItemsById } from './lib/roomStorage';
 import {
   DndContext,
   closestCenter,
-  pointerWithin,
   type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -30,8 +28,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const collisionDetectionStrategy: CollisionDetection = (args) => {
-  const pointerCollisions = pointerWithin(args);
-  return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
+  return closestCenter(args);
 };
 
 const writeStorageItem = (key: string, value: string): boolean => {
@@ -944,11 +941,11 @@ interface TimerHeader {
 }
 
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: `header:${header.id}` });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: `header:${header.id}` });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} className={`rounded-lg border px-3 py-2 transition-colors ${isOver ? 'border-[#4a9eff] bg-[#23324a]' : 'border-[#3b3b3b] bg-[#202020]'}`}>
+    <div ref={setNodeRef} {...attributes} {...listeners} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`rounded-lg border px-3 py-2 transition-colors ${isOver ? 'border-[#4a9eff] bg-[#23324a]' : 'border-[#3b3b3b] bg-[#202020]'}`}>
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
@@ -960,11 +957,6 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
       </div>
     </div>
   );
-};
-
-const TimerTopLevelDropZone = ({ headerId, placement }: { headerId: string; placement: 'before' | 'after' }) => {
-  const { setNodeRef, isOver } = useDroppable({ id: `${placement}-header:${headerId}` });
-  return <div ref={setNodeRef} className={`h-0 rounded transition-colors ${isOver ? 'h-1 bg-[#4a9eff]' : 'bg-transparent'}`} aria-hidden="true" />;
 };
 
 interface MessageRowProps {
@@ -2016,23 +2008,32 @@ function App() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     const activeId = active.id as string;
+    const activeIsHeader = activeId.startsWith('header:');
+    if (activeIsHeader) {
+      const overId = over ? String(over.id) : null;
+      let targetItem: string | null = null;
+      if (overId?.startsWith('header:')) {
+        targetItem = overId;
+      } else if (overId) {
+        const targetHeader = timerHeaders.find(header => header.timerIds.includes(overId));
+        targetItem = targetHeader ? `header:${targetHeader.id}` : overId;
+      }
+
+      if (targetItem && targetItem !== activeId && topLevelItems.includes(targetItem)) {
+        setTimerTopLevelItems((items) => {
+          const next = items.filter(item => item !== activeId);
+          const targetIndex = next.indexOf(targetItem as string);
+          const insertIndex = targetIndex === -1 ? next.length : targetIndex;
+          next.splice(insertIndex, 0, activeId);
+          return next;
+        });
+        markTimerChanged();
+      }
+      return;
+    }
     if (over && String(over.id).startsWith('header:')) {
       const headerId = String(over.id).slice('header:'.length);
       setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.id === headerId ? [...new Set([...header.timerIds, activeId])] : header.timerIds.filter(id => id !== activeId) })));
-      markTimerChanged();
-      return;
-    }
-    if (over && (String(over.id).startsWith('before-header:') || String(over.id).startsWith('after-header:'))) {
-      const placement = String(over.id).startsWith('after-header:') ? 'after' : 'before';
-      const headerItem = `header:${String(over.id).slice(`${placement}-header:`.length)}`;
-      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
-      setTimerTopLevelItems((items) => {
-        const next = items.filter(item => item !== activeId);
-        const targetIndex = next.indexOf(headerItem);
-        const insertIndex = targetIndex === -1 ? next.length : targetIndex + (placement === 'after' ? 1 : 0);
-        next.splice(insertIndex, 0, activeId);
-        return next;
-      });
       markTimerChanged();
       return;
     }
@@ -3297,8 +3298,8 @@ function App() {
           </div>
         </aside>
 
-        <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-6 bg-[#141414] h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'timers' ? 'flex' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
-          <div className="mb-8 flex items-center justify-between">
+        <main className={`timer-panel min-w-0 flex-1 lg:min-w-[560px] flex-col px-4 sm:px-6 lg:px-10 py-3 lg:py-3 bg-[#141414] h-auto lg:h-full lg:overflow-hidden ${mobileSection === 'timers' ? 'flex' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
+          <div className="mb-4 flex shrink-0 items-center justify-between">
             {isTimerSelectMode ? (
               <div className="flex min-w-0 items-center gap-2">
                 <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
@@ -3363,15 +3364,16 @@ function App() {
                 <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
               </>}
               </div></div>
+          <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
           <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
-            <SortableContext items={topLevelItems.filter(item => timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)))} strategy={verticalListSortingStrategy}>
+            <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {topLevelItems.map(item => {
                   if (item.startsWith('header:')) {
                     const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
                     if (!header) return null;
                     const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
-                    return <div key={header.id} className="space-y-0"><TimerTopLevelDropZone headerId={header.id} placement="before" /><TimerHeaderRow
+                    return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
@@ -3381,7 +3383,7 @@ function App() {
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
                         setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id)))}</div></SortableContext>}<TimerTopLevelDropZone headerId={header.id} placement="after" /></div>;
+                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id)))}</div></SortableContext>}</div>;
                   }
                   return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
                 })}
@@ -3391,6 +3393,7 @@ function App() {
           <div className="mx-auto mt-10 flex w-[calc(100%-2rem)] max-w-[30rem] flex-nowrap items-center justify-center gap-3 rounded-lg border border-[#333] bg-[#191919]/95 p-3 shadow-inner">
             <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add New Timer</span></button>
             <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconLayers size={18} /> <span className="whitespace-nowrap">Add New Section</span></button>
+          </div>
           </div>
         </main>
 
