@@ -8,6 +8,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import { readJsonStorage } from './lib/storage';
 import { mergeItemById, mergeItemsById } from './lib/roomStorage';
+import { formatTimeOfDay } from './lib/time';
 import {
   DndContext,
   closestCenter,
@@ -16,7 +17,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -950,11 +953,13 @@ interface TimerHeader {
 }
 
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id: `header:${header.id}` });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}` });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`rounded-lg border px-3 py-2 transition-colors ${isOver ? 'border-[#4a9eff] bg-[#23324a]' : 'border-[#3b3b3b] bg-[#202020]'}`}>
+    <div ref={setNodeRef} {...attributes} {...listeners} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className="relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors">
+      <DropZone id={`drop:before:header:${header.id}`} position="before" />
+      <DropZone id={`drop:after:header:${header.id}`} position="after" />
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
@@ -966,6 +971,11 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
       </div>
     </div>
   );
+};
+
+const DropZone = ({ id, position }: { id: string; position: 'before' | 'after' }) => {
+  const { setNodeRef } = useDroppable({ id });
+  return <div ref={setNodeRef} aria-hidden="true" className="pointer-events-auto absolute inset-x-0 z-50 h-5" style={position === 'before' ? { top: -10 } : { bottom: -10 }} />;
 };
 
 interface MessageRowProps {
@@ -1268,6 +1278,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }}
       className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
+      <DropZone id={`drop:before:${id}`} position="before" />
+      <DropZone id={`drop:after:${id}`} position="after" />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
@@ -1927,6 +1939,8 @@ function App() {
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const gridTrackRef = useRef<HTMLDivElement>(null);
+  const timerListRef = useRef<HTMLDivElement>(null);
+  const [dragPreview, setDragPreview] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
 
 
@@ -2014,10 +2028,100 @@ function App() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    const list = timerListRef.current;
+    if (!list || !over || String(active.id) === String(over.id)) {
+      setDragPreview(null);
+      return;
+    }
+    const activeRect = active.rect.current.initial || active.rect.current.translated;
+    if (!activeRect) {
+      setDragPreview(null);
+      return;
+    }
+    const listRect = list.getBoundingClientRect();
+    const dropZone = String(over.id).match(/^drop:(before|after):(.+)$/);
+    if (dropZone) {
+      const position = dropZone[1];
+      const zoneCenter = (over.rect.top + over.rect.bottom) / 2;
+      setDragPreview({
+        top: zoneCenter - listRect.top - (position === 'before' ? activeRect.height + 8 : -8),
+        left: over.rect.left - listRect.left,
+        width: activeRect.width,
+        height: activeRect.height,
+      });
+      return;
+    }
+    const movingDown = Boolean(active.rect.current.translated && active.rect.current.translated.top > over.rect.top + over.rect.height / 2);
+    setDragPreview({
+      top: (movingDown ? over.rect.bottom : over.rect.top) - listRect.top,
+      left: over.rect.left - listRect.left,
+      width: activeRect.width,
+      height: activeRect.height,
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragPreview(null);
     const { active, over } = event;
     const activeId = active.id as string;
     const activeIsHeader = activeId.startsWith('header:');
+    const dropZone = over ? String(over.id).match(/^drop:(before|after):(.+)$/) : null;
+    if (dropZone) {
+      const insertAfter = dropZone[1] === 'after';
+      const targetId = dropZone[2];
+      const targetHeader = targetId.startsWith('header:')
+        ? undefined
+        : timerHeaders.find(header => header.timerIds.includes(targetId));
+      const targetTopLevelId = targetId.startsWith('header:') || !targetHeader ? targetId : `header:${targetHeader.id}`;
+
+      if (activeIsHeader) {
+        if (activeId !== targetTopLevelId && topLevelItems.includes(targetTopLevelId)) {
+          setTimerTopLevelItems(items => {
+            const next = items.filter(item => item !== activeId);
+            const targetIndex = next.indexOf(targetTopLevelId);
+            next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
+            return next;
+          });
+          markTimerChanged();
+        }
+        return;
+      }
+
+      if (targetHeader) {
+        setTimerHeaders(headers => headers.map(header => {
+          const withoutActive = header.timerIds.filter(id => id !== activeId);
+          if (header.id !== targetHeader.id) return { ...header, timerIds: withoutActive };
+          const targetIndex = withoutActive.indexOf(targetId);
+          withoutActive.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
+          return { ...header, timerIds: withoutActive };
+        }));
+        setTimerTopLevelItems(items => items.filter(item => item !== activeId));
+        markTimerChanged();
+        return;
+      }
+
+      if (topLevelItems.includes(targetTopLevelId) && activeId !== targetTopLevelId) {
+        setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
+        setTimerTopLevelItems(items => {
+          const next = items.filter(item => item !== activeId);
+          const targetIndex = next.indexOf(targetTopLevelId);
+          next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
+          return next;
+        });
+        if (!targetId.startsWith('header:')) {
+          setTimerIds(items => {
+            const next = items.filter(id => id !== activeId);
+            const targetIndex = next.indexOf(targetTopLevelId);
+            next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
+            return next;
+          });
+        }
+        markTimerChanged();
+      }
+      return;
+    }
     if (activeIsHeader) {
       const overId = over ? String(over.id) : null;
       let targetItem: string | null = null;
@@ -2610,6 +2714,7 @@ function App() {
         ...activeTimerState.syncState,
         totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
         mode: activeTimerState.syncState.mode,
+        timeZone: selectedTimeZone,
         segments: activeTimerState.settings.segments,
         fontHeight: activeTimerState.settings.fontHeight || 1.6,
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
@@ -2628,7 +2733,7 @@ function App() {
         ...getActiveMessage()
       });
     }
-  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, timerIds.length, getActiveMessage]);
+  }, [activeTimerId, activeTimerState, syncOutput, isBlackout, timerIds.length, getActiveMessage, selectedTimeZone]);
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
@@ -2636,6 +2741,7 @@ function App() {
         ...activeTimerState.syncState,
         totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
         mode: activeTimerState.syncState.mode,
+        timeZone: selectedTimeZone,
         segments: activeTimerState.settings.segments,
         fontHeight: activeTimerState.settings.fontHeight || 1.6,
         fontWidth: activeTimerState.settings.fontWidth || 1.0,
@@ -2868,7 +2974,11 @@ function App() {
   const hoverDisplaySeconds = hoverTime !== null
     ? (activeMode === 'countup' ? activeTotalTime - hoverTime : hoverTime)
     : renderedDisplaySeconds;
-  const currentTime = activeTimerState ? formatClock(renderedDisplaySeconds) : '--:--';
+  const currentTime = activeTimerState
+    ? activeMode === 'time'
+      ? formatTimeOfDay(renderedDisplaySeconds, selectedTimeZone)
+      : formatClock(renderedDisplaySeconds)
+    : '--:--';
 
   const getDashboardTextColor = () => {
     if (!activeTimerId) return '#333';
@@ -3137,7 +3247,9 @@ function App() {
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : activeTimerState?.isRunning ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
-                    {hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)}.{Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}
+                    {activeMode === 'time'
+                      ? formatTimeOfDay(hoverDisplaySeconds, selectedTimeZone)
+                      : (hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)) + `.${Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}`}
                   </span>
                 </div>
               </div>
@@ -3374,9 +3486,9 @@ function App() {
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragOver={handleDragOver} onDragCancel={() => setDragPreview(null)} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
+              <div ref={timerListRef} className="relative space-y-2">
                 {topLevelItems.map(item => {
                   if (item.startsWith('header:')) {
                     const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
@@ -3396,6 +3508,7 @@ function App() {
                   }
                   return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
                 })}
+                {dragPreview && <div aria-hidden="true" className="pointer-events-none absolute z-40 rounded-lg border-2 border-dashed border-[#4a9eff] bg-[#4a9eff]/10 shadow-[0_0_0_1px_rgba(74,158,255,0.18),inset_0_0_18px_rgba(74,158,255,0.08)]" style={{ top: dragPreview.top, left: dragPreview.left, width: dragPreview.width, height: dragPreview.height }} />}
               </div>
             </SortableContext>
           </DndContext>

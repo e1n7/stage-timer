@@ -3,6 +3,7 @@ import { ProgressBar, ProgressSegment } from './ProgressBar';
 import { MessageStage } from './MessageStage';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage } from '../lib/storage';
+import { formatTimeOfDay } from '../lib/time';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -83,6 +84,7 @@ export const TimerOutput = () => {
   const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
   const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
   const [title, setTitle] = useState<string>('');
+  const [timeZone, setTimeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -114,6 +116,7 @@ export const TimerOutput = () => {
       if ('totalTime' in data) setTotalTime(Math.max(0, Number(data.totalTime) || 0));
       if ('segments' in data) setSegments(Array.isArray(data.segments) ? data.segments : []);
       if ('title' in data) setTitle(data.title || '');
+      if (typeof data.timeZone === 'string' && data.timeZone) setTimeZone(data.timeZone);
       if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
       if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
       if ('messageText' in data) {
@@ -168,14 +171,14 @@ export const TimerOutput = () => {
 
           const normalizedInitialSeconds = data.mode === 'countup'
             ? Math.max(0, Number(data.initialSeconds) || 0)
-            : (data.initialSeconds ?? DEFAULT_TIME);
+            : data.mode === 'time' ? DEFAULT_TIME : (data.initialSeconds ?? DEFAULT_TIME);
           syncStateRef.current.initialSeconds = normalizedInitialSeconds;
 
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
-            const next = data.mode === 'countdown'
-              ? normalizedInitialSeconds - elapsed
-              : data.mode === 'time'
+          const next = data.mode === 'countdown'
+            ? normalizedInitialSeconds - elapsed
+            : data.mode === 'time'
                 ? Date.now() / 1000
                 : normalizedInitialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
@@ -227,12 +230,15 @@ export const TimerOutput = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  const progressSeconds = syncStateRef.current.mode === 'countup'
+  const progressSeconds = syncStateRef.current.mode === 'time'
+    ? 0
+    : syncStateRef.current.mode === 'countup'
     ? Math.max(0, totalTime - seconds)
     : seconds;
 
   const getTextColor = () => {
     if (isEmpty) return '#000000';
+    if (syncStateRef.current.mode === 'time') return '#ffffff';
     const rounded = Math.floor(progressSeconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -298,7 +304,11 @@ export const TimerOutput = () => {
                   transformOrigin: 'center center'
                 }}
               >
-                {isEmpty ? '00:00' : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
+                {isEmpty
+                  ? '00:00'
+                  : syncStateRef.current.mode === 'time'
+                    ? formatTimeOfDay(seconds, timeZone)
+                    : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
               </div>
             </div>
           </div>

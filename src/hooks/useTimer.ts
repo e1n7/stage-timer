@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage, writeJsonStorage } from '../lib/storage';
 import { useLocalStorage } from './useLocalStorage';
+import { getTimeOfDayTimestamp } from '../lib/time';
 
 const DEFAULT_TIME = 0;
 const DEFAULT_SETTINGS: TimerSettings = {
@@ -93,7 +94,7 @@ export const useTimer = (id: string = 'default') => {
 
   const [syncState, setSyncState] = useState<SyncState>(() => readJsonStorage<SyncState>(syncKey, {
     startTime: null,
-    initialSeconds: settings.mode === 'countup' ? DEFAULT_TIME : settings.targetDuration,
+    initialSeconds: settings.mode === 'countdown' ? settings.targetDuration : DEFAULT_TIME,
     isRunning: false,
     mode: settings.mode || 'countdown',
     lastUpdated: Date.now(),
@@ -114,7 +115,7 @@ export const useTimer = (id: string = 'default') => {
       setSyncState(prev => ({
         ...prev,
         startTime: prev.isRunning ? Date.now() : null,
-        initialSeconds: nextMode === 'countup' ? DEFAULT_TIME : settings.targetDuration,
+        initialSeconds: nextMode === 'countdown' ? settings.targetDuration : DEFAULT_TIME,
         mode: nextMode,
         lastUpdated: Date.now(),
       }));
@@ -239,12 +240,12 @@ export const useTimer = (id: string = 'default') => {
         currentSeconds = initialSeconds;
       } else {
         const elapsed = (Date.now() - startTime) / 1000;
-        if (mode === 'countdown') {
+        if (mode === 'time') {
+          currentSeconds = getTimeOfDayTimestamp();
+        } else if (mode === 'countdown') {
           currentSeconds = initialSeconds - elapsed;
         } else if (mode === 'countup') {
           currentSeconds = initialSeconds + elapsed;
-        } else {
-          currentSeconds = Date.now() / 1000;
         }
       }
       const rounded = Math.round(currentSeconds * 10) / 10;
@@ -287,7 +288,7 @@ export const useTimer = (id: string = 'default') => {
   const startTimer = useCallback(() => {
     setSyncState({
       startTime: Date.now(),
-      initialSeconds: secondsRef.current,
+      initialSeconds: settingsRef.current.mode === 'time' ? DEFAULT_TIME : secondsRef.current,
       isRunning: true,
       mode: settingsRef.current.mode || 'countdown',
       lastUpdated: Date.now()
@@ -311,7 +312,7 @@ export const useTimer = (id: string = 'default') => {
     setSyncState(prev => ({
       ...prev,
       startTime: null,
-      initialSeconds: mode === 'countup' ? DEFAULT_TIME : settingsRef.current.targetDuration,
+      initialSeconds: mode === 'countdown' ? settingsRef.current.targetDuration : DEFAULT_TIME,
       isRunning: false,
       mode,
       lastUpdated: Date.now(),
@@ -338,7 +339,7 @@ export const useTimer = (id: string = 'default') => {
       const currentSeconds = Number(secondsRef.current) || 0;
       const elapsedPosition = currentMode === 'countdown'
         ? currentDuration - currentSeconds
-        : currentSeconds;
+        : currentMode === 'time' ? 0 : currentSeconds;
       const preservedPosition = Math.max(0, Math.min(nextDuration, elapsedPosition));
       const nextInitialSeconds = nextMode === 'countdown'
         ? Math.max(0, nextDuration - preservedPosition)
@@ -360,9 +361,9 @@ export const useTimer = (id: string = 'default') => {
   const timeZone = selectedTimeZone.replace('_', ' ');
   const timeZoneOffset = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
 
-  const cueFinishDate = new Date(now.getTime() + seconds * 1000);
+  const cueFinishDate = settings.mode === 'time' ? now : new Date(now.getTime() + seconds * 1000);
   const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
-  const overUnder = seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
+  const overUnder = settings.mode === 'time' ? '--:--' : seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
 
   return {
     seconds,
