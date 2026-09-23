@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
+import { JetBrains_Mono } from 'next/font/google';
 import '../src/style.css';
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-jetbrains-mono',
+});
 
 export const metadata: Metadata = {
   title: 'Stage Timer',
@@ -46,11 +52,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body>
+      <body className={jetBrainsMono.variable}>
         <script dangerouslySetInnerHTML={{ __html: versionScript }} />
         {children}
       </body>

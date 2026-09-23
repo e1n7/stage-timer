@@ -268,6 +268,10 @@ export const useTimer = (id: string = 'default') => {
     if (!currentSyncState?.isRunning && currentSeconds === currentSettings.targetDuration) return;
     const duration = currentSettings.mode === 'countdown'
       ? Math.max(0, currentSettings.targetDuration - currentSeconds)
+      : currentSettings.mode === 'time'
+        ? currentSyncState?.startTime
+          ? Math.max(0, (Date.now() - currentSyncState.startTime) / 1000)
+          : 0
       : Math.max(0, currentSeconds);
     if (duration <= 0 || currentSettings.historyLimit <= 0) return;
     const entry: LogEntry = {

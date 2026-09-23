@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useTimer } from './hooks/useTimer';
 import { ProgressBar } from './components/ProgressBar';
@@ -80,7 +81,7 @@ const InfoHint = ({ text }: { text: string }) => {
         onBlur={() => setIsOpen(false)}
         className="inline-flex h-4 w-4 items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#4a9eff]"
       >
-        <img src="/info.svg" alt="" aria-hidden="true" className="h-3.5 w-3.5 invert opacity-75 transition-opacity group-hover:opacity-100" />
+        <Image src="/info.svg" alt="" aria-hidden="true" width={14} height={14} className="h-3.5 w-3.5 invert opacity-75 transition-opacity group-hover:opacity-100" />
       </button>
       <span
         role="tooltip"
@@ -650,29 +651,30 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
   return (
     <ModalPortal>
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between border-b border-[#333] pb-3">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="timer-settings-title" className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 pr-1">
           <div className="flex items-center gap-3">
-            <div className="rounded bg-[#2d2d2d] p-2 text-white"><IconSettings /></div>
-            <h2 className="text-lg font-bold text-white">Settings{localSettings.title ? ` for ${localSettings.title}` : ''}</h2>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#9fc7ff]"><IconSettings size={21} /></span>
+            <h2 id="timer-settings-title" className="text-[17px] font-bold tracking-tight text-white">Timer settings{localSettings.title ? ` for “${localSettings.title}”` : ''}</h2>
           </div>
-          <button onClick={onClose} className="text-xl text-[#8a8a8a] hover:text-white">✕</button>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close timer settings" title="Close"><IconClose size={16} /></button>
         </div>
+        <div className="my-4 h-px bg-[#333]" />
 
         <div className="space-y-4">
-          <div className="flex gap-4">
-            <label className="w-20 text-[13px] text-[#8a8a8a]">Title</label>
-            <input type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[14px] text-white focus:border-[#444] focus:outline-none" />
+          <div className="flex items-center gap-4 border-b border-[#333]/60 pb-3">
+            <label className="w-24 shrink-0 text-[13px] text-[#aaa]">Title</label>
+            <input type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="min-w-0 flex-1 rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[14px] text-white outline-none transition-colors focus:border-[#6b8db5]" />
           </div>
 
         </div>
 
-        <div className="my-4 border-t border-[#333]" />
+        <div className="my-5 h-px bg-[#333]" />
 
         <div className="grid grid-cols-1 gap-8">
           <div className="space-y-4">
-            <h3 className="text-[14px] font-bold text-white">Timing</h3>
+            <h3 className="text-[14px] font-bold tracking-tight text-white">Timing</h3>
             
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
               <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
@@ -792,7 +794,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
           </div>
         </div>
 
-        <div className="mt-12 flex gap-4"><button onClick={onClose} className="flex-1 rounded border border-[#333] bg-[#2d2d2d] py-3 text-[14px] font-bold text-white hover:bg-[#383838]">Cancel</button><button onClick={() => { onConfirm?.(localSettings); onClose(); }} className="flex-1 rounded border border-[#228b3a] bg-[#141414] py-3 text-[14px] font-bold text-[#22c55e] hover:bg-[#1a1a1a]">Confirm</button></div>
+        <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:gap-3"><button type="button" onClick={onClose} className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[14px] font-bold text-white transition-colors hover:bg-[#383838]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-11 flex-1 rounded-md border border-[#2f9e44] px-3 text-[14px] font-bold text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white">Save Settings</button></div>
             </div>
       </div>
     </ModalPortal>
@@ -810,7 +812,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
   return (
     <ModalPortal>
       <div
-        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) onClose();
         }}
@@ -819,10 +821,17 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           role="dialog"
           aria-modal="true"
           aria-labelledby="timer-duration-edit-heading"
-          className="relative w-full max-w-[480px] rounded-lg border border-[#333] bg-[#242424] p-4 shadow-2xl"
+          className="relative w-full max-w-[480px] rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl"
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <h2 id="timer-duration-edit-heading" className="mb-4 text-[16px] font-semibold text-white">{section === 'duration' ? 'Timer settings' : 'Edit timer'}</h2>
+          <div className="flex items-center justify-between gap-3 pr-1">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#9fc7ff]"><IconSettings size={20} /></span>
+              <h2 id="timer-duration-edit-heading" className="text-[17px] font-bold tracking-tight text-white">{section === 'duration' ? 'Timer settings' : 'Edit timer'}</h2>
+            </div>
+            <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close timer settings" title="Close"><IconClose size={16} /></button>
+          </div>
+          <div className="my-4 h-px bg-[#333]" />
 
           {section === 'duration' ? (
             <div className="space-y-4">
@@ -878,11 +887,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
             </div>
           )}
 
-          <div className="mt-5 flex justify-end gap-2 pt-4">
+          <div className="mt-7 flex flex-col gap-2 border-t border-[#333] pt-4 sm:flex-row sm:justify-end sm:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded border border-[#555] px-4 py-2 text-[14px] font-medium text-white/80 hover:bg-[#333] hover:text-white"
+              className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-4 py-2 text-[14px] font-bold text-white transition-colors hover:bg-[#383838] sm:flex-none"
             >
               Cancel
             </button>
@@ -896,7 +905,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
                 });
                 onClose();
               }}
-              className="rounded border border-[#228b3a] bg-[#141414] px-4 py-2 text-[14px] font-medium text-[#22c55e] hover:bg-[#1a1a1a]"
+              className="h-11 flex-1 rounded-md border border-[#2f9e44] px-4 py-2 text-[14px] font-bold text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white sm:flex-none"
             >
               Save
             </button>
@@ -1047,10 +1056,10 @@ const MessageRow = ({
             <button type="button" onClick={() => onUpdateColor(msg.id, '#22c55e')} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#22c55e' ? 'border-[#22c55e]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#22c55e' }} title="Green text"><span aria-hidden="true" className="h-4 w-4 bg-current" style={{ WebkitMaskImage: "url('/colored_text.svg')", maskImage: "url('/colored_text.svg')", WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} /></button>
             <button type="button" onClick={() => onUpdateColor(msg.id, '#fa5252')} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 text-[14px] font-bold transition-all border-b-2 ${msg.color === '#fa5252' ? 'border-[#fa5252]' : 'border-transparent hover:border-[#888]'}`} style={{ color: '#fa5252' }} title="Red text"><span aria-hidden="true" className="h-4 w-4 bg-current" style={{ WebkitMaskImage: "url('/colored_text.svg')", maskImage: "url('/colored_text.svg')", WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} /></button>
             <button type="button" onClick={() => onToggleBold(msg.id)} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 transition-all border-b-2 ${msg.bold ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} title="Bold text" aria-label="Bold text" aria-pressed={msg.bold}>
-              <img src="/bold-letter.svg" alt="" className={`h-4 w-4 invert transition-opacity ${msg.bold ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
+              <Image src="/bold-letter.svg" alt="" width={16} height={16} className={`h-4 w-4 invert transition-opacity ${msg.bold ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
             </button>
             <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} title="Caps Lock text" aria-label="Caps Lock text" aria-pressed={msg.uppercase}>
-              <img src="/caps-lock.svg" alt="" className={`h-4 w-4 invert transition-opacity ${msg.uppercase ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
+              <Image src="/caps-lock.svg" alt="" width={16} height={16} className={`h-4 w-4 invert transition-opacity ${msg.uppercase ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
             </button>
             <button type="button" onClick={(e) => {
               if (isSizeOpen) {
@@ -1062,7 +1071,7 @@ const MessageRow = ({
                 setIsSizeOpen(true);
               }
             }} className="transition-opacity" title="Edit message size" aria-label="Edit message size" aria-expanded={isSizeOpen}>
-              <img src="/filter.svg" alt="" className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
+              <Image src="/filter.svg" alt="" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
             </button>
             {isSizeOpen && sizeAnchor && typeof document !== 'undefined' && createPortal(
               <div className="fixed z-[1000] flex items-center gap-1 rounded border border-[#444] bg-[#1c1c1c] px-2 py-1 shadow-lg" style={{ top: sizeAnchor.top, left: sizeAnchor.left, transform: 'translateY(-100%)' }}>
@@ -1324,7 +1333,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <option value="countdown" className="bg-[#1a1a1a] text-white">Countdown</option>
             <option value="countup" className="bg-[#1a1a1a] text-white">Countup</option>
           </select>
-          <img src="/caret_down.svg" alt="" aria-hidden="true" className="pointer-events-none absolute right-0 h-3 w-3 brightness-0 invert opacity-50" />
+          <Image src="/caret_down.svg" alt="" aria-hidden="true" width={12} height={12} className="pointer-events-none absolute right-0 h-3 w-3 brightness-0 invert opacity-50" />
         </div>
       </div>
 
@@ -1341,7 +1350,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           title="Edit timer title"
           aria-label="Edit timer title"
         >
-          <img src="/edit.svg" alt="" aria-hidden="true" className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
+          <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
         </button>
       </div>
 
@@ -1409,11 +1418,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
               <span aria-hidden="true" className={`pointer-events-none absolute right-3 z-[-1] h-4 w-4 rotate-45 bg-[#242424] ${index < 4 ? '-top-2 border-l border-t border-[#444]' : '-bottom-2 border-r border-b border-[#444]'}`} />
               <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert rotate-180" />
+                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
               </button>
               <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <img src="/caret_down.svg" alt="" aria-hidden="true" className="h-4 w-4 brightness-0 invert" />
+                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert" />
                 <span>Add timer below</span>
               </button>
               <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
@@ -3083,10 +3092,10 @@ function App() {
       <div className="relative flex-1 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
         <div className="order-last flex w-14 shrink-0 flex-col items-center gap-5 border-l border-[#333] bg-[#1a1a1a] pt-8 max-lg:hidden min-[1400px]:hidden">
           <button type="button" onClick={() => setMobileSection('timers')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'timers' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show timers" aria-label="Show timers" aria-pressed={mobileSection === 'timers'}>
-            <img src="/timer_section.svg" alt="" className="h-5 w-5 invert" />
+            <Image src="/timer_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
           <button type="button" onClick={() => setMobileSection('messages')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'messages' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show messages" aria-label="Show messages" aria-pressed={mobileSection === 'messages'}>
-            <img src="/message_section.svg" alt="" className="h-5 w-5 invert" />
+            <Image src="/message_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
         </div>
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
