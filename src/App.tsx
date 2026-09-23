@@ -10,6 +10,8 @@ import { mergeItemById, mergeItemsById } from './lib/roomStorage';
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
+  type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -26,6 +28,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+
+const collisionDetectionStrategy: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
+};
 
 const writeStorageItem = (key: string, value: string): boolean => {
   if (typeof window === 'undefined') return false;
@@ -957,7 +964,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
 
 const TimerTopLevelDropZone = ({ headerId, placement }: { headerId: string; placement: 'before' | 'after' }) => {
   const { setNodeRef, isOver } = useDroppable({ id: `${placement}-header:${headerId}` });
-  return <div ref={setNodeRef} className={`h-2 rounded transition-colors ${isOver ? 'bg-[#4a9eff]' : 'bg-transparent'}`} aria-hidden="true" />;
+  return <div ref={setNodeRef} className={`h-0 rounded transition-colors ${isOver ? 'h-1 bg-[#4a9eff]' : 'bg-transparent'}`} aria-hidden="true" />;
 };
 
 interface MessageRowProps {
@@ -2036,7 +2043,10 @@ function App() {
         const withoutActive = header.timerIds.filter(id => id !== activeId);
         if (header.id !== targetHeader.id) return { ...header, timerIds: withoutActive };
         const targetIndex = withoutActive.indexOf(targetId);
-        const insertIndex = targetIndex === -1 ? withoutActive.length : targetIndex;
+        const activeRect = active.rect.current.translated;
+        const overRect = over.rect;
+        const movingDown = !!activeRect && activeRect.top > overRect.top + overRect.height / 2;
+        const insertIndex = targetIndex === -1 ? withoutActive.length : targetIndex + (movingDown ? 1 : 0);
         withoutActive.splice(insertIndex, 0, activeId);
         return { ...header, timerIds: withoutActive };
       }));
@@ -2044,7 +2054,10 @@ function App() {
       markTimerChanged();
       return;
     }
-    if (over && active.id !== over.id) {
+    const targetIsTopLevel = over
+      && timerTopLevelItems.includes(String(over.id))
+      && !timerHeaders.some(header => header.timerIds.includes(String(over.id)));
+    if (over && active.id !== over.id && targetIsTopLevel) {
       markTimerChanged();
       setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
       setTimerIds((items) => {
@@ -2878,11 +2891,29 @@ function App() {
   ];
   const filteredTimeZones = TIMEZONES.filter((tz) => tz.toLowerCase().includes(timeZoneSearch.trim().toLowerCase()));
 
-  const renderTimerRow = (id: string, index: number) => (
+  const visualTimerOrder = useMemo(() => {
+    const order: string[] = [];
+    topLevelItems.forEach(item => {
+      if (item.startsWith('header:')) {
+        const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
+        header?.timerIds.forEach(timerId => {
+          if (timerIds.includes(timerId) && !order.includes(timerId)) order.push(timerId);
+        });
+      } else if (timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item))) {
+        if (!order.includes(item)) order.push(item);
+      }
+    });
+    timerIds.forEach(timerId => {
+      if (!order.includes(timerId)) order.push(timerId);
+    });
+    return order;
+  }, [topLevelItems, timerHeaders, timerIds]);
+
+  const renderTimerRow = (id: string, displayIndex: number, insertionIndex = timerIds.indexOf(id)) => (
     <TimerRow
       key={id}
       id={id}
-      index={index}
+      index={displayIndex}
       isActionsOpen={openActionsTimerId === id}
       onActionsToggle={() => { setOpenTimerPanel(null); setIsTimersMenuOpen(false); setOpenActionsTimerId(current => current === id ? null : id); }}
       onCloseActions={() => setOpenActionsTimerId(null)}
@@ -2914,9 +2945,9 @@ function App() {
         setActiveTimerId(id);
       }}
       onSync={setActiveTimerState}
-      onAddAbove={() => addTimer(index)}
-      onAddBelow={() => addTimer(index + 1)}
-      onDuplicate={() => duplicateTimer(id, index)}
+      onAddAbove={() => addTimer(insertionIndex)}
+      onAddBelow={() => addTimer(insertionIndex + 1)}
+      onDuplicate={() => duplicateTimer(id, insertionIndex)}
       onDelete={() => { deleteTimer(id); setSelectedTimerIds(current => current.filter(timerId => timerId !== id)); setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) }))); }}
       onApplyToAll={applyToAllSettings}
       onSettingsUpdate={() => { setSettingsVersion(v => v + 1); markTimerChanged(); }}
@@ -3332,14 +3363,15 @@ function App() {
                 <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
               </>}
               </div></div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
-            <SortableContext items={timerIds} strategy={verticalListSortingStrategy}>
-              <div className="space-y-4">
+          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+            <SortableContext items={topLevelItems.filter(item => timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)))} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
                 {topLevelItems.map(item => {
                   if (item.startsWith('header:')) {
                     const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
                     if (!header) return null;
-                    return <div key={header.id} className="space-y-2"><TimerTopLevelDropZone headerId={header.id} placement="before" /><TimerHeaderRow
+                    const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
+                    return <div key={header.id} className="space-y-0"><TimerTopLevelDropZone headerId={header.id} placement="before" /><TimerHeaderRow
                       header={header}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
@@ -3349,9 +3381,9 @@ function App() {
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
                         setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />{!header.collapsed && <div className="ml-4 space-y-3 border-l border-[#333] pl-3">{header.timerIds.filter(id => timerIds.includes(id)).map(id => renderTimerRow(id, timerIds.indexOf(id)))}</div>}<TimerTopLevelDropZone headerId={header.id} placement="after" /></div>;
+                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id)))}</div></SortableContext>}<TimerTopLevelDropZone headerId={header.id} placement="after" /></div>;
                   }
-                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, timerIds.indexOf(item))}</div> : null;
+                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
                 })}
               </div>
             </SortableContext>
