@@ -1532,7 +1532,7 @@ function App() {
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (!e.key) return;
-      const changed = ['stage-timer-rooms', 'stage-timer-current-id', 'stage-timer-current-name', 'stage-timer-timer-ids', 'stage-timer-active-id', 'stage-timer-messages', 'stage-timer-message-shown-id'].includes(e.key);
+      const changed = ['stage-timer-rooms', 'stage-timer-current-id', 'stage-timer-current-name', 'stage-timer-timer-ids', 'stage-timer-timer-headers', 'stage-timer-timer-top-level-items', 'stage-timer-active-id', 'stage-timer-messages', 'stage-timer-message-shown-id'].includes(e.key);
       if (changed) {
         try {
           postSharedMessage(CONTROL_CHANNEL, { command: 'ROOM_STATE_CHANGED' });
@@ -1553,6 +1553,8 @@ function App() {
           setCurrentRoomId(readJsonStorage<string | null>('stage-timer-current-id', null));
           setCurrentRoomName(readJsonStorage<string>('stage-timer-current-name', 'Unnamed'));
           setTimerIds(readJsonStorage<string[]>('stage-timer-timer-ids', []));
+          setTimerHeaders(readJsonStorage<TimerHeader[]>('stage-timer-timer-headers', []));
+          setTimerTopLevelItems(readJsonStorage<string[]>('stage-timer-timer-top-level-items', []));
           setActiveTimerId(readJsonStorage<string>('stage-timer-active-id', ''));
           setMessages(readJsonStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]));
           setMessageShownId(readJsonStorage<string | null>('stage-timer-message-shown-id', null));
@@ -1562,7 +1564,7 @@ function App() {
       return unsubscribe;
     } catch { /* ignore */ }
     return undefined;
-  }, [setCurrentRoomId, setCurrentRoomName, setRooms, setTimerIds, setActiveTimerId, setMessages, setMessageShownId]);
+  }, [setCurrentRoomId, setCurrentRoomName, setRooms, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setMessages, setMessageShownId]);
   const [messageFlashId, setMessageFlashId] = useState<string | null>(null);
   // Message-only flash state (used by the Messages Flash button). The timer
   // digits keep their own isFlashing/isFlash flags via handleFlash, so a
@@ -2027,6 +2029,21 @@ function App() {
       markTimerChanged();
       return;
     }
+    const targetHeader = over ? timerHeaders.find(header => header.timerIds.includes(String(over.id))) : undefined;
+    if (over && targetHeader && active.id !== over.id) {
+      const targetId = String(over.id);
+      setTimerHeaders((headers) => headers.map(header => {
+        const withoutActive = header.timerIds.filter(id => id !== activeId);
+        if (header.id !== targetHeader.id) return { ...header, timerIds: withoutActive };
+        const targetIndex = withoutActive.indexOf(targetId);
+        const insertIndex = targetIndex === -1 ? withoutActive.length : targetIndex;
+        withoutActive.splice(insertIndex, 0, activeId);
+        return { ...header, timerIds: withoutActive };
+      }));
+      setTimerTopLevelItems((items) => items.filter(item => item !== activeId));
+      markTimerChanged();
+      return;
+    }
     if (over && active.id !== over.id) {
       markTimerChanged();
       setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
@@ -2054,6 +2071,7 @@ function App() {
         const newIndex = items.findIndex(m => m.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
+      markTimerChanged();
     }
   };
 
@@ -2068,7 +2086,7 @@ function App() {
     const currentHeader = timerHeaders.find(header => header.id === id);
     const hasActualChange = currentHeader && Object.entries(updates).some(([key, value]) => currentHeader[key as keyof TimerHeader] !== value);
     setTimerHeaders((headers) => headers.map(header => header.id === id ? { ...header, ...updates } : header));
-    if (hasActualChange && Object.keys(updates).some(key => key !== 'collapsed')) markTimerChanged();
+    if (hasActualChange) markTimerChanged();
   };
 
   const deleteTimerHeader = (id: string, deleteTimers = false) => {
@@ -2219,6 +2237,7 @@ function App() {
       postSharedMessage(CONTROL_CHANNEL, data);
       window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
     });
+    markTimerChanged();
     setSettingsVersion(v => v + 1);
   };
 
@@ -2434,12 +2453,13 @@ function App() {
       setCurrentRoomName('Unnamed');
       setTimerIds([]);
       setTimerHeaders([]);
+      setTimerTopLevelItems([]);
       setActiveTimerId('');
       setActiveTimerState(null);
       setMessages([{ id: '1', text: '', color: '#ffffff' }]);
       setMessageShownId(null);
     }
-  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
+  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
 
   const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -2638,8 +2658,14 @@ function App() {
       }
     }, 150);
   };
-  const updateMessage = (id: string, text: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
-  const updateMessageColor = (id: string, color: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, color } : m));
+  const updateMessage = (id: string, text: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, text } : m));
+    markTimerChanged();
+  };
+  const updateMessageColor = (id: string, color: string) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, color } : m));
+    markTimerChanged();
+  };
   const syncVisibleMessageUpdate = (msg: any, updates: Record<string, unknown>) => {
     if (messageShownId !== msg.id && messageFlashId !== msg.id) return;
     syncOutput({
@@ -2659,6 +2685,7 @@ function App() {
     if (!msg) return;
     const nextBold = !msg.bold;
     setMessages(prev => prev.map(m => m.id === id ? { ...m, bold: nextBold, text: m.text || '' } : m));
+    markTimerChanged();
     syncVisibleMessageUpdate(msg, { bold: nextBold, text: msg.text || '' });
   };
   const toggleMessageUppercase = (id: string) => {
@@ -2667,11 +2694,13 @@ function App() {
     const nextUppercase = !msg.uppercase;
     const nextText = nextUppercase ? (msg.text || '').toUpperCase() : (msg.text || '').toLowerCase();
     setMessages(prev => prev.map(m => m.id === id ? { ...m, uppercase: nextUppercase, text: nextText } : m));
+    markTimerChanged();
     syncVisibleMessageUpdate(msg, { uppercase: nextUppercase, text: nextText });
   };
   const updateMessageSize = (id: string, value: number) => {
     const nextSize = Math.min(10, Math.max(0.1, Number.isFinite(value) ? value : 1.0));
     setMessages(prev => prev.map(m => m.id === id ? { ...m, messageSize: nextSize } : m));
+    markTimerChanged();
 
     // Push the new size immediately when this message is currently visible.
     // This keeps the Dashboard and already-open Output tab in sync without
@@ -2712,6 +2741,7 @@ function App() {
     }
     setMessages(prev => prev.filter(m => m.id !== id));
     setSelectedMessageIds(current => current.filter(messageId => messageId !== id));
+    markTimerChanged();
   };
   const duplicateMessage = (id: string) => {
     const index = messages.findIndex(message => message.id === id);
@@ -2720,6 +2750,7 @@ function App() {
     const duplicate = { ...original, id: createId('message') };
     setMessages(prev => { const next = [...prev]; next.splice(index + 1, 0, duplicate); return next; });
     setSelectedMessageIds(current => [...current, duplicate.id]);
+    markTimerChanged();
   };
   const showMessage = (id: string) => {
     // Toggle: if this message is currently shown, turn it off
@@ -2766,16 +2797,22 @@ function App() {
       }
     }, 150);
   };
-  const moveMessage = (fromId: string, toId: string) => setMessages(prev => {
-    const fromIdx = prev.findIndex(m => m.id === fromId);
-    const toIdx = prev.findIndex(m => m.id === toId);
-    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
-    const next = [...prev];
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
-    return next;
-  });
-  const addMessage = () => setMessages(prev => [...prev, { id: createId('message'), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
+  const moveMessage = (fromId: string, toId: string) => {
+    setMessages(prev => {
+      const fromIdx = prev.findIndex(m => m.id === fromId);
+      const toIdx = prev.findIndex(m => m.id === toId);
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+    markTimerChanged();
+  };
+  const addMessage = () => {
+    setMessages(prev => [...prev, { id: createId('message'), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
+    markTimerChanged();
+  };
 
   const goToNextTimer = () => {
     if (timerIds.length <= 1) return;
