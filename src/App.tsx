@@ -12,15 +12,12 @@ import { formatTimeOfDay } from './lib/time';
 import {
   DndContext,
   closestCenter,
-  pointerWithin,
   type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
   DragEndEvent,
-  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -33,27 +30,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const collisionDetectionStrategy: CollisionDetection = (args) => {
-  // The sortable section/header rectangles are larger than their visual
-  // boundary and can otherwise win the collision race, causing a timer to be
-  // nested while it is merely passing above or below a section. Prefer the
-  // concrete Excel-like grid cells whenever the pointer is over one.
   const activeId = String(args.active.id);
-  const gridContainers = args.droppableContainers.filter((container) => {
-    const id = String(container.id);
-    if (!id.startsWith('grid:')) return false;
-    // Never let the source row's own before/inside/after cells win while the
-    // item is being dragged. This is especially important when moving down:
-    // otherwise the pointer remains over the source grid until it has passed
-    // the entire following row.
-    return !id.endsWith(`:${activeId}`);
-  });
-  const gridCollisions = pointerWithin({ ...args, droppableContainers: gridContainers });
-  if (gridCollisions.length > 0) return gridCollisions;
-  const fallbackContainers = args.droppableContainers.filter((container) => {
-    const id = String(container.id);
-    return id !== activeId && !id.startsWith('header:');
-  });
-  return closestCenter({ ...args, droppableContainers: fallbackContainers });
+  const droppableContainers = args.droppableContainers.filter((container) => String(container.id) !== activeId);
+  return closestCenter({ ...args, droppableContainers });
 };
 
 const writeStorageItem = (key: string, value: string): boolean => {
@@ -975,13 +954,12 @@ interface TimerHeader {
   timerIds: string[];
 }
 
-const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}` });
+const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = header.timerIds.length === 0, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}`, disabled: !canDrag });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} onPointerDown={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className="stage-grid-host stage-section-host relative touch-none rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors">
-      <StructuralDropGrid beforeId={`grid:before:header:${header.id}`} afterId={`grid:after:header:${header.id}`} insideId={`grid:inside:header:${header.id}`} />
+    <div ref={setNodeRef} {...(canDrag ? attributes : {})} {...(canDrag ? listeners : {})} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!canDrag || target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${canDrag ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!canDrag}>
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
@@ -994,29 +972,6 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
     </div>
   );
 };
-
-const StructuralDropCell = ({ id, position }: { id: string; position: 'before' | 'inside' | 'after' }) => {
-  const { setNodeRef, isOver } = useDroppable({ id, data: { position } });
-  return <div
-    ref={setNodeRef}
-    aria-hidden="true"
-    className={`stage-grid-cell stage-grid-cell-${position} ${isOver ? 'stage-grid-cell-over' : ''}`}
-  />;
-};
-
-/**
- * A real DOM grid (not a painted hint) that supplies stable Excel-like cells
- * for every structural row. The host's natural height is the row height, so
- * the grid automatically follows expanded sections, collapsed sections, and
- * timer rows with different responsive sizes.
- */
-const StructuralDropGrid = ({ beforeId, afterId, insideId }: { beforeId: string; afterId: string; insideId?: string }) => (
-  <div className="stage-drop-grid" role="grid" aria-hidden="true">
-    <StructuralDropCell id={beforeId} position="before" />
-    {insideId ? <StructuralDropCell id={insideId} position="inside" /> : <div className="stage-grid-cell stage-grid-cell-inside" />}
-    <StructuralDropCell id={afterId} position="after" />
-  </div>
-);
 
 interface MessageRowProps {
   msg: any;
@@ -1316,9 +1271,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }
         if (isActive) onActivate(false);
       }}
-      className={`stage-grid-host timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
-      <StructuralDropGrid beforeId={`grid:before:${id}`} afterId={`grid:after:${id}`} />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
@@ -1991,8 +1945,6 @@ function App() {
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [isListDragging, setIsListDragging] = useState(false);
   const gridTrackRef = useRef<HTMLDivElement>(null);
-  const timerListRef = useRef<HTMLDivElement>(null);
-  const [dragPreview, setDragPreview] = useState<{ top: number; left: number; width: number; height: number; placement: 'before' | 'inside' | 'after' } | null>(null);
 
 
 
@@ -2080,143 +2032,29 @@ function App() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    const list = timerListRef.current;
-    if (!list || !over || String(active.id) === String(over.id)) {
-      setDragPreview(null);
-      return;
-    }
-    const activeRect = active.rect.current.initial || active.rect.current.translated;
-    if (!activeRect) {
-      setDragPreview(null);
-      return;
-    }
-    const listRect = list.getBoundingClientRect();
-    const dropZone = String(over.id).match(/^(?:drop|grid):(before|after):(.+)$/);
-    if (dropZone) {
-      const position = dropZone[1];
-      const targetLine = position === 'before' ? over.rect.bottom : over.rect.top;
-      setDragPreview({
-        top: position === 'before'
-          ? targetLine - listRect.top - activeRect.height
-          : targetLine - listRect.top,
-        left: 0,
-        width: activeRect.width,
-        height: activeRect.height,
-        placement: position as 'before' | 'after',
-      });
-      return;
-    }
-    const insideZone = String(over.id).match(/^grid:inside:header:(.+)$/);
-    if (insideZone) {
-      setDragPreview({
-        top: over.rect.top - listRect.top,
-        left: 0,
-        width: Math.max(activeRect.width, listRect.width),
-        height: over.rect.height,
-        placement: 'inside',
-      });
-      return;
-    }
-    const movingDown = Boolean(active.rect.current.translated && active.rect.current.translated.top > over.rect.top + over.rect.height / 2);
-    setDragPreview({
-      top: (movingDown ? over.rect.bottom : over.rect.top) - listRect.top,
-      left: over.rect.left - listRect.left,
-      width: activeRect.width,
-      height: activeRect.height,
-      placement: movingDown ? 'after' : 'before',
-    });
-  };
-
   const handleDragEnd = (event: DragEndEvent) => {
-    setDragPreview(null);
     const { active, over } = event;
     const activeId = active.id as string;
     const activeIsHeader = activeId.startsWith('header:');
     const overId = over ? String(over.id) : null;
-    const dropZone = overId ? overId.match(/^(?:drop|grid):(before|after):(.+)$/) : null;
-    if (dropZone) {
-      const insertAfter = dropZone[1] === 'after';
-      const targetId = dropZone[2];
-      const targetHeader = targetId.startsWith('header:')
-        ? undefined
-        : timerHeaders.find(header => header.timerIds.includes(targetId));
-      const targetTopLevelId = targetId.startsWith('header:') || !targetHeader ? targetId : `header:${targetHeader.id}`;
+    if (!overId || activeId === overId) return;
 
-      if (activeIsHeader) {
-        if (activeId !== targetTopLevelId && topLevelItems.includes(targetTopLevelId)) {
-          setTimerTopLevelItems(items => {
-            const next = items.filter(item => item !== activeId);
-            const targetIndex = next.indexOf(targetTopLevelId);
-            next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
-            return next;
-          });
-          markTimerChanged();
-        }
-        return;
-      }
+    const activeRect = active.rect.current.translated || active.rect.current.initial;
+    const pointerY = activeRect ? activeRect.top + activeRect.height / 2 : over.rect.top + over.rect.height / 2;
+    const relativeY = (pointerY - over.rect.top) / Math.max(1, over.rect.height);
+    const overIsHeader = overId.startsWith('header:');
+    const placement: 'before' | 'inside' | 'after' = overIsHeader
+      ? relativeY < 0.25 ? 'before' : relativeY > 0.75 ? 'after' : 'inside'
+      : pointerY > over.rect.top + over.rect.height / 2 ? 'after' : 'before';
 
-      if (targetHeader) {
-        setTimerHeaders(headers => headers.map(header => {
-          const withoutActive = header.timerIds.filter(id => id !== activeId);
-          if (header.id !== targetHeader.id) return { ...header, timerIds: withoutActive };
-          const targetIndex = withoutActive.indexOf(targetId);
-          withoutActive.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
-          return { ...header, timerIds: withoutActive };
-        }));
-        setTimerTopLevelItems(items => items.filter(item => item !== activeId));
-        markTimerChanged();
-        return;
-      }
-
-      if (topLevelItems.includes(targetTopLevelId) && activeId !== targetTopLevelId) {
-        setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
-        setTimerTopLevelItems(items => {
-          const next = items.filter(item => item !== activeId);
-          const targetIndex = next.indexOf(targetTopLevelId);
-          next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
-          return next;
-        });
-        if (!targetId.startsWith('header:')) {
-          setTimerIds(items => {
-            const next = items.filter(id => id !== activeId);
-            const targetIndex = next.indexOf(targetTopLevelId);
-            next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
-            return next;
-          });
-        }
-        markTimerChanged();
-      }
-      return;
-    }
-    const insideZone = overId?.match(/^grid:inside:header:(.+)$/);
-    if (insideZone && !activeIsHeader) {
-      const headerId = insideZone[1];
-      setTimerHeaders((headers) => headers.map(header => ({
-        ...header,
-        timerIds: header.id === headerId
-          ? [...new Set([...header.timerIds.filter(id => id !== activeId), activeId])]
-          : header.timerIds.filter(id => id !== activeId),
-      })));
-      setTimerTopLevelItems((items) => items.filter(item => item !== activeId));
-      markTimerChanged();
-      return;
-    }
     if (activeIsHeader) {
-      let targetItem: string | null = null;
-      if (overId?.startsWith('header:')) {
-        targetItem = overId;
-      } else if (overId) {
-        const targetHeader = timerHeaders.find(header => header.timerIds.includes(overId));
-        targetItem = targetHeader ? `header:${targetHeader.id}` : overId;
-      }
-
-      if (targetItem && targetItem !== activeId && topLevelItems.includes(targetItem)) {
+      const owner = timerHeaders.find(header => header.timerIds.includes(overId));
+      const targetItem = overIsHeader ? overId : owner ? `header:${owner.id}` : overId;
+      if (topLevelItems.includes(targetItem)) {
         setTimerTopLevelItems((items) => {
           const next = items.filter(item => item !== activeId);
           const targetIndex = next.indexOf(targetItem as string);
-          const insertIndex = targetIndex === -1 ? next.length : targetIndex;
+          const insertIndex = targetIndex === -1 ? next.length : targetIndex + (placement === 'after' ? 1 : 0);
           next.splice(insertIndex, 0, activeId);
           return next;
         });
@@ -2224,12 +2062,31 @@ function App() {
       }
       return;
     }
-    if (over && String(over.id).startsWith('header:')) {
+
+    if (overIsHeader && placement === 'inside') {
       const headerId = String(over.id).slice('header:'.length);
-      setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.id === headerId ? [...new Set([...header.timerIds, activeId])] : header.timerIds.filter(id => id !== activeId) })));
+      setTimerHeaders((headers) => headers.map(header => (
+        header.id === headerId
+          ? { ...header, timerIds: [...new Set([...header.timerIds, activeId])] }
+          : { ...header, timerIds: header.timerIds.filter(id => id !== activeId) }
+      )));
+      setTimerTopLevelItems((items) => items.filter(item => item !== activeId));
       markTimerChanged();
       return;
     }
+
+    if (overIsHeader) {
+      const next = topLevelItems.filter(item => item !== activeId);
+      const targetIndex = next.indexOf(overId);
+      if (targetIndex !== -1) {
+        next.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, activeId);
+        setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
+        setTimerTopLevelItems(next);
+        markTimerChanged();
+      }
+      return;
+    }
+
     const targetHeader = over ? timerHeaders.find(header => header.timerIds.includes(String(over.id))) : undefined;
     if (over && targetHeader && active.id !== over.id) {
       const targetId = String(over.id);
@@ -2237,10 +2094,7 @@ function App() {
         const withoutActive = header.timerIds.filter(id => id !== activeId);
         if (header.id !== targetHeader.id) return { ...header, timerIds: withoutActive };
         const targetIndex = withoutActive.indexOf(targetId);
-        const activeRect = active.rect.current.translated;
-        const overRect = over.rect;
-        const movingDown = !!activeRect && activeRect.top > overRect.top + overRect.height / 2;
-        const insertIndex = targetIndex === -1 ? withoutActive.length : targetIndex + (movingDown ? 1 : 0);
+        const insertIndex = targetIndex === -1 ? withoutActive.length : targetIndex + (placement === 'after' ? 1 : 0);
         withoutActive.splice(insertIndex, 0, activeId);
         return { ...header, timerIds: withoutActive };
       }));
@@ -3623,9 +3477,9 @@ function App() {
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={() => setIsListDragging(true)} onDragOver={handleDragOver} onDragCancel={() => { setIsListDragging(false); setDragPreview(null); }} onDragEnd={(event) => { setIsListDragging(false); handleDragEnd(event); }} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={() => setIsListDragging(true)} onDragCancel={() => setIsListDragging(false)} onDragEnd={(event) => { setIsListDragging(false); handleDragEnd(event); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
-              <div ref={timerListRef} className={`timer-dnd-list relative space-y-2 ${isListDragging ? 'is-dragging' : ''}`}>
+              <div className={`timer-dnd-list relative space-y-2 ${isListDragging ? 'is-dragging' : ''}`}>
                 {topLevelItems.map(item => {
                   if (item.startsWith('header:')) {
                     const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
@@ -3633,6 +3487,7 @@ function App() {
                     const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
                     return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
+                      canDrag={sectionTimerIds.length === 0}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
                       onDelete={() => setSectionDeleteTarget(header)}
@@ -3645,7 +3500,6 @@ function App() {
                   }
                   return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
                 })}
-                {dragPreview && <div aria-hidden="true" className={`timer-drag-preview pointer-events-none absolute z-40 ${dragPreview.placement === 'inside' ? 'rounded-lg border-2 border-dashed border-[#4a9eff] bg-[#4a9eff]/10 shadow-[0_0_0_1px_rgba(74,158,255,0.18),inset_0_0_18px_rgba(74,158,255,0.08)]' : 'drag-boundary-preview'}`} style={{ top: dragPreview.top, left: dragPreview.left, width: dragPreview.width, height: dragPreview.height }} />}
               </div>
             </SortableContext>
           </DndContext>

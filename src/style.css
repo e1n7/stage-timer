@@ -107,98 +107,16 @@
   height: 2.25rem !important;
 }
 
-/*
- * Invisible Excel-like structural grid used by the timer DnD layer. These
- * are real measured DOM cells, not pseudo-elements: the middle cell inherits
- * the host's natural height while the edge cells anchor the insertion lines.
- */
-.stage-grid-host {
-  isolation: isolate;
-}
-
 .timer-dnd-list.is-dragging .timer-row,
 .timer-dnd-list.is-dragging .stage-section-host {
   pointer-events: none;
   will-change: transform;
 }
 
-.timer-dnd-list.is-dragging .stage-drop-grid {
-  pointer-events: auto;
-  visibility: visible;
-}
-
 .timer-dnd-list.is-dragging .timer-row,
 .timer-dnd-list.is-dragging .stage-section-host {
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 120ms ease;
 }
-
-.timer-drag-preview {
-  pointer-events: none;
-}
-
-.stage-drop-grid {
-  position: absolute;
-  inset-inline: 0;
-  top: -10px;
-  bottom: -10px;
-  z-index: 40;
-  display: grid;
-  grid-template-rows: 25% 50% 25%;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-/* A section header is intentionally compact visually, but its drag geometry
- * must match a timer row so crossing it does not change hitbox dimensions. */
-.stage-section-host > .stage-drop-grid {
-  top: 50%;
-  bottom: auto;
-  height: 7rem;
-  transform: translateY(-50%);
-}
-
-.stage-grid-cell {
-  position: relative;
-  min-height: 0;
-  pointer-events: none;
-}
-
-.stage-grid-cell-before {
-  grid-row: 1;
-  min-height: 20px;
-}
-
-.stage-grid-cell-inside {
-  grid-row: 2;
-}
-
-.stage-grid-cell-after {
-  grid-row: 3;
-  min-height: 20px;
-}
-
-.timer-dnd-list.is-dragging .stage-grid-cell {
-  pointer-events: auto;
-}
-
-.stage-grid-cell-before.stage-grid-cell-over::after,
-.stage-grid-cell-after.stage-grid-cell-over::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  top: 50%;
-  height: 3px;
-  border-radius: 999px;
-  background: #4a9eff;
-  box-shadow: 0 0 12px rgba(74, 158, 255, 0.85);
-}
-
-.stage-grid-cell-inside.stage-grid-cell-over {
-  outline: 2px dashed rgba(74, 158, 255, 0.85);
-  outline-offset: -3px;
-  background: rgba(74, 158, 255, 0.08);
-}
-
 
 @container (min-width: 560px) {
   .timer-panel .timer-row-scheduled {
