@@ -155,7 +155,10 @@ export const useTimer = (id: string = 'default') => {
     const beep = new Audio(
       'data:audio/wav;base64,UklGRl9vT19XQVZLWW9tBhnwP/mBiJhAf3uP/APr/jD//3v/iL//4H//+//8L///kP/9/8D///rP/7n/9P//7v///8L'
     );
-    beep.volume = settings.audioVolume;
+    const audioVolume = Number.isFinite(settings.audioVolume)
+      ? Math.max(0, Math.min(1, settings.audioVolume))
+      : DEFAULT_SETTINGS.audioVolume;
+    beep.volume = audioVolume;
     audioRef.current = { beep };
   }, [settings.audioVolume]);
 
