@@ -12,6 +12,7 @@ import { formatTimeOfDay } from './lib/time';
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
@@ -32,7 +33,27 @@ import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 
 const collisionDetectionStrategy: CollisionDetection = (args) => {
-  return closestCenter(args);
+  // The sortable section/header rectangles are larger than their visual
+  // boundary and can otherwise win the collision race, causing a timer to be
+  // nested while it is merely passing above or below a section. Prefer the
+  // concrete Excel-like grid cells whenever the pointer is over one.
+  const activeId = String(args.active.id);
+  const gridContainers = args.droppableContainers.filter((container) => {
+    const id = String(container.id);
+    if (!id.startsWith('grid:')) return false;
+    // Never let the source row's own before/inside/after cells win while the
+    // item is being dragged. This is especially important when moving down:
+    // otherwise the pointer remains over the source grid until it has passed
+    // the entire following row.
+    return !id.endsWith(`:${activeId}`);
+  });
+  const gridCollisions = pointerWithin({ ...args, droppableContainers: gridContainers });
+  if (gridCollisions.length > 0) return gridCollisions;
+  const fallbackContainers = args.droppableContainers.filter((container) => {
+    const id = String(container.id);
+    return id !== activeId && !id.startsWith('header:');
+  });
+  return closestCenter({ ...args, droppableContainers: fallbackContainers });
 };
 
 const writeStorageItem = (key: string, value: string): boolean => {
@@ -930,6 +951,8 @@ interface TimerRowProps {
   onSync: (state: any) => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onApplyToAll?: (settings: any) => void;
@@ -957,9 +980,8 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className="relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors">
-      <DropZone id={`drop:before:header:${header.id}`} position="before" />
-      <DropZone id={`drop:after:header:${header.id}`} position="after" />
+    <div ref={setNodeRef} {...attributes} {...listeners} onPointerDown={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className="stage-grid-host stage-section-host relative touch-none rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors">
+      <StructuralDropGrid beforeId={`grid:before:header:${header.id}`} afterId={`grid:after:header:${header.id}`} insideId={`grid:inside:header:${header.id}`} />
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
@@ -973,10 +995,28 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, isSe
   );
 };
 
-const DropZone = ({ id, position }: { id: string; position: 'before' | 'after' }) => {
-  const { setNodeRef } = useDroppable({ id });
-  return <div ref={setNodeRef} aria-hidden="true" className="pointer-events-auto absolute inset-x-0 z-50 h-5" style={position === 'before' ? { top: -10 } : { bottom: -10 }} />;
+const StructuralDropCell = ({ id, position }: { id: string; position: 'before' | 'inside' | 'after' }) => {
+  const { setNodeRef, isOver } = useDroppable({ id, data: { position } });
+  return <div
+    ref={setNodeRef}
+    aria-hidden="true"
+    className={`stage-grid-cell stage-grid-cell-${position} ${isOver ? 'stage-grid-cell-over' : ''}`}
+  />;
 };
+
+/**
+ * A real DOM grid (not a painted hint) that supplies stable Excel-like cells
+ * for every structural row. The host's natural height is the row height, so
+ * the grid automatically follows expanded sections, collapsed sections, and
+ * timer rows with different responsive sizes.
+ */
+const StructuralDropGrid = ({ beforeId, afterId, insideId }: { beforeId: string; afterId: string; insideId?: string }) => (
+  <div className="stage-drop-grid" role="grid" aria-hidden="true">
+    <StructuralDropCell id={beforeId} position="before" />
+    {insideId ? <StructuralDropCell id={insideId} position="inside" /> : <div className="stage-grid-cell stage-grid-cell-inside" />}
+    <StructuralDropCell id={afterId} position="after" />
+  </div>
+);
 
 interface MessageRowProps {
   msg: any;
@@ -1112,7 +1152,7 @@ const MessageRow = ({
   );
 };
 
-const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onMoveUp, onMoveDown, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -1276,10 +1316,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }
         if (isActive) onActivate(false);
       }}
-      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`stage-grid-host timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging ? 'opacity-50' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
-      <DropZone id={`drop:before:${id}`} position="before" />
-      <DropZone id={`drop:after:${id}`} position="after" />
+      <StructuralDropGrid beforeId={`grid:before:${id}`} afterId={`grid:after:${id}`} />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
@@ -1291,7 +1330,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       ) : <div 
         {...attributes} 
         {...listeners} 
-        className="group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
+        onPointerDown={(event) => {
+          listeners?.onPointerDown?.(event);
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        className="group/index relative z-10 flex w-8 shrink-0 touch-none items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
         onClick={(e) => e.stopPropagation()}
       >
         {isDragging ? <span className="text-[24px] font-light leading-none">=</span> : <><span className="group-hover/index:hidden">{index + 1}</span><span className="hidden group-hover/index:inline text-[24px] font-light leading-none">=</span></>}
@@ -1436,6 +1479,14 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
               <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
                 <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert" />
                 <span>Add timer below</span>
+              </button>
+              <button type="button" onClick={() => { onMoveUp(); onCloseActions(); }} title="Move timer up" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+                <span aria-hidden="true" className="w-4 text-center text-[18px] leading-none">↑</span>
+                <span>Move up</span>
+              </button>
+              <button type="button" onClick={() => { onMoveDown(); onCloseActions(); }} title="Move timer down" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+                <span aria-hidden="true" className="w-4 text-center text-[18px] leading-none">↓</span>
+                <span>Move down</span>
               </button>
               <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -1938,9 +1989,10 @@ function App() {
   const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
+  const [isListDragging, setIsListDragging] = useState(false);
   const gridTrackRef = useRef<HTMLDivElement>(null);
   const timerListRef = useRef<HTMLDivElement>(null);
-  const [dragPreview, setDragPreview] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ top: number; left: number; width: number; height: number; placement: 'before' | 'inside' | 'after' } | null>(null);
 
 
 
@@ -2041,15 +2093,29 @@ function App() {
       return;
     }
     const listRect = list.getBoundingClientRect();
-    const dropZone = String(over.id).match(/^drop:(before|after):(.+)$/);
+    const dropZone = String(over.id).match(/^(?:drop|grid):(before|after):(.+)$/);
     if (dropZone) {
       const position = dropZone[1];
-      const zoneCenter = (over.rect.top + over.rect.bottom) / 2;
+      const targetLine = position === 'before' ? over.rect.bottom : over.rect.top;
       setDragPreview({
-        top: zoneCenter - listRect.top - (position === 'before' ? activeRect.height + 8 : -8),
-        left: over.rect.left - listRect.left,
+        top: position === 'before'
+          ? targetLine - listRect.top - activeRect.height
+          : targetLine - listRect.top,
+        left: 0,
         width: activeRect.width,
         height: activeRect.height,
+        placement: position as 'before' | 'after',
+      });
+      return;
+    }
+    const insideZone = String(over.id).match(/^grid:inside:header:(.+)$/);
+    if (insideZone) {
+      setDragPreview({
+        top: over.rect.top - listRect.top,
+        left: 0,
+        width: Math.max(activeRect.width, listRect.width),
+        height: over.rect.height,
+        placement: 'inside',
       });
       return;
     }
@@ -2059,6 +2125,7 @@ function App() {
       left: over.rect.left - listRect.left,
       width: activeRect.width,
       height: activeRect.height,
+      placement: movingDown ? 'after' : 'before',
     });
   };
 
@@ -2067,7 +2134,8 @@ function App() {
     const { active, over } = event;
     const activeId = active.id as string;
     const activeIsHeader = activeId.startsWith('header:');
-    const dropZone = over ? String(over.id).match(/^drop:(before|after):(.+)$/) : null;
+    const overId = over ? String(over.id) : null;
+    const dropZone = overId ? overId.match(/^(?:drop|grid):(before|after):(.+)$/) : null;
     if (dropZone) {
       const insertAfter = dropZone[1] === 'after';
       const targetId = dropZone[2];
@@ -2122,8 +2190,20 @@ function App() {
       }
       return;
     }
+    const insideZone = overId?.match(/^grid:inside:header:(.+)$/);
+    if (insideZone && !activeIsHeader) {
+      const headerId = insideZone[1];
+      setTimerHeaders((headers) => headers.map(header => ({
+        ...header,
+        timerIds: header.id === headerId
+          ? [...new Set([...header.timerIds.filter(id => id !== activeId), activeId])]
+          : header.timerIds.filter(id => id !== activeId),
+      })));
+      setTimerTopLevelItems((items) => items.filter(item => item !== activeId));
+      markTimerChanged();
+      return;
+    }
     if (activeIsHeader) {
-      const overId = over ? String(over.id) : null;
       let targetItem: string | null = null;
       if (overId?.startsWith('header:')) {
         targetItem = overId;
@@ -2203,7 +2283,11 @@ function App() {
   };
 
   const addTimerHeader = () => {
-    const header: TimerHeader = { id: createId('header'), title: 'Untitled section', collapsed: false, timerIds: [] };
+    const nextSectionNumber = timerHeaders.reduce((highest, header) => {
+      const match = header.title.match(/^Section\s+(\d+)$/i);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0) + 1;
+    const header: TimerHeader = { id: createId('header'), title: `Section ${nextSectionNumber}`, collapsed: false, timerIds: [] };
     setTimerHeaders((headers) => [...headers, header]);
     setTimerTopLevelItems((items) => [...items, `header:${header.id}`]);
     markTimerChanged();
@@ -2249,6 +2333,11 @@ function App() {
 
   const addTimer = (atIndex?: number) => {
     const newId = createId('timer');
+    const nextTimerNumber = timerIds.reduce((highest, timerId) => {
+      const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${timerId}`, null);
+      const match = typeof settings?.title === 'string' ? settings.title.match(/^Timer\s+(\d+)$/i) : null;
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0) + 1;
     // New timers inherit Apply All's visual defaults only within the current room.
     // A new or unsaved room always starts from the built-in defaults.
     try {
@@ -2256,7 +2345,7 @@ function App() {
         ? readJsonStorage<Record<string, any>>(`timerSharedDefaults_${currentRoomId}`, {})
         : {};
       const defaults = {
-        title: 'Timer',
+        title: `Timer ${nextTimerNumber}`,
         speaker: '',
         notes: '',
         audioVolume: 0.5,
@@ -2345,7 +2434,7 @@ function App() {
     }
     timerIds.forEach(id => {
       const settings = readJsonStorage(`timerSettings_${id}`, {
-        title: 'Timer',
+        title: 'Timer 1',
         targetDuration: 0,
         mode: 'countdown',
         segments: [
@@ -3029,6 +3118,52 @@ function App() {
     return order;
   }, [topLevelItems, timerHeaders, timerIds]);
 
+  const moveTimerBy = (id: string, direction: -1 | 1) => {
+    const owner = timerHeaders.find(header => header.timerIds.includes(id));
+    if (owner) {
+      const childIndex = owner.timerIds.indexOf(id);
+      const nextIndex = childIndex + direction;
+      if (nextIndex >= 0 && nextIndex < owner.timerIds.length) {
+        setTimerHeaders(headers => headers.map(header => {
+          if (header.id !== owner.id) return header;
+          const next = [...header.timerIds];
+          next.splice(childIndex, 1);
+          next.splice(nextIndex, 0, id);
+          return { ...header, timerIds: next };
+        }));
+        markTimerChanged();
+        return;
+      }
+
+      // Crossing a section boundary moves the timer beside the section rather
+      // than implicitly nesting it in a different container.
+      const sectionItem = `header:${owner.id}`;
+      setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) })));
+      setTimerTopLevelItems(items => {
+        const next = items.filter(item => item !== id);
+        const sectionIndex = next.indexOf(sectionItem);
+        if (sectionIndex === -1) return next;
+        next.splice(direction < 0 ? sectionIndex : sectionIndex + 1, 0, id);
+        return next;
+      });
+      markTimerChanged();
+      return;
+    }
+
+    const topIndex = topLevelItems.indexOf(id);
+    if (topIndex === -1) return;
+    const next = [...topLevelItems];
+    next.splice(topIndex, 1);
+    let targetIndex = topIndex + direction;
+    if (direction < 0 && next[targetIndex]?.startsWith('header:')) targetIndex -= 0;
+    if (direction > 0 && next[targetIndex]?.startsWith('header:')) targetIndex += 1;
+    targetIndex = Math.max(0, Math.min(next.length, targetIndex));
+    next.splice(targetIndex, 0, id);
+    if (targetIndex === topIndex) return;
+    setTimerTopLevelItems(next);
+    markTimerChanged();
+  };
+
   const renderTimerRow = (id: string, displayIndex: number, insertionIndex = timerIds.indexOf(id)) => (
     <TimerRow
       key={id}
@@ -3067,6 +3202,8 @@ function App() {
       onSync={setActiveTimerState}
       onAddAbove={() => addTimer(insertionIndex)}
       onAddBelow={() => addTimer(insertionIndex + 1)}
+      onMoveUp={() => moveTimerBy(id, -1)}
+      onMoveDown={() => moveTimerBy(id, 1)}
       onDuplicate={() => duplicateTimer(id, insertionIndex)}
       onDelete={() => { deleteTimer(id); setSelectedTimerIds(current => current.filter(timerId => timerId !== id)); setTimerHeaders(headers => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(timerId => timerId !== id) }))); }}
       onApplyToAll={applyToAllSettings}
@@ -3486,9 +3623,9 @@ function App() {
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragOver={handleDragOver} onDragCancel={() => setDragPreview(null)} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={() => setIsListDragging(true)} onDragOver={handleDragOver} onDragCancel={() => { setIsListDragging(false); setDragPreview(null); }} onDragEnd={(event) => { setIsListDragging(false); handleDragEnd(event); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
-              <div ref={timerListRef} className="relative space-y-2">
+              <div ref={timerListRef} className={`timer-dnd-list relative space-y-2 ${isListDragging ? 'is-dragging' : ''}`}>
                 {topLevelItems.map(item => {
                   if (item.startsWith('header:')) {
                     const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
@@ -3508,7 +3645,7 @@ function App() {
                   }
                   return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
                 })}
-                {dragPreview && <div aria-hidden="true" className="pointer-events-none absolute z-40 rounded-lg border-2 border-dashed border-[#4a9eff] bg-[#4a9eff]/10 shadow-[0_0_0_1px_rgba(74,158,255,0.18),inset_0_0_18px_rgba(74,158,255,0.08)]" style={{ top: dragPreview.top, left: dragPreview.left, width: dragPreview.width, height: dragPreview.height }} />}
+                {dragPreview && <div aria-hidden="true" className={`timer-drag-preview pointer-events-none absolute z-40 ${dragPreview.placement === 'inside' ? 'rounded-lg border-2 border-dashed border-[#4a9eff] bg-[#4a9eff]/10 shadow-[0_0_0_1px_rgba(74,158,255,0.18),inset_0_0_18px_rgba(74,158,255,0.08)]' : 'drag-boundary-preview'}`} style={{ top: dragPreview.top, left: dragPreview.left, width: dragPreview.width, height: dragPreview.height }} />}
               </div>
             </SortableContext>
           </DndContext>
