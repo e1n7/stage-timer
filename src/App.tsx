@@ -1132,7 +1132,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const dragEnabled = isHovered || Boolean(isSelected);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !dragEnabled });
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
 
@@ -1267,6 +1268,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     <div 
       ref={setNodeRef} 
       style={style} 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={(event) => {
         if (isSelectMode && onSelect) {
           const target = event.target as HTMLElement;
@@ -1282,20 +1285,21 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
         style={{ width: `${rowProgressPercent}%` }}
       />
-      {/* Index / Handle - Only shows '=' when hovering the index area specifically */}
+      {/* Index / Handle - Dragging is enabled while the row is hovered or selected. */}
       {isSelectMode ? (
         <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected timer' : 'Select timer'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
-      ) : <div 
-        {...attributes} 
-        {...listeners} 
+      ) : <div
+        {...(dragEnabled ? attributes : {})}
+        {...(dragEnabled ? listeners : {})}
         onPointerDown={(event) => {
+          if (!dragEnabled) return;
           listeners?.onPointerDown?.(event);
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
-        className="group/index relative z-10 flex w-8 shrink-0 touch-none items-center justify-center text-[16px] font-bold opacity-60 cursor-grab active:cursor-grabbing max-[639px]:w-6"
+        className={`group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 max-[639px]:w-6 ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {isDragging ? <span className="text-[24px] font-light leading-none">=</span> : <><span className="group-hover/index:hidden">{index + 1}</span><span className="hidden group-hover/index:inline text-[24px] font-light leading-none">=</span></>}
+        {dragEnabled || isDragging ? <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg> : <span>{index + 1}</span>}
       </div>}
 
       {/* Scheduled Time Display */}
