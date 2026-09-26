@@ -15,9 +15,10 @@
     "noEmit": true,
     /* Bypass strict type errors for deployment */
     "strict": false,
+    "strictNullChecks": true,
     "noEmitOnError": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": false,
     "allowJs": true,
     "incremental": true,

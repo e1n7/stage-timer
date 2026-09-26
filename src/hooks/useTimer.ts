@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage, writeJsonStorage } from '../lib/storage';
 import { useLocalStorage } from './useLocalStorage';
-import { getTimeOfDayTimestamp } from '../lib/time';
 
 const DEFAULT_TIME = 0;
 const DEFAULT_SETTINGS: TimerSettings = {
@@ -27,7 +26,7 @@ const DEFAULT_SETTINGS: TimerSettings = {
   ]
 };
 
-export type TimerMode = 'countdown' | 'countup' | 'time';
+export type TimerMode = 'countdown' | 'countup';
 
 export interface ProgressSegment {
   threshold: number;
@@ -110,7 +109,11 @@ export const useTimer = (id: string = 'default') => {
   const audioRef = useRef<{ beep: HTMLAudioElement } | null>(null);
 
   useEffect(() => {
-    const nextMode = settings.mode || 'countdown';
+    if (settings.mode !== 'countdown' && settings.mode !== 'countup') {
+      setSettings(previous => ({ ...previous, mode: 'countdown' }));
+      return;
+    }
+    const nextMode = settings.mode;
     if (syncState.mode !== nextMode) {
       setSyncState(prev => ({
         ...prev,
@@ -132,7 +135,7 @@ export const useTimer = (id: string = 'default') => {
         payload: syncState,
       });
     }
-  }, [id, settings.mode, settings.targetDuration, syncState, syncKey]);
+  }, [id, settings.mode, settings.targetDuration, syncState, syncKey, setSettings]);
 
   useEffect(() => subscribeSharedChannel('stage-timer-control', (event) => {
     const data = event.data;
@@ -243,11 +246,9 @@ export const useTimer = (id: string = 'default') => {
         currentSeconds = initialSeconds;
       } else {
         const elapsed = (Date.now() - startTime) / 1000;
-        if (mode === 'time') {
-          currentSeconds = getTimeOfDayTimestamp();
-        } else if (mode === 'countdown') {
+        if (mode === 'countdown') {
           currentSeconds = initialSeconds - elapsed;
-        } else if (mode === 'countup') {
+        } else {
           currentSeconds = initialSeconds + elapsed;
         }
       }
@@ -272,10 +273,6 @@ export const useTimer = (id: string = 'default') => {
     if (!currentSyncState?.isRunning && currentSeconds === currentSettings.targetDuration) return;
     const duration = currentSettings.mode === 'countdown'
       ? Math.max(0, currentSettings.targetDuration - currentSeconds)
-      : currentSettings.mode === 'time'
-        ? currentSyncState?.startTime
-          ? Math.max(0, (Date.now() - currentSyncState.startTime) / 1000)
-          : 0
       : Math.max(0, currentSeconds);
     if (duration <= 0 || currentSettings.historyLimit <= 0) return;
     const entry: LogEntry = {
@@ -291,9 +288,9 @@ export const useTimer = (id: string = 'default') => {
   const startTimer = useCallback(() => {
     setSyncState({
       startTime: Date.now(),
-      initialSeconds: settingsRef.current.mode === 'time' ? DEFAULT_TIME : secondsRef.current,
+      initialSeconds: secondsRef.current,
       isRunning: true,
-      mode: settingsRef.current.mode || 'countdown',
+      mode: settingsRef.current.mode === 'countup' ? 'countup' : 'countdown',
       lastUpdated: Date.now()
     });
   }, []);
@@ -311,7 +308,7 @@ export const useTimer = (id: string = 'default') => {
 
   const resetTimer = useCallback(() => {
     recordLog();
-    const mode = settingsRef.current.mode || 'countdown';
+    const mode = settingsRef.current.mode === 'countup' ? 'countup' : 'countdown';
     setSyncState(prev => ({
       ...prev,
       startTime: null,
@@ -342,7 +339,7 @@ export const useTimer = (id: string = 'default') => {
       const currentSeconds = Number(secondsRef.current) || 0;
       const elapsedPosition = currentMode === 'countdown'
         ? currentDuration - currentSeconds
-        : currentMode === 'time' ? 0 : currentSeconds;
+        : currentSeconds;
       const preservedPosition = Math.max(0, Math.min(nextDuration, elapsedPosition));
       const nextInitialSeconds = nextMode === 'countdown'
         ? Math.max(0, nextDuration - preservedPosition)
@@ -364,9 +361,9 @@ export const useTimer = (id: string = 'default') => {
   const timeZone = selectedTimeZone.replace('_', ' ');
   const timeZoneOffset = new Intl.DateTimeFormat('en-US', { timeZoneName: 'shortOffset', timeZone: selectedTimeZone }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
 
-  const cueFinishDate = settings.mode === 'time' ? now : new Date(now.getTime() + seconds * 1000);
+  const cueFinishDate = new Date(now.getTime() + seconds * 1000);
   const cueFinish = cueFinishDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: selectedTimeZone });
-  const overUnder = settings.mode === 'time' ? '--:--' : seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
+  const overUnder = seconds < 0 ? `+${formatTime(Math.abs(seconds))}` : `-${formatTime(seconds)}`;
 
   return {
     seconds,

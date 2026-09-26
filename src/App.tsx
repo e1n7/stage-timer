@@ -8,7 +8,8 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import { readJsonStorage } from './lib/storage';
 import { mergeItemById, mergeItemsById } from './lib/roomStorage';
-import { formatTimeOfDay } from './lib/time';
+import { getCanonicalTimerOrder } from './lib/timerOrder';
+import { validateRoomBackup } from './lib/roomBackup';
 import {
   DndContext,
   DragOverlay,
@@ -75,11 +76,6 @@ const getStorageKeys = (): string[] => {
 
 const pad = (value: number) => value.toString().padStart(2, '0');
 
-const getStoredMessageSize = (message: any): number => {
-  const value = message?.messageSize;
-  return typeof value === 'number' && value > 0 ? value : 1.0;
-};
-
 const InfoHint = ({ text }: { text: string }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -142,14 +138,14 @@ const normalizeTimerSettingsForTransfer = (settings: Record<string, any>) => {
   const scheduledStartDate = typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
     ? rawDate
     : null;
-  return { ...settings, scheduledStart, scheduledStartDate };
+  return { ...settings, mode: settings.mode === 'countup' ? 'countup' : 'countdown', scheduledStart, scheduledStartDate };
 };
 
 const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
   const [mStr, setMStr] = useState(pad(Math.floor((value % 3600) / 60)));
   const [sStr, setSStr] = useState(pad(value % 60));
-  
+
   const minRef = useRef<HTMLInputElement>(null);
   const secRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +166,7 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
     // Allow numbers only. Hours can be many digits, min/sec usually 2.
     const clean = val.replace(/\D/g, '');
     const limited = type === 'h' ? clean.slice(0, 3) : clean.slice(0, 2);
-    
+
     let nextH = hStr, nextM = mStr, nextS = sStr;
 
     if (type === 'h') {
@@ -204,11 +200,11 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
   return (
     <div className="flex items-center gap-2">
       <div className="flex flex-col items-center gap-1">
-        <input 
-          type="text" 
+        <input
+          type="text"
           inputMode="numeric"
           autoComplete="off"
-          value={hStr} 
+          value={hStr}
           onChange={(e) => handleChange('h', e.target.value)}
           onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
@@ -218,12 +214,12 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
       </div>
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
-        <input 
+        <input
           ref={minRef}
-          type="text" 
+          type="text"
           inputMode="numeric"
           autoComplete="off"
-          value={mStr} 
+          value={mStr}
           onChange={(e) => handleChange('m', e.target.value)}
           onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
@@ -233,12 +229,12 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
       </div>
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
-        <input 
+        <input
           ref={secRef}
-          type="text" 
+          type="text"
           inputMode="numeric"
           autoComplete="off"
-          value={sStr} 
+          value={sStr}
           onChange={(e) => handleChange('s', e.target.value)}
           onBlur={handleBlur}
           onFocus={(e) => e.target.select()}
@@ -345,12 +341,12 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
   return (
     <div className="flex items-center gap-3">
       <div className="flex flex-col items-center gap-1">
-        <input 
-          type="text" 
+        <input
+          type="text"
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
-          value={pad(m)} 
+          value={pad(m)}
           onChange={(e) => {
             const val = e.target.value;
             update(clampDigits(val, 99), s);
@@ -365,13 +361,13 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
       </div>
       <span className="text-xl font-bold text-[#444] pb-5">:</span>
       <div className="flex flex-col items-center gap-1">
-        <input 
+        <input
           ref={secRef}
-          type="text" 
+          type="text"
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
-          value={pad(s)} 
+          value={pad(s)}
           onChange={(e) => update(m, clampDigits(e.target.value, 59))}
           onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 59))}
           onKeyDown={(e) => { if (e.key === 'Backspace' && e.currentTarget.value === '') { /* handle if needed */ } if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -391,7 +387,7 @@ const formatClock = (seconds: number, allowNegative = false) => {
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
   const pad = (n: number) => n.toString().padStart(2, '0');
-  
+
   if (hours > 0) {
     return `${neg ? '-' : ''}${hours}:${pad(minutes)}:${pad(secs)}`;
   }
@@ -454,29 +450,14 @@ const IconScreen = ({ className = "", size = 14 }: IconProps) => (
 const IconClock = ({ size = 12 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
 );
-const IconCalendar = ({ size = 12 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-);
-const IconSpeaker = ({ className = "", size = 12 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-);
 const IconFlash = ({ className = "", size = 12 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-);
-const IconCircle = ({ size = 8 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
 );
 const IconSelect = ({ size = 16 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M10 2h4"/><path d="M12 2v3"/><path d="m7 5 1 1.5"/><path d="m17 5-1 1.5"/></svg>
 );
 const IconMore = ({ className = "", size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><circle cx="12" cy="12" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-);
-const IconMaximize = ({ size = 12 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-);
-const IconSquare = ({ size = 8 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>
 );
 const IconCheckbox = ({ checked, size = 13 }: IconProps & { checked: boolean }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" fill={checked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" />{checked && <path d="m7 12 3 3 7-7" fill="none" stroke="#2d2d2d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}</svg>
@@ -495,11 +476,6 @@ const IconAddTimer = ({ size = 24 }: IconProps) => (
 );
 const IconLayers = ({ size = 24 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" aria-hidden="true"><path d="m1.75 11 6.25 3.25 6.25-3.25m-12.5-3 6.25 3.25 6.25-3.25m-6.25-6.25-6.25 3.25 6.25 3.25 6.25-3.25z" /></svg>
-);
-const IconLogo = ({ size = 20 }: IconProps) => (
-  <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Timer--Streamline-Radix" height={size} width={size}>
-    <path fillRule="evenodd" clipRule="evenodd" d="M7.999978666666666 0.9066410666666666c-0.29456 0 -0.5333333333333333 0.2387776 -0.5333333333333333 0.5333376v2.3171839999999997c0 0.2945493333333333 0.2387733333333333 0.5333333333333333 0.5333333333333333 0.5333333333333333 0.2945493333333333 0 0.5333333333333333 -0.238784 0.5333333333333333 -0.5333333333333333V1.9965866666666665C11.611946666666666 2.266538666666667 14.026666666666667 4.8512640000000005 14.026666666666667 7.999978666666666c0 3.3284480000000003 -2.6982399999999997 6.026687999999999 -6.026687999999999 6.026687999999999 -3.3284373333333335 0 -6.026666666666667 -2.6982399999999997 -6.026666666666667 -6.026687999999999 0 -1.486784 0.5376960000000001 -2.846613333333333 1.4298773333333334 -3.8976853333333334 0.19061333333333333 -0.22455466666666668 0.16309333333333334 -0.5611200000000001 -0.061472 -0.7517333333333334 -0.22455466666666668 -0.19061333333333333 -0.5611200000000001 -0.16309333333333334 -0.7517333333333334 0.06146133333333333C1.5403200000000001 4.648618666666667 0.9066410666666666 6.250976 0.9066410666666666 7.999978666666666c0 3.9175679999999997 3.1757909333333334 7.0933546666666665 7.0933376 7.0933546666666665 3.9175679999999997 0 7.0933546666666665 -3.1757866666666668 7.0933546666666665 -7.0933546666666665 0 -3.9175466666666665 -3.1757866666666668 -7.0933376 -7.0933546666666665 -7.0933376ZM7.189856 8.619434666666667 4.5052053333333335 4.877194666666667c-0.07607466666666667 -0.10604799999999999 -0.06418133333333334 -0.2515733333333333 0.028106666666666665 -0.3438613333333333 0.09227733333333334 -0.092288 0.23781333333333335 -0.10418133333333335 0.34385066666666664 -0.028106666666666665l3.7422400000000002 2.6846506666666663c0.5136853333333333 0.368512 0.5742613333333333 1.10976 0.12724266666666667 1.5567893333333334 -0.44702933333333333 0.44702933333333333 -1.1882773333333332 0.38644266666666666 -1.5567893333333334 -0.12723199999999998Z" fill="#22c55e"></path>
-  </svg>
 );
 
 interface TimeAdjustMenuProps {
@@ -603,7 +579,6 @@ interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: any;
-  updateSettings: (updates: any) => void;
   onApplyToAll?: (settings: any) => void;
   onConfirm?: (settings: any) => void;
   onSettingsUpdate: () => void;
@@ -611,7 +586,7 @@ interface TimerSettingsModalProps {
   section?: 'start' | 'duration';
 }
 
-const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
+const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
 
   useEffect(() => {
@@ -633,32 +608,6 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
       ? segments.map((segment: any, segmentIndex: number) => segmentIndex === index ? { ...segment, threshold } : segment)
       : [...segments, { color, threshold }];
     setLocalSettings({ ...localSettings, segments: nextSegments });
-  };
-
-  const formatMMSS = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${pad(m)} : ${pad(s)}`;
-  };
-
-  const formatHHMMSS = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${pad(h)} : ${pad(m)} : ${pad(s)}`;
-  };
-
-  const parseMMSS = (val: string) => {
-    const parts = val.split(':').map(p => parseInt(p.trim()) || 0);
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 0;
-  };
-
-  const parseHHMMSS = (val: string) => {
-    const parts = val.split(':').map(p => parseInt(p.trim()) || 0);
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 0;
   };
 
   return (
@@ -687,11 +636,11 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
         <div className="grid grid-cols-1 gap-8">
           <div className="space-y-4">
             <h3 className="text-[14px] font-bold tracking-tight text-white">Timing</h3>
-            
+
             <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
               <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
-              <StartTimeInput 
-                value={localSettings.scheduledStart} 
+              <StartTimeInput
+                value={localSettings.scheduledStart}
                 dateValue={localSettings.scheduledStartDate}
                 onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
                 selectedTimeZone={selectedTimeZone}
@@ -700,15 +649,15 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
 
             <div className="flex items-center justify-between gap-6 py-2">
               <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
-              <DurationInput 
-                value={localSettings.targetDuration || 0} 
+              <DurationInput
+                value={localSettings.targetDuration || 0}
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
               />
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
-              <select 
-                value={localSettings.mode || 'countdown'} 
+              <select
+                value={localSettings.mode || 'countdown'}
                 onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
                 className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
               >
@@ -719,12 +668,12 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex items-center justify-between gap-4">
               <span className="text-[12px] text-[#8a8a8a]">Font Height</span>
               <div className="flex flex-1 items-center gap-3">
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="3.0" 
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3.0"
                   step="0.1"
-                  value={localSettings.fontHeight || 1.6} 
+                  value={localSettings.fontHeight || 1.6}
                   onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })}
                   className="flex-1 accent-[#4a9eff]"
                 />
@@ -734,12 +683,12 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex items-center justify-between gap-4">
               <span className="text-[12px] text-[#8a8a8a]">Font Width</span>
               <div className="flex flex-1 items-center gap-3">
-                <input 
-                  type="range" 
-                  min="0.5" 
-                  max="2.0" 
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
                   step="0.1"
-                  value={localSettings.fontWidth || 1.0} 
+                  value={localSettings.fontWidth || 1.0}
                   onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })}
                   className="flex-1 accent-[#4a9eff]"
                 />
@@ -747,11 +696,11 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
               </div>
             </div>
             <div className="flex justify-end">
-              <button 
+              <button
                 type="button"
                 onClick={() => {
-                  onApplyToAll?.({ 
-                    mode: localSettings.mode, 
+                  onApplyToAll?.({
+                    mode: localSettings.mode,
                     fontHeight: localSettings.fontHeight,
                     fontWidth: localSettings.fontWidth
                   });
@@ -786,16 +735,16 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, updateSettings, onApply
             <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
               <span className="w-16 text-[13px] text-white">Yellow</span>
-              <ThresholdInput 
-                value={yellowSegment.threshold} 
+              <ThresholdInput
+                value={yellowSegment.threshold}
                 onChange={(val) => updateWarningSegment('#f08c00', val)}
               />
             </div>
             <div className="flex items-center gap-4 py-2 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
               <span className="w-16 text-[13px] text-white">Red</span>
-              <ThresholdInput 
-                value={redSegment.threshold} 
+              <ThresholdInput
+                value={redSegment.threshold}
                 onChange={(val) => updateWarningSegment('#fa5252', val)}
               />
             </div>
@@ -936,6 +885,10 @@ interface TimerRowProps {
   formatTime: (ts: number | null) => string;
   selectedTimeZone: string;
   onActivate: (manualStart?: boolean) => void;
+  onToggleSequence: () => void;
+  isSequenceAnchor: boolean;
+  canLink: boolean;
+  isInSection: boolean;
   onSync: (state: any) => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
@@ -974,9 +927,13 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   return (
     <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
-        <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
-          <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
-        </span>
+        {isSelectMode ? (
+          <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
+        ) : (
+          <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
+            <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
+          </span>
+        )}
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
           <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
@@ -1007,16 +964,16 @@ interface MessageRowProps {
   onSelect?: () => void;
 }
 
-const MessageRow = ({ 
-  msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor, 
+const MessageRow = ({
+  msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor,
   onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize, isSelectMode, isSelected, onSelect
 }: MessageRowProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
-  const style = { 
-    transform: CSS.Transform.toString(transform), 
-    transition, 
-    zIndex: isDragging ? 200 : 1, 
-    position: 'relative' as const 
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 200 : 1,
+    position: 'relative' as const
   };
   const mSize = getMessageSize(msg);
   const cardActive = isShown;
@@ -1038,9 +995,9 @@ const MessageRow = ({
   }, [isSizeOpen]);
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
+    <div
+      ref={setNodeRef}
+      style={style}
       onClick={(event) => {
         if (!isSelectMode || !onSelect) return;
         const target = event.target as HTMLElement;
@@ -1136,7 +1093,7 @@ const MessageRow = ({
   );
 };
 
-const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect, isDragOverlay = false }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onToggleSequence, isSequenceAnchor, canLink, isInSection, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect, isDragOverlay = false }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -1152,7 +1109,6 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
   const isSettingsOpen = openPanel === 'settings';
   const isQuickSettingsOpen = openPanel === 'quick';
-  const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
@@ -1168,7 +1124,6 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       const target = event.target as HTMLElement | null;
       if (target?.closest('.timer-row-more')) return;
       onCloseActions();
-      setIsAdjustMenuOpen(false);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => {
@@ -1216,7 +1171,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             break;
           }
           case 'SET': setTime(payload); break;
-          case 'RELOAD_SETTINGS': 
+          case 'RELOAD_SETTINGS':
           case 'REFRESH_SETTINGS': {
             const newSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
             if (newSettings) updateSettings(newSettings);
@@ -1229,7 +1184,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
     const unsubscribe = subscribeSharedChannel(CONTROL_CHANNEL, (event) => {
       const { targetId, command, payload } = event.data;
-      
+
       // Global commands
       if (command === 'PAUSE_ALL_EXCEPT' && payload !== id) {
         pauseTimer();
@@ -1259,7 +1214,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             break;
           }
           case 'SET': setTime(payload); break;
-          case 'RELOAD_SETTINGS': 
+          case 'RELOAD_SETTINGS':
           case 'REFRESH_SETTINGS': {
             const newSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
             if (newSettings) updateSettings(newSettings);
@@ -1291,9 +1246,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     : 0;
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
+    <div
+      ref={setNodeRef}
+      style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onPointerUp={() => setIsDragArmed(false)}
@@ -1306,6 +1261,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }
         if (isActive) onActivate(false);
       }}
+      data-timer-id={id}
       className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div
@@ -1313,6 +1269,20 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         className="pointer-events-none absolute inset-y-0 left-0 z-0 rounded-l-lg bg-[#111827]/25 transition-[width] duration-100 ease-linear"
         style={{ width: `${rowProgressPercent}%` }}
       />
+      {canLink && <div
+        className={`absolute ${isInSection ? '-top-[2.375rem]' : '-top-9'} left-[3.5rem] z-20 flex h-16 w-16 items-center justify-center bg-transparent transition-opacity ${isSequenceAnchor ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
+      >
+        <button
+          type="button"
+          aria-label={isSequenceAnchor ? 'Remove link' : 'Add link'}
+          title={isSequenceAnchor ? 'Remove link' : 'Add link'}
+          aria-pressed={isSequenceAnchor}
+          onClick={(event) => { event.stopPropagation(); onToggleSequence(); }}
+          className="flex h-6 w-3 items-center justify-center rounded-full border border-[#111] bg-[#202020] shadow-[0_0_0_1px_rgba(255,255,255,0.08)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+        >
+          <span aria-hidden="true" className={`h-4 w-[3px] rounded-full ${isSequenceAnchor ? 'bg-[#bdbdbd]' : 'bg-[#777]'}`} />
+        </button>
+      </div>}
       {/* Index / Handle - Dragging is enabled while the row is hovered or selected. */}
       {isSelectMode ? (
         <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected timer' : 'Select timer'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
@@ -1334,18 +1304,20 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       {/* Scheduled Time Display */}
       <div className="timer-row-scheduled relative z-10 hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 w-auto text-center">
         <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
-        <div 
-          onClick={(e) => { 
-            e.stopPropagation();
-            setQuickSection('start');
-            onPanelOpen('quick', 'start');
-          }}
-          className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer"
-          title="Click to set start time"
-          onMouseEnter={(e) => e.stopPropagation()}
-          onMouseLeave={(e) => e.stopPropagation()}
-        >
-          {formatTime(scheduledStart)}
+        <div className="relative z-10 flex items-center gap-1">
+          <div
+            onClick={(event) => {
+              event.stopPropagation();
+              setQuickSection('start');
+              onPanelOpen('quick', 'start');
+            }}
+            className="text-[13px] font-bold transition-colors text-white/50 hover:text-white cursor-pointer hover:underline hover:decoration-dashed hover:underline-offset-4"
+            title="Click to set start time"
+            onMouseEnter={(event) => event.stopPropagation()}
+            onMouseLeave={(event) => event.stopPropagation()}
+          >
+            {formatTime(scheduledStart)}
+          </div>
         </div>
       </div>
 
@@ -1358,7 +1330,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             setQuickSection('duration');
             onPanelOpen('quick', 'duration');
           }}
-          className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff]"
+          className="w-auto shrink-0 text-center text-[14px] font-bold tracking-tight tabular-nums transition-colors cursor-pointer text-white hover:text-[#4a9eff] hover:underline hover:decoration-dashed hover:underline-offset-4"
           onMouseEnter={(e) => e.stopPropagation()}
           onMouseLeave={(e) => e.stopPropagation()}
         >
@@ -1403,17 +1375,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       {/* Controls */}
       <div className="timer-row-controls relative z-10 flex shrink-0 items-center gap-2 whitespace-nowrap max-[639px]:gap-1" onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         {isActive ? (
-          <button 
-            type="button" 
-            onClick={resetTimer} 
+          <button
+            type="button"
+            onClick={resetTimer}
             className={`flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] transition-colors hover:bg-[#383838]`}
             title="Reset to assigned time"
           >
             <IconSkipBack size={16} />
           </button>
         ) : (
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => onActivate(false)}
             className="flex h-9 w-10 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded border border-white/10 bg-[#2d2d2d] text-white hover:bg-[#383838] hover:text-white transition-colors"
             title="Select this timer"
@@ -1421,8 +1393,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <IconSelect size={16} />
           </button>
         )}
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => {
             onPanelOpen('settings');
           }}
@@ -1431,8 +1403,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         >
           <IconSettings size={16} />
         </button>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => {
             if (!isRunning) {
               onActivate(true);
@@ -1449,8 +1421,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
         <div className="timer-row-more relative ml-1 max-[639px]:ml-0">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onActionsToggle();
@@ -1496,11 +1468,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           setIsTitleEditOpen(false);
         }}
       />
-      <TimerSettingsModal 
-        isOpen={isSettingsOpen} 
+      <TimerSettingsModal
+        isOpen={isSettingsOpen}
         onClose={onPanelClose}
-        settings={settings} 
-        updateSettings={updateSettings} 
+        settings={settings}
         onApplyToAll={onApplyToAll}
         onSettingsUpdate={onSettingsUpdate}
         selectedTimeZone={selectedTimeZone}
@@ -1514,11 +1485,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           onSettingsUpdate();
         }}
       />
-      <QuickSettingsModal 
-        isOpen={isQuickSettingsOpen} 
+      <QuickSettingsModal
+        isOpen={isQuickSettingsOpen}
         onClose={onPanelClose}
-        settings={settings} 
-        updateSettings={updateSettings} 
+        settings={settings}
         onApplyToAll={onApplyToAll}
         onSettingsUpdate={onSettingsUpdate}
         selectedTimeZone={selectedTimeZone}
@@ -1547,6 +1517,8 @@ interface Room {
   activeRoomSettings?: any;
   timerHeaders?: TimerHeader[];
   timerTopLevelItems?: string[];
+  followActiveTimer?: boolean;
+  linkedTimerIds?: string[];
 }
 
 function App() {
@@ -1625,9 +1597,21 @@ function App() {
   // message flash never makes the timer blink.
   const [isMessageFlashing, setIsMessageFlashing] = useState(false);
   const [isMessageFlash, setIsMessageFlash] = useState(false);
-  const [draggingMsgId, setDraggingMsgId] = useState<string | null>(null);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsRoomMenuOpen(false);
+      setIsTimeZoneMenuOpen(false);
+      setOpenActionsTimerId(null);
+      setOpenTimerPanel(null);
+      setBulkDeleteOpen(false);
+      setSectionDeleteTarget(null);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [openActionsTimerId, setOpenActionsTimerId] = useState<string | null>(null);
   const [openTimerPanel, setOpenTimerPanel] = useState<{ timerId: string; panel: 'settings' | 'quick' } | null>(null);
@@ -1639,72 +1623,32 @@ function App() {
   const [mobileSection, setMobileSection] = useState<'timers' | 'messages'>('timers');
   const [isTimerSelectMode, setIsTimerSelectMode] = useState(false);
   const [selectedTimerIds, setSelectedTimerIds] = useState<string[]>([]);
+  const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
   const [isMessageSelectMode, setIsMessageSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [sectionDeleteTarget, setSectionDeleteTarget] = useState<TimerHeader | null>(null);
-  const allTimersSelected = timerIds.length > 0 && selectedTimerIds.length === timerIds.length;
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const allItemsCount = timerIds.length + timerHeaders.length;
+  const selectedItemsCount = selectedTimerIds.length + selectedSectionIds.length;
+  const allTimersSelected = allItemsCount > 0 && selectedItemsCount === allItemsCount;
   const allMessagesSelected = messages.length > 0 && selectedMessageIds.length === messages.length;
-  const toggleAllTimers = () => setSelectedTimerIds(allTimersSelected ? [] : timerIds);
+  const toggleAllTimers = () => {
+    if (allTimersSelected) {
+      setSelectedTimerIds([]);
+      setSelectedSectionIds([]);
+    } else {
+      setSelectedTimerIds(timerIds);
+      setSelectedSectionIds(timerHeaders.map((header) => header.id));
+    }
+  };
   const toggleAllMessages = () => setSelectedMessageIds(allMessagesSelected ? [] : messages.map(message => message.id));
   const [timerChangesNeedSave, setTimerChangesNeedSave] = useState(false);
   const markTimerChanged = useCallback(() => {
     writeStorageItem('stage-timer-unsaved-draft', '1');
     setTimerChangesNeedSave(true);
   }, []);
-  const draftBaselineSignatureRef = useRef<string | null>(null);
   const initialRoomRestoredRef = useRef(false);
-
-  const currentRoomSignature = useMemo(() => {
-    void settingsVersion;
-    const timerSettings = Object.fromEntries(timerIds.map(id => [
-      id,
-      readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null),
-    ]));
-    const normalizedMessages = messages.map(message => ({
-      id: message.id,
-      text: message.text || '',
-      color: message.color || '#ffffff',
-      bold: !!message.bold,
-      uppercase: !!message.uppercase,
-      messageSize: getStoredMessageSize(message),
-    }));
-    return JSON.stringify({
-      name: currentRoomName.trim(),
-      timerIds,
-      activeTimerId,
-      messages: normalizedMessages,
-      timerSettings,
-    });
-  }, [currentRoomName, timerIds, activeTimerId, messages, settingsVersion]);
-
   const savedRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
-  const savedRoomSignature = useMemo(() => {
-    if (!savedRoom) return null;
-    const normalizedMessages = (savedRoom.messages || []).map(message => ({
-      id: message.id,
-      text: message.text || '',
-      color: message.color || '#ffffff',
-      bold: !!message.bold,
-      uppercase: !!message.uppercase,
-      messageSize: getStoredMessageSize(message),
-    }));
-    return JSON.stringify({
-      name: savedRoom.name.trim(),
-      timerIds: savedRoom.timerIds || [],
-      activeTimerId: savedRoom.activeTimerId || '',
-      messages: normalizedMessages,
-      timerSettings: savedRoom.timerSettings || {},
-    });
-  }, [savedRoom]);
-
-  useEffect(() => {
-    if (isNewRoomDraft) {
-      if (draftBaselineSignatureRef.current === null) draftBaselineSignatureRef.current = currentRoomSignature;
-    } else {
-      draftBaselineSignatureRef.current = null;
-    }
-  }, [isNewRoomDraft, currentRoomSignature]);
-
   const hasUnsavedChanges = timerChangesNeedSave;
 
   const restoreUnsavedDraft = useCallback(() => {
@@ -1793,39 +1737,40 @@ function App() {
   const schedule = useMemo(() => {
     const result: Record<string, { start: number | null }> = {};
     const now = new Date();
-    
-    const formatter = new Intl.DateTimeFormat('en-US', { 
-      timeZone: selectedTimeZone, 
-      hour12: false, 
-      hour: 'numeric', 
-      minute: 'numeric', 
-      second: 'numeric' 
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: selectedTimeZone,
+      hour12: false,
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric'
     });
     const formatted = formatter.format(now);
     const [h, m, s] = formatted.split(':').map(Number);
     const secondsSinceMidnight = h * 3600 + m * 60 + s;
     const midnight = (now.getTime() / 1000) - secondsSinceMidnight;
 
+    const orderedTimerIds = getCanonicalTimerOrder(timerIds, timerHeaders, topLevelItems);
     // Anchor to active timer if it's running or has been started
     let anchorTime: number = Math.floor(now.getTime() / 1000);
     let anchorIndex = 0;
 
     if (activeTimerId && activeTimerState?.syncState?.startTime) {
       anchorTime = Math.floor(activeTimerState.syncState.startTime / 1000);
-      anchorIndex = timerIds.indexOf(activeTimerId);
+      anchorIndex = orderedTimerIds.indexOf(activeTimerId);
     }
 
     // Forward pass
     let currentEndTime = anchorTime;
-    for (let i = anchorIndex; i < timerIds.length; i++) {
-      const id = timerIds[i];
+    for (let i = anchorIndex; i < orderedTimerIds.length; i++) {
+      const id = orderedTimerIds[i];
         const settings = readJsonStorage<Record<string, any>>(`timerSettings_${id}`, { targetDuration: 0, scheduledStart: null });
 
       let startTime = currentEndTime;
-      
+
       // Only apply manual start to the anchor or if explicitly set.
       // Saved dates use the selected timezone; legacy time-only settings keep
-      // their existing time-of-day behavior.
+      // their existing scheduled-time behavior.
       if (settings.scheduledStart !== null && (i === anchorIndex && !activeTimerState?.isRunning)) {
         startTime = settings.scheduledStartDate
           ? getZonedDateTimeTimestamp(settings.scheduledStartDate, settings.scheduledStart, selectedTimeZone)
@@ -1840,27 +1785,27 @@ function App() {
     if (anchorTime !== null && anchorIndex > 0) {
       let currentStartTime = anchorTime;
       for (let i = anchorIndex - 1; i >= 0; i--) {
-        const id = timerIds[i];
+        const id = orderedTimerIds[i];
         const settings = readJsonStorage(`timerSettings_${id}`, { targetDuration: 0 });
-        
+
         const endTime = currentStartTime;
         const startTime = endTime - (settings.targetDuration || 0);
         result[id] = { start: startTime };
         currentStartTime = startTime;
       }
     }
-    
+
     return result;
-  }, [timerIds, selectedTimeZone, activeTimerId, activeTimerState]);
+  }, [timerIds, timerHeaders, topLevelItems, selectedTimeZone, activeTimerId, activeTimerState]);
 
   const formatScheduledTime = (timestamp: number | null) => {
     if (timestamp === null) return '---';
-    return new Date(timestamp * 1000).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit', 
+    return new Date(timestamp * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
       hour12: true,
-      timeZone: selectedTimeZone 
+      timeZone: selectedTimeZone
     });
   };
 
@@ -1970,6 +1915,7 @@ function App() {
   const [isFlash, setIsFlash] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
+  const [linkedTimerIds, setLinkedTimerIds] = useLocalStorage<string[]>('stage-timer-linked-timer-ids', []);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [isListDragging, setIsListDragging] = useState(false);
@@ -1986,21 +1932,23 @@ function App() {
   const autoFollowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequenceCompletedRef = useRef(false);
 
-  // Follow Active Timer Logic - advance countdown timers at the zero boundary.
-  // Normal timer behavior, including overtime when follow is disabled, is unchanged.
+  // Linked timer logic: a row link starts the next linked timer at the zero boundary.
   useEffect(() => {
-    if (!isFollowEnabled && autoFollowTimeoutRef.current) {
-      clearTimeout(autoFollowTimeoutRef.current);
-      autoFollowTimeoutRef.current = null;
-    }
 
     const seconds = activeTimerState?.seconds;
     const previousSeconds = prevSecondsRef.current;
     const mode = activeTimerState?.settings.mode || 'countdown';
     const modeChanged = prevModeRef.current !== null && prevModeRef.current !== mode;
     const targetDuration = Math.max(0, Number(activeTimerState?.settings.targetDuration ?? 0));
+    const ownerSection = timerHeaders.find(header => header.timerIds.includes(activeTimerId));
+    const containerTimerIds = ownerSection
+      ? ownerSection.timerIds.filter(id => timerIds.includes(id))
+      : getCanonicalTimerOrder(timerIds, timerHeaders, topLevelItems).filter(id => !timerHeaders.some(header => header.timerIds.includes(id)));
+    const currentIndex = containerTimerIds.indexOf(activeTimerId);
+    const nextTimerId = currentIndex >= 0 && currentIndex < containerTimerIds.length - 1 ? containerTimerIds[currentIndex + 1] : null;
+    const shouldFollowNext = Boolean(nextTimerId && linkedTimerIds.includes(nextTimerId));
     const crossedZeroWhileRunning =
-      isFollowEnabled &&
+      shouldFollowNext &&
       !modeChanged &&
       activeTimerState?.isRunning &&
       mode === 'countdown' &&
@@ -2009,7 +1957,7 @@ function App() {
       typeof previousSeconds === 'number' &&
       previousSeconds > 0;
     const crossedTargetWhileRunning =
-      isFollowEnabled &&
+      shouldFollowNext &&
       !modeChanged &&
       activeTimerState?.isRunning &&
       mode === 'countup' &&
@@ -2018,16 +1966,15 @@ function App() {
       typeof previousSeconds === 'number' &&
       previousSeconds < targetDuration;
     const stoppedAtZero = typeof seconds === 'number' && seconds >= 0 && seconds <= 0.1;
-    const pausedAtZero = isFollowEnabled && !modeChanged && mode === 'countdown' && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
+    const pausedAtZero = shouldFollowNext && !modeChanged && mode === 'countdown' && prevIsRunningRef.current && !activeTimerState?.isRunning && stoppedAtZero;
 
     if (activeTimerState?.isRunning && typeof seconds === 'number' && seconds > 0.1) {
       sequenceCompletedRef.current = false;
     }
 
     if (crossedZeroWhileRunning || crossedTargetWhileRunning || pausedAtZero) {
-      const currentIndex = timerIds.indexOf(activeTimerId);
-      if (currentIndex !== -1 && currentIndex < timerIds.length - 1) {
-        const nextId = timerIds[currentIndex + 1];
+      if (currentIndex !== -1 && currentIndex < containerTimerIds.length - 1) {
+        const nextId = containerTimerIds[currentIndex + 1];
         setActiveTimerId(nextId);
         if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
         autoFollowTimeoutRef.current = setTimeout(() => {
@@ -2041,7 +1988,7 @@ function App() {
           } catch (err) { console.error('Failed to auto-start next timer:', err); }
           finally { autoFollowTimeoutRef.current = null; }
         }, 300);
-      } else if (currentIndex === timerIds.length - 1) {
+      } else if (currentIndex === containerTimerIds.length - 1) {
         sequenceCompletedRef.current = true;
         if (autoFollowTimeoutRef.current) {
           clearTimeout(autoFollowTimeoutRef.current);
@@ -2055,12 +2002,18 @@ function App() {
     prevSecondsRef.current = typeof seconds === 'number' ? seconds : null;
     prevIsRunningRef.current = activeTimerState?.isRunning || false;
     prevModeRef.current = mode;
-  }, [activeTimerState?.isRunning, activeTimerState?.seconds, activeTimerState?.settings.mode, activeTimerState?.settings.targetDuration, isFollowEnabled, activeTimerId, timerIds, setActiveTimerId]);
+  }, [activeTimerState?.isRunning, activeTimerState?.seconds, activeTimerState?.settings.mode, activeTimerState?.settings.targetDuration, linkedTimerIds, activeTimerId, timerIds, timerHeaders, topLevelItems, setActiveTimerId]);
+  // Follow Active Timer means keep the list scrolled to the active timer.
+  useEffect(() => {
+    if (!isFollowEnabled || !activeTimerId) return;
+    const activeRow = Array.from(document.querySelectorAll<HTMLElement>('.timer-row'))
+      .find((row) => row.dataset.timerId === activeTimerId);
+    activeRow?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [isFollowEnabled, activeTimerId]);
 
   useEffect(() => () => {
     if (autoFollowTimeoutRef.current) clearTimeout(autoFollowTimeoutRef.current);
   }, []);
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   useEffect(() => {
@@ -2080,8 +2033,10 @@ function App() {
     if (!overId || activeId === overId) return;
 
     const activeRect = active.rect.current.translated || active.rect.current.initial;
-    const pointerY = dragPointerYRef.current ?? (activeRect ? activeRect.top + activeRect.height / 2 : over.rect.top + over.rect.height / 2);
-    const relativeY = (pointerY - over.rect.top) / Math.max(1, over.rect.height);
+    const overRect = over?.rect;
+    if (!overRect) return;
+    const pointerY = dragPointerYRef.current ?? (activeRect ? activeRect.top + activeRect.height / 2 : overRect.top + overRect.height / 2);
+    const relativeY = (pointerY - overRect.top) / Math.max(1, overRect.height);
     const overIsHeader = overId.startsWith('header:');
     const placement: 'before' | 'after' = relativeY > 0.5 ? 'after' : 'before';
 
@@ -2218,6 +2173,8 @@ function App() {
       });
     }
     setTimerHeaders(headers => headers.filter(item => item.id !== id));
+    setSelectedSectionIds(sectionIds => sectionIds.filter(sectionId => sectionId !== id));
+    setLinkedTimerIds(linkedIds => linkedIds.filter(timerId => !childIds.includes(timerId)));
     markTimerChanged();
     setSectionDeleteTarget(null);
   };
@@ -2246,7 +2203,7 @@ function App() {
         warningThreshold: 60,
         dangerThreshold: 0,
         historyLimit: 10,
-        targetDuration: 0,
+        targetDuration: 600,
         mode: 'countdown',
         fontHeight: 1.6,
         fontWidth: 1.0,
@@ -2258,10 +2215,10 @@ function App() {
       };
       const merged = { ...defaults, ...shared };
       writeStorageItem(`timerSettings_${newId}`, JSON.stringify(merged));
-      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(0));
+      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(600));
       writeStorageItem(`timerSync_${newId}`, JSON.stringify({
         startTime: null,
-        initialSeconds: 0,
+        initialSeconds: 600,
         isRunning: false,
         mode: merged.mode || 'countdown',
         lastUpdated: Date.now()
@@ -2343,24 +2300,6 @@ function App() {
     setSettingsVersion(v => v + 1);
   };
 
-  const deleteAllTimers = () => {
-    try {
-      timerIds.forEach(id => {
-        removeStorageItem(`timerSettings_${id}`);
-        removeStorageItem(`timerSeconds_${id}`);
-        removeStorageItem(`timerSync_${id}`);
-        removeStorageItem(`timerLog_${id}`);
-      });
-      timerIds.forEach(id => postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }));
-    } catch { /* ignore */ }
-    setTimerIds([]);
-    setTimerHeaders([]);
-    setActiveTimerId('');
-    setActiveTimerState(null);
-    setIsTimersMenuOpen(false);
-    markTimerChanged();
-  };
-
   const duplicateTimer = (id: string, index: number) => {
     const newId = createId('timer_dup');
     const newIds = [...timerIds];
@@ -2406,7 +2345,41 @@ function App() {
       markTimerChanged();
     }
   };
+  const deleteSelectedItems = (deleteSectionTimers: boolean) => {
+    const selectedSections = timerHeaders.filter(header => selectedSectionIds.includes(header.id));
+    const sectionChildIds = selectedSections.flatMap(header => header.timerIds.filter(id => timerIds.includes(id)));
+    const idsToDelete = new Set([...selectedTimerIds, ...(deleteSectionTimers ? sectionChildIds : [])]);
+    idsToDelete.forEach(id => {
+      removeStorageItem(`timerSettings_${id}`); removeStorageItem(`timerSeconds_${id}`); removeStorageItem(`timerSync_${id}`); removeStorageItem(`timerLog_${id}`);
+      try { postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }); } catch { /* ignore */ }
+    });
+    const deletedSectionIds = new Set(selectedSections.map(header => header.id));
+    setTimerIds(ids => ids.filter(id => !idsToDelete.has(id)));
+    setTimerHeaders(headers => headers.filter(header => !deletedSectionIds.has(header.id)));
+    setTimerTopLevelItems(items => items.flatMap(item => {
+      if (!item.startsWith('header:')) return idsToDelete.has(item) ? [] : [item];
+      const headerId = item.slice('header:'.length);
+      if (!deletedSectionIds.has(headerId)) return [item];
+      if (deleteSectionTimers) return [];
+      const header = selectedSections.find(candidate => candidate.id === headerId);
+      return header ? header.timerIds.filter(id => timerIds.includes(id) && !idsToDelete.has(id)) : [];
+    }));
+    if (idsToDelete.has(activeTimerId)) {
+      setActiveTimerId('');
+      setActiveTimerState(null);
+    }
+    setSelectedTimerIds([]);
+    setSelectedSectionIds([]);
+    setLinkedTimerIds(linkedIds => linkedIds.filter(timerId => !idsToDelete.has(timerId)));
+    setBulkDeleteOpen(false);
+    setIsTimerSelectMode(false);
+    markTimerChanged();
+  };
   const deleteSelectedTimers = () => {
+    if (selectedSectionIds.length > 0) {
+      setBulkDeleteOpen(true);
+      return;
+    }
     const selected = new Set(selectedTimerIds);
     if (selected.size === 0) return;
     selected.forEach(id => {
@@ -2466,6 +2439,8 @@ function App() {
       ...nextHeaders.map(header => `header:${header.id}`),
     ]);
     setActiveTimerId(room.activeTimerId || (room.timerIds?.[0] || ''));
+    setIsFollowEnabled(Boolean(room.followActiveTimer));
+    setLinkedTimerIds((room.linkedTimerIds || []).filter(id => (room.timerIds || []).includes(id)));
     setActiveTimerState(null);
     setMessages((room.messages || [{ id: '1', text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]).map(message => ({
       ...message,
@@ -2478,7 +2453,7 @@ function App() {
     setMessageShownId(null);
     setMessageFlashId(null);
     setIsRoomMenuOpen(false);
-  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
+  }, [rooms, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setIsFollowEnabled, setLinkedTimerIds, setActiveTimerState, setMessages, setMessageShownId, setMessageFlashId]);
 
   // Live edits are kept in localStorage for cross-tab timer operation, but the
   // saved room snapshot is the source of truth across an app restart. This
@@ -2502,13 +2477,15 @@ function App() {
       setCurrentRoomName('Unnamed');
       setTimerIds([]);
       setTimerHeaders([]);
+      setLinkedTimerIds([]);
+      setIsFollowEnabled(false);
       setTimerTopLevelItems([]);
       setActiveTimerId('');
       setActiveTimerState(null);
       setMessages([{ id: '1', text: '', color: '#ffffff' }]);
       setTimerChangesNeedSave(false);
     }
-  }, [rooms, currentRoomId, loadRoom, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
+  }, [rooms, currentRoomId, loadRoom, setCurrentRoomName, setTimerIds, setTimerHeaders, setLinkedTimerIds, setIsFollowEnabled, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
 
   const saveRoom = useCallback(() => {
     const roomName = currentRoomName.trim() || 'Unnamed';
@@ -2521,7 +2498,7 @@ function App() {
       const storedSettings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
       if (storedSettings) timerSettings[id] = storedSettings;
     });
-    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings };
+    const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings, followActiveTimer: isFollowEnabled, linkedTimerIds: [...linkedTimerIds] };
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
@@ -2531,7 +2508,7 @@ function App() {
     setTimerChangesNeedSave(false);
     setSaveNotice('Room saved');
     window.setTimeout(() => setSaveNotice(null), 2200);
-  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, setCurrentRoomId, setRooms]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, setCurrentRoomId, setRooms]);
 
   const deleteRoom = useCallback((room: Room) => {
     // Re-read immediately before deleting so an older tab cannot overwrite
@@ -2593,16 +2570,15 @@ function App() {
     // Dispatch a local event so components in the same tab (like TimerRow) can respond instantly
     window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: data }));
   }, [activeTimerId]);
-
   const handleGridAction = useCallback((clientX: number) => {
     if (!gridTrackRef.current || !activeTimerId) return;
     const rect = gridTrackRef.current.getBoundingClientRect();
     const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    
+
     const settings = activeTimerState?.settings || (() => {
       return readJsonStorage(`timerSettings_${activeTimerId}`, null);
     })();
-    
+
     const targetDuration = settings?.targetDuration || 0;
     if (targetDuration <= 0) return;
 
@@ -2685,7 +2661,7 @@ function App() {
 
   useEffect(() => {
     if (activeTimerId && activeTimerState) {
-      syncOutput({ 
+      syncOutput({
         ...activeTimerState.syncState,
         totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
         mode: activeTimerState.syncState.mode,
@@ -2696,12 +2672,12 @@ function App() {
         title: activeTimerState.settings.title || '',
         blackout: isBlackout,
         // Only send the flash signal via explicit flash triggers, not continuous sync
-        flash: false, 
+        flash: false,
         isEmpty: false,
         ...getActiveMessage()
       });
     } else if (timerIds.length === 0) {
-      syncOutput({ 
+      syncOutput({
         isEmpty: true,
         blackout: isBlackout,
         flash: false,
@@ -2712,7 +2688,7 @@ function App() {
 
   const openOutput = () => {
     if (activeTimerId && activeTimerState) {
-      syncOutput({ 
+      syncOutput({
         ...activeTimerState.syncState,
         totalTime: Math.max(0, Number(activeTimerState.settings.targetDuration ?? 0)),
         mode: activeTimerState.syncState.mode,
@@ -2728,7 +2704,7 @@ function App() {
         ...getActiveMessage()
       });
     } else if (timerIds.length === 0) {
-      syncOutput({ 
+      syncOutput({
         isEmpty: true,
         blackout: isBlackout,
         flash: isFlash,
@@ -2743,11 +2719,11 @@ function App() {
     setIsFlashing(true);
     // Send a single explicit flash signal to the output view.
     // This only flashes the timer, not the message.
-    syncOutput({ 
-      flash: true, 
+    syncOutput({
+      flash: true,
       ...getActiveMessage(),
       messageFlash: false,
-      type: 'force-sync' 
+      type: 'force-sync'
     });
 
     let count = 0;
@@ -2876,15 +2852,15 @@ function App() {
     setMessageFlashId(id);
     const msg = messages.find(m => m.id === id);
     if (msg) {
-      syncOutput({ 
-        messageText: msg.text || '', 
-        messageColor: msg.color || '#ffffff', 
-        messageBold: !!msg.bold, 
-        messageUppercase: !!msg.uppercase, 
-        messageSize: getMessageSize(msg), 
-        messageFlash: true, 
-        messageMaximize: true, 
-        type: 'force-sync' 
+      syncOutput({
+        messageText: msg.text || '',
+        messageColor: msg.color || '#ffffff',
+        messageBold: !!msg.bold,
+        messageUppercase: !!msg.uppercase,
+        messageSize: getMessageSize(msg),
+        messageFlash: true,
+        messageMaximize: true,
+        type: 'force-sync'
       });
     }
     setIsMessageFlashing(true);
@@ -2900,18 +2876,6 @@ function App() {
         setMessageFlashId(null);
       }
     }, 150);
-  };
-  const moveMessage = (fromId: string, toId: string) => {
-    setMessages(prev => {
-      const fromIdx = prev.findIndex(m => m.id === fromId);
-      const toIdx = prev.findIndex(m => m.id === toId);
-      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, moved);
-      return next;
-    });
-    markTimerChanged();
   };
   const addMessage = () => {
     setMessages(prev => [...prev, { id: createId('message'), text: '', color: '#ffffff', bold: false, uppercase: false, messageSize: 1.0 }]);
@@ -2942,18 +2906,13 @@ function App() {
     : displaySeconds;
   const displayProgressSeconds = Math.max(0, Math.min(activeTotalTime, rawCountdownSeconds));
   // Hover is preview-only. The primary displays always use the committed timer state.
-  const renderedCountdownSeconds = displayProgressSeconds;
   const renderedDisplaySeconds = activeMode === 'countup'
     ? Math.max(0, displaySeconds)
     : displaySeconds;
   const hoverDisplaySeconds = hoverTime !== null
     ? (activeMode === 'countup' ? activeTotalTime - hoverTime : hoverTime)
     : renderedDisplaySeconds;
-  const currentTime = activeTimerState
-    ? activeMode === 'time'
-      ? formatTimeOfDay(renderedDisplaySeconds, selectedTimeZone)
-      : formatClock(renderedDisplaySeconds)
-    : '--:--';
+  const currentTime = activeTimerState ? formatClock(renderedDisplaySeconds) : '--:--';
 
   const getDashboardTextColor = () => {
     if (!activeTimerId) return '#333';
@@ -2966,16 +2925,6 @@ function App() {
     return '#ffffff';
   };
 
-  const getDashboardGlowColor = () => {
-    if (!activeTimerId) return 'transparent';
-    const color = getDashboardTextColor();
-    if (color === '#ffffff') return 'rgba(255, 255, 255, 0.3)';
-    if (color === '#fa5252') return 'rgba(250, 82, 82, 0.4)';
-    if (color === '#f08c00') return 'rgba(240, 140, 0, 0.4)';
-    if (color === '#22c55e') return 'rgba(34, 197, 94, 0.4)';
-    return 'transparent';
-  };
-
   const TIMEZONES = [
     'UTC', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
     'America/Anchorage', 'America/Argentina/Buenos_Aires', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Mexico_City', 'America/New_York', 'America/Phoenix', 'America/Sao_Paulo',
@@ -2986,24 +2935,10 @@ function App() {
   ];
   const filteredTimeZones = TIMEZONES.filter((tz) => tz.toLowerCase().includes(timeZoneSearch.trim().toLowerCase()));
 
-  const visualTimerOrder = useMemo(() => {
-    const order: string[] = [];
-    topLevelItems.forEach(item => {
-      if (item.startsWith('header:')) {
-        const header = timerHeaders.find(candidate => `header:${candidate.id}` === item);
-        header?.timerIds.forEach(timerId => {
-          if (timerIds.includes(timerId) && !order.includes(timerId)) order.push(timerId);
-        });
-      } else if (timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item))) {
-        if (!order.includes(item)) order.push(item);
-      }
-    });
-    timerIds.forEach(timerId => {
-      if (!order.includes(timerId)) order.push(timerId);
-    });
-    return order;
-  }, [topLevelItems, timerHeaders, timerIds]);
-
+  const visualTimerOrder = useMemo(
+    () => getCanonicalTimerOrder(timerIds, timerHeaders, topLevelItems),
+    [timerIds, timerHeaders, topLevelItems],
+  );
   const moveTimerBy = (id: string, direction: -1 | 1) => {
     const owner = timerHeaders.find(header => header.timerIds.includes(id));
     if (owner) {
@@ -3050,7 +2985,7 @@ function App() {
     markTimerChanged();
   };
 
-  const renderTimerRow = (id: string, displayIndex: number, insertionIndex = timerIds.indexOf(id), isDragOverlay = false) => (
+  const renderTimerRow = (id: string, displayIndex: number, insertionIndex = timerIds.indexOf(id), canLink = displayIndex > 0, isDragOverlay = false, isInSection = false) => (
     <TimerRow
       key={isDragOverlay ? `drag-overlay:${id}` : id}
       id={id}
@@ -3085,6 +3020,15 @@ function App() {
         }
         setActiveTimerId(id);
       }}
+      onToggleSequence={() => {
+        setLinkedTimerIds(current => current.includes(id)
+          ? current.filter(timerId => timerId !== id)
+          : [...current, id]);
+        markTimerChanged();
+      }}
+      isSequenceAnchor={linkedTimerIds.includes(id)}
+      canLink={canLink}
+      isInSection={isInSection}
       onSync={setActiveTimerState}
       onAddAbove={() => addTimer(insertionIndex)}
       onAddBelow={() => addTimer(insertionIndex + 1)}
@@ -3105,6 +3049,18 @@ function App() {
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
+      {bulkDeleteOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title">
+        <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
+          <button type="button" onClick={() => setBulkDeleteOpen(false)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close bulk delete dialog" title="Close"><IconClose size={16} /></button>
+          <h2 id="bulk-delete-title" className="text-[17px] font-bold tracking-tight text-white">Delete selected items?</h2>
+          <p className="my-4 text-[13px] leading-5 text-[#aaa]">You selected section rows and timer rows. Choose what should happen to the timers inside the selected sections.</p>
+          <div className="flex flex-col gap-2">
+            <button type="button" onClick={() => deleteSelectedItems(true)} className="h-10 rounded-md border border-[#8b3d3d] bg-[#542626] px-3 text-[13px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+            <button type="button" onClick={() => deleteSelectedItems(false)} className="h-10 rounded-md border border-[#4b79a8] bg-[#263d59] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
+            <button type="button" onClick={() => setBulkDeleteOpen(false)} className="h-10 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
+          </div>
+        </div>
+      </div>}
       {sectionDeleteTarget && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="section-delete-title">
         <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
           <button type="button" onClick={() => setSectionDeleteTarget(null)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close delete section dialog" title="Close"><IconClose size={16} /></button>
@@ -3131,7 +3087,7 @@ function App() {
               <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
                 {rooms.map((room) => (
-                  <div key={room.id} onClick={() => loadRoom(room)} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] cursor-pointer ${currentRoomId === room.id ? 'bg-[#3a3a3a] text-white' : ''}`}>
+                  <div key={room.id} role="menuitem" tabIndex={0} onClick={() => loadRoom(room)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadRoom(room); } }} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#4a9eff] cursor-pointer ${currentRoomId === room.id ? 'bg-[#3a3a3a] text-white' : ''}`}>
                     <span className="truncate">{room.name}</span>
                     <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} title="Delete saved room" className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
                   </div>
@@ -3144,6 +3100,8 @@ function App() {
                   setCurrentRoomName('New Room');
                   setTimerIds([]);
                   setTimerHeaders([]);
+                  setLinkedTimerIds([]);
+                  setIsFollowEnabled(false);
                   setTimerTopLevelItems([]);
                   setActiveTimerId('');
                   setActiveTimerState(null);
@@ -3159,7 +3117,7 @@ function App() {
               </div>
             )}
           </div>
-          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); if (imported.rooms && Array.isArray(imported.rooms)) { 
+          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); const validation = validateRoomBackup(imported); if (!validation.valid) throw new Error(validation.reason); if (imported.rooms && Array.isArray(imported.rooms)) {
   const importedRoomIdMap = new Map<string, string>();
   const importedRooms = imported.rooms.map((room: any, index: number) => {
     const sourceRoomId = room.id || `imported_${Date.now()}_${index}`;
@@ -3196,12 +3154,13 @@ function App() {
       activeTimerId: room.activeTimerId ? remapTimerId(room.activeTimerId) : '',
       timerHeaders,
       timerTopLevelItems,
+      followActiveTimer: Boolean(room.followActiveTimer),
+      linkedTimerIds: Array.isArray(room.linkedTimerIds) ? room.linkedTimerIds.map(remapTimerId).filter(id => timerIds.includes(id)) : [],
       timerSettings,
     } as Room;
   });
   const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
   const nextRooms = mergeItemsById(latestRooms, importedRooms);
-  setRooms(nextRooms);
   const mappedActiveRoom = imported.activeRoomId
     ? importedRooms.find((room: Room) => room.id === importedRoomIdMap.get(imported.activeRoomId))
     : undefined;
@@ -3209,6 +3168,7 @@ function App() {
     ? importedRooms.find((room: Room) => room.name === imported.activeRoomName)
     : undefined);
   if (activeRoom) loadRoom(activeRoom);
+  setRooms(nextRooms);
   setSaveNotice('Room imported');
   window.setTimeout(() => setSaveNotice(null), 2200);
 } } catch (err) { console.error(err); setSaveNotice('Import failed - invalid backup file'); window.setTimeout(() => setSaveNotice(null), 2600); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
@@ -3218,7 +3178,7 @@ function App() {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
               if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
             });
-                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings } : null;
+                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings, followActiveTimer: isFollowEnabled, linkedTimerIds: [...linkedTimerIds] } : null;
                         const exportedRooms = activeRoomSnapshot
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
@@ -3244,10 +3204,10 @@ function App() {
             {/* Timer background layer; the shared message stage sits above it. */}
             <div className={`w-full flex flex-col items-center justify-center transition-all duration-300 ${getActiveMessage().messageShown && getActiveMessage().messageText && !isBlackout ? 'filter blur-[8px] brightness-50 select-none pointer-events-none' : ''}`}>
               <div className="flex w-full min-w-0 items-center justify-center text-center text-[13px] mb-2"><span className="block max-w-full truncate font-bold text-[#7eb8ff] uppercase tracking-wider">{displaySettings.title}</span></div>
-              <div 
-                className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4" 
-                style={{ 
-                  color: getDashboardTextColor(), 
+              <div
+                className="digit flex w-full items-center justify-center text-center font-bold leading-none tracking-tighter transition-all duration-75 mb-4"
+                style={{
+                  color: getDashboardTextColor(),
                   fontSize: 'clamp(40px, 18vw, 90px)',
                   opacity: isFlashing ? (isFlash ? 1 : 0.45) : 1,
                   textShadow: isFlashing && isFlash
@@ -3275,14 +3235,12 @@ function App() {
                 <div className="flex items-center gap-2 text-white">
                   <div className={`h-2 w-2 rounded-full ${hoverTime !== null ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : activeTimerState?.isRunning ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#444]'}`}></div>
                   <span className="font-mono text-[18px] font-bold tracking-tight">
-                    {activeMode === 'time'
-                      ? formatTimeOfDay(hoverDisplaySeconds, selectedTimeZone)
-                      : (hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)) + `.${Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}`}
+                    {(hoverDisplaySeconds < 0 && activeMode === 'countdown' ? '+' + formatClock(Math.abs(hoverDisplaySeconds)) : formatClock(hoverDisplaySeconds)) + `.${Math.floor(Math.abs((hoverDisplaySeconds % 1) * 10))}`}
                   </span>
                 </div>
               </div>
 
-              <div 
+              <div
                 ref={gridTrackRef}
                 className={`relative mt-6 group select-none ${activeTotalTime > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}`}
               >
@@ -3297,13 +3255,13 @@ function App() {
                       );
                     })}
                   </div>
-                  
+
                   <ProgressBar currentSeconds={displayProgressSeconds} totalSeconds={activeTotalTime} segments={displaySettings.segments} height="h-[3px]" className="absolute bottom-0 left-0 right-0" />
-                  
+
                   {/* Red Playhead Marker */}
-                  <div 
+                  <div
                     className="absolute top-0 bottom-0 w-[2px] bg-[#fa5252] pointer-events-none z-20"
-                    style={{ 
+                    style={{
                       left: `${Math.max(0, Math.min(100, (1 - ((isDraggingGrid && hoverTime !== null ? hoverTime : displayProgressSeconds) / activeProgressTotal)) * 100))}%`,
                       transition: (activeTimerState?.isRunning || isDraggingGrid) ? 'none' : 'left 0.1s linear'
                     }}
@@ -3314,16 +3272,16 @@ function App() {
 
                   {/* Hover Playhead Marker (Subtle ghost line) */}
                   {hoverTime !== null && !isDraggingGrid && (
-                    <div 
+                    <div
                       className="absolute top-0 bottom-0 w-[1px] bg-white/20 pointer-events-none z-0"
-                      style={{ 
+                      style={{
                         left: `${Math.max(0, Math.min(100, (1 - (hoverTime / activeProgressTotal)) * 100))}%`
                       }}
                     />
                   )}
 
                   {/* Transparent Interaction Overlay */}
-                  <div 
+                  <div
                     className="absolute inset-0 z-30 cursor-ew-resize"
                     style={{ touchAction: 'none' }}
                     onTouchStart={(e) => {
@@ -3340,7 +3298,7 @@ function App() {
                     onTouchEnd={() => setIsDraggingGrid(false)}
                     onMouseDown={(e) => {
                       if (activeTotalTime <= 0 || e.button !== 0) return;
-                      e.preventDefault(); 
+                      e.preventDefault();
                       setIsDraggingGrid(true);
                       handleGridAction(e.clientX);
                     }}
@@ -3356,7 +3314,7 @@ function App() {
                           ? previous
                           : time
                       ));
-                      
+
                       if (isDraggingGrid) {
                         handleGridAction(e.clientX);
                       }
@@ -3380,8 +3338,8 @@ function App() {
             <button onClick={() => sendControl('ADJUST', -60)} title="Subtract one minute" className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
             <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
             <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} title={activeTimerState?.isRunning ? 'Pause timer' : 'Start timer'} className={`group col-span-1 flex h-10 items-center justify-center rounded transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause /> : <IconPlay />}</button>
-            <button 
-              onClick={goToNextTimer} 
+            <button
+              onClick={goToNextTimer}
               disabled={timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1}
               className={`col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] transition-colors ${timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`}
               title="Next timer"
@@ -3399,7 +3357,7 @@ function App() {
               <IconClock />
               <span>{wallClock}</span>
               <div className="relative">
-                <button 
+                <button
                   type="button"
                   className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] transition-all hover:bg-[#2d2d2d] hover:text-white"
                   onClick={(e) => { e.stopPropagation(); setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen); }}
@@ -3421,13 +3379,14 @@ function App() {
                       className="mb-1 w-full rounded border border-[#444] bg-[#181818] px-2 py-1.5 text-[12px] text-white outline-none placeholder:text-[#777] focus:border-[#4a9eff]"
                     />
                     {filteredTimeZones.map((tz) => (
-                      <div 
-                        key={tz} 
+                      <button
+                        type="button"
+                        key={tz}
                         onClick={() => { setSelectedTimeZone(tz); setTimeZoneSearch(''); setIsTimeZoneMenuOpen(false); }}
-                        className={`rounded px-2 py-1.5 text-left text-[12px] hover:bg-[#383838] cursor-pointer ${selectedTimeZone === tz ? 'text-[#22c55e] bg-[#2d2d2d]' : 'text-white'}`}
+                        className={`block w-full rounded px-2 py-1.5 text-left text-[12px] hover:bg-[#383838] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#4a9eff] ${selectedTimeZone === tz ? 'text-[#22c55e] bg-[#2d2d2d]' : 'text-white'}`}
                       >
                         {tz.replace('_', ' ')}
-                      </div>
+                      </button>
                     ))}
                     {filteredTimeZones.length === 0 && <div className="px-2 py-2 text-[12px] text-[#777]">No timezones found</div>}
                   </div>
@@ -3451,9 +3410,9 @@ function App() {
           <div className="mb-4 flex shrink-0 items-center justify-between">
             {isTimerSelectMode ? (
               <div className="flex min-w-0 items-center gap-2">
-                <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
+                <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); setSelectedSectionIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
                 <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 w-8 items-center justify-center gap-1 rounded border border-[#444] bg-[#2d2d2d] px-0 text-[13px] text-white hover:bg-[#383838] sm:w-auto sm:justify-start sm:px-2"><IconCheckbox checked={allTimersSelected} size={13} /><span className="hidden sm:inline">{allTimersSelected ? 'Deselect All' : 'Select All'}</span></button>
-                <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedTimerIds.length} of {timerIds.length} selected</span>
+                <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedItemsCount} of {allItemsCount} selected</span>
               </div>
             ) : (
               <div className="flex items-center gap-3">
@@ -3462,25 +3421,25 @@ function App() {
               </div>
             )}
             <div className="flex items-center gap-0.5">
-              <button 
-                type="button" 
-                onClick={() => setIsBlackout(!isBlackout)} 
+              <button
+                type="button"
+                onClick={() => setIsBlackout(!isBlackout)}
                 title="Toggle blackout mode"
                 className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isBlackout ? 'border-[#555] bg-[#383838]' : ''}`}
               >
                 <span className={`inline-block h-2 w-2 rounded-full ${isBlackout ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#555]'}`} /> Blackout
               </button>
-              <button 
-                type="button" 
-                onClick={handleFlash} 
+              <button
+                type="button"
+                onClick={handleFlash}
                 title="Flash active timer"
                 className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isFlashing && isFlash ? 'border-[#555] bg-[#383838] text-[#ffd43b]' : 'text-white'}`}
               >
                 <IconFlash /> Flash
               </button>
               <div className="relative">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.dispatchEvent(new CustomEvent('stage-timer-menu-open', { detail: 'header' }));
@@ -3494,23 +3453,26 @@ function App() {
                 </button>
                 {isTimersMenuOpen && (
                   <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-56 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
-                    <button 
-                      onClick={() => { setIsFollowEnabled(!isFollowEnabled); markTimerChanged(); }}
+                    <label
                       title="Toggle play in sequence"
-                      className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
+                      className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]"
                     >
-                      <span>Play in sequence</span>
-                      <div className={`h-4 w-4 rounded border ${isFollowEnabled ? 'bg-[#22c55e] border-[#22c55e]' : 'border-[#555]'}`}>
-                        {isFollowEnabled && <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                      </div>
-                    </button>
+                      <input
+                        type="checkbox"
+                        checked={isFollowEnabled}
+                        onChange={(event) => { setIsFollowEnabled(event.target.checked); markTimerChanged(); }}
+                        className="h-4 w-4 cursor-pointer accent-[#22c55e]"
+                        aria-label="Play active timer"
+                      />
+                      <span>Play active timer</span>
+                    </label>
 
                   </div>
                 )}
               </div>
               {isTimerSelectMode && <>
                 <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconDuplicate size={15} /><span className="hidden sm:inline">Duplicate</span></button>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
+                <button type="button" disabled={selectedItemsCount === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
@@ -3525,6 +3487,9 @@ function App() {
                     return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
                       canDrag
+                      isSelectMode={isTimerSelectMode}
+                      isSelected={selectedSectionIds.includes(header.id)}
+                      onSelect={() => setSelectedSectionIds(current => current.includes(header.id) ? current.filter(sectionId => sectionId !== header.id) : [...current, header.id])}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
                       onDelete={() => setSectionDeleteTarget(header)}
@@ -3533,9 +3498,9 @@ function App() {
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
                         setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id)))}</div></SortableContext>}</div>;
+                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id), sectionTimerIds.indexOf(id) > 0, false, true))}</div></SortableContext>}</div>;
                   }
-                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item))}</div> : null;
+                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item), timerIds.indexOf(item) > 0)}</div> : null;
                 })}
               </div>
             </SortableContext>
@@ -3544,6 +3509,9 @@ function App() {
                 <TimerHeaderRow
                   header={activeDragHeader}
                   canDrag
+                  isSelectMode={isTimerSelectMode}
+                  isSelected={selectedSectionIds.includes(activeDragHeader.id)}
+                  onSelect={() => setSelectedSectionIds(current => current.includes(activeDragHeader.id) ? current.filter(sectionId => sectionId !== activeDragHeader.id) : [...current, activeDragHeader.id])}
                   onToggle={() => {}}
                   onRename={() => {}}
                   onDelete={() => {}}
@@ -3551,7 +3519,7 @@ function App() {
                   isDragOverlay
                 />
               ) : activeDragId && timerIds.includes(activeDragId)
-                ? renderTimerRow(activeDragId, visualTimerOrder.indexOf(activeDragId), timerIds.indexOf(activeDragId), true)
+                ? renderTimerRow(activeDragId, visualTimerOrder.indexOf(activeDragId), timerIds.indexOf(activeDragId), timerIds.indexOf(activeDragId) > 0, true)
                 : null}
             </DragOverlay>
           </DndContext>
@@ -3576,10 +3544,10 @@ function App() {
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="w-full space-y-2">
                 {messages.map((msg, idx) => (
-                  <MessageRow 
-                    key={msg.id} 
-                    msg={msg} 
-                    idx={idx} 
+                  <MessageRow
+                    key={msg.id}
+                    msg={msg}
+                    idx={idx}
                     isShown={messageShownId === msg.id}
                     messageShownId={messageShownId}
                     onUpdate={updateMessage}
@@ -3587,7 +3555,7 @@ function App() {
                     onUpdateColor={updateMessageColor}
                     onToggleBold={toggleMessageBold}
                     onToggleUppercase={toggleMessageUppercase}
-  
+
                     onUpdateSize={updateMessageSize}
                     onShow={showMessage}
                     getMessageSize={getMessageSize}

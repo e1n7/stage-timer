@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/e1n7/stage-timer/actions/workflows/ci.yml/badge.svg)](https://github.com/e1n7/stage-timer/actions/workflows/ci.yml) [![Latest Release](https://img.shields.io/github/v/release/e1n7/stage-timer?display_name=tag&sort=semver)](https://github.com/e1n7/stage-timer/releases) [![License](https://img.shields.io/github/license/e1n7/stage-timer)](https://github.com/e1n7/stage-timer/blob/main/LICENSE) [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/) [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://stage-timer-juliana.vercel.app/)
 
-Stage Timer is a browser-based timing application for live events, presentations, rehearsals, and other time-critical workflows. It provides configurable countdown, count-up, and time-of-day timers, a dashboard for operating timers, a dedicated output view for a second screen, message controls, scheduling, room management, and installable progressive web app support.
+Stage Timer is a browser-based timing application for live events, presentations, rehearsals, and other time-critical workflows. It provides configurable countdown and count-up timers, a dashboard for operating timers, a dedicated output view for a second screen, message controls, scheduling, room management, and installable progressive web app support.
 
 ## Features
 
-- Multiple countdown, count-up, and time-of-day timers.
+- Multiple countdown and count-up timers.
 - Independent timer controls for starting, pausing, resetting, adjusting, and navigating between timers.
 - Follow Active Timer mode for moving through a timer sequence.
 - Optional overtime display when a countdown passes zero.

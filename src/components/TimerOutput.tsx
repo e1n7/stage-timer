@@ -3,7 +3,6 @@ import { ProgressBar, ProgressSegment } from './ProgressBar';
 import { MessageStage } from './MessageStage';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage } from '../lib/storage';
-import { formatTimeOfDay } from '../lib/time';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -38,7 +37,6 @@ export const TimerOutput = () => {
   const [messageColor, setMessageColor] = useState<string>('#ffffff');
   const [messageBold, setMessageBold] = useState<boolean>(false);
   const [messageUppercase, setMessageUppercase] = useState<boolean>(false);
-  const [messageVisible, setMessageVisible] = useState<boolean>(false);
   const [messageFlashing, setMessageFlashing] = useState<boolean>(false);
   const [messageMaximize, setMessageMaximize] = useState<boolean>(false);
   const [messageFlashVisible, setMessageFlashVisible] = useState<boolean>(true);
@@ -83,8 +81,6 @@ export const TimerOutput = () => {
   const [messageSize, setMessageSize] = useState<number>(1.0);
   const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
   const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
-  const [title, setTitle] = useState<string>('');
-  const [timeZone, setTimeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [segments, setSegments] = useState<ProgressSegment[]>([
     { threshold: 60, color: '#f08c00' },
     { threshold: 10, color: '#fa5252' }
@@ -93,7 +89,7 @@ export const TimerOutput = () => {
   const syncStateRef = useRef({
     startTime: null as number | null,
     initialSeconds: DEFAULT_TIME,
-    mode: 'countdown' as 'countdown' | 'countup' | 'time',
+    mode: 'countdown' as 'countdown' | 'countup',
     lastUpdated: 0,
     isRunning: false,
     isEmpty: false
@@ -115,12 +111,9 @@ export const TimerOutput = () => {
 
       if ('totalTime' in data) setTotalTime(Math.max(0, Number(data.totalTime) || 0));
       if ('segments' in data) setSegments(Array.isArray(data.segments) ? data.segments : []);
-      if ('title' in data) setTitle(data.title || '');
-      if (typeof data.timeZone === 'string' && data.timeZone) setTimeZone(data.timeZone);
       if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
       if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
       if ('messageText' in data) {
-        const hasMsg = !!data.messageText;
         setMessageText(data.messageText || '');
         setMessageColor(data.messageColor || '#ffffff');
         setMessageBold(!!data.messageBold);
@@ -128,9 +121,7 @@ export const TimerOutput = () => {
         if (typeof data.messageSize === 'number') setMessageSize(data.messageSize);
         if (typeof data.messageFontHeight === 'number') setMessageFontHeight(data.messageFontHeight);
         if (typeof data.messageFontWidth === 'number') setMessageFontWidth(data.messageFontWidth);
-        if ('messageShown' in data) setMessageVisible(hasMsg && !!data.messageShown);
       }
-      if ('messageShown' in data) setMessageVisible(!!data.messageShown);
       if ('messageFlash' in data && data.messageFlash) {
         // Message-only flash: blink the message, never the timer digits.
         setMessageFlashing(true);
@@ -164,23 +155,21 @@ export const TimerOutput = () => {
             ...syncStateRef.current,
             startTime: data.startTime,
             initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
-            mode: data.mode ?? 'countdown',
+            mode: data.mode === 'countup' ? 'countup' : 'countdown',
             lastUpdated: data.lastUpdated || Date.now(),
             isRunning: newIsRunning
           };
 
           const normalizedInitialSeconds = data.mode === 'countup'
             ? Math.max(0, Number(data.initialSeconds) || 0)
-            : data.mode === 'time' ? DEFAULT_TIME : (data.initialSeconds ?? DEFAULT_TIME);
+            : (data.initialSeconds ?? DEFAULT_TIME);
           syncStateRef.current.initialSeconds = normalizedInitialSeconds;
 
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
           const next = data.mode === 'countdown'
             ? normalizedInitialSeconds - elapsed
-            : data.mode === 'time'
-                ? Date.now() / 1000
-                : normalizedInitialSeconds + elapsed;
+            : normalizedInitialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
           } else {
             setSeconds(normalizedInitialSeconds);
@@ -218,8 +207,7 @@ export const TimerOutput = () => {
         const elapsed = (Date.now() - startTime) / 1000;
         setSeconds(() => {
           if (mode === 'countdown') return Math.round((initialSeconds - elapsed) * 10) / 10;
-          if (mode === 'countup') return Math.round((Math.max(0, initialSeconds) + elapsed) * 10) / 10;
-          return Date.now() / 1000;
+          return Math.round((Math.max(0, initialSeconds) + elapsed) * 10) / 10;
         });
       } else {
         setSeconds(initialSeconds);
@@ -230,15 +218,12 @@ export const TimerOutput = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  const progressSeconds = syncStateRef.current.mode === 'time'
-    ? 0
-    : syncStateRef.current.mode === 'countup'
+  const progressSeconds = syncStateRef.current.mode === 'countup'
     ? Math.max(0, totalTime - seconds)
     : seconds;
 
   const getTextColor = () => {
     if (isEmpty) return '#000000';
-    if (syncStateRef.current.mode === 'time') return '#ffffff';
     const rounded = Math.floor(progressSeconds);
     if (rounded <= 0) return '#fa5252';
     const sorted = [...segments].sort((a, b) => a.threshold - b.threshold);
@@ -246,15 +231,6 @@ export const TimerOutput = () => {
       if (rounded <= seg.threshold) return seg.color;
     }
     return '#ffffff';
-  };
-
-  const getGlowColor = () => {
-    const color = getTextColor();
-    if (color === '#ffffff') return 'rgba(255, 255, 255, 0.3)';
-    if (color === '#fa5252') return 'rgba(250, 82, 82, 0.4)';
-    if (color === '#f08c00') return 'rgba(240, 140, 0, 0.4)';
-    if (color === '#22c55e') return 'rgba(34, 197, 94, 0.4)';
-    return 'transparent';
   };
 
   const toggleFullscreen = () => {
@@ -306,9 +282,7 @@ export const TimerOutput = () => {
               >
                 {isEmpty
                   ? '00:00'
-                  : syncStateRef.current.mode === 'time'
-                    ? formatTimeOfDay(seconds, timeZone)
-                    : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
+                  : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
               </div>
             </div>
           </div>
