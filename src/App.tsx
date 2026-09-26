@@ -20,6 +20,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -963,7 +964,7 @@ interface TimerHeader {
   timerIds: string[];
 }
 
-const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = header.timerIds.length === 0, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
+const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
   const dragEnabled = canDrag && (isHovered || Boolean(isSelected) || isDragArmed);
@@ -971,7 +972,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-30' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-90' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
+    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
         <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
           <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
@@ -1305,7 +1306,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         }
         if (isActive) onActivate(false);
       }}
-      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging && !isDragOverlay ? 'opacity-30' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-90' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div
         aria-hidden="true"
@@ -2082,13 +2083,14 @@ function App() {
     const pointerY = dragPointerYRef.current ?? (activeRect ? activeRect.top + activeRect.height / 2 : over.rect.top + over.rect.height / 2);
     const relativeY = (pointerY - over.rect.top) / Math.max(1, over.rect.height);
     const overIsHeader = overId.startsWith('header:');
-    const placement: 'before' | 'inside' | 'after' = overIsHeader
-      ? relativeY < 0.25 ? 'before' : relativeY > 0.75 ? 'after' : 'inside'
-      : pointerY > over.rect.top + over.rect.height / 2 ? 'after' : 'before';
+    const placement: 'before' | 'after' = relativeY > 0.5 ? 'after' : 'before';
 
     if (activeIsHeader) {
       const owner = timerHeaders.find(header => header.timerIds.includes(overId));
       const targetItem = overIsHeader ? overId : owner ? `header:${owner.id}` : overId;
+      // Keep a section and its timers together when the pointer passes over
+      // one of that section's own rows.
+      if (targetItem === activeId) return;
       if (topLevelItems.includes(targetItem)) {
         setTimerTopLevelItems((items) => {
           const next = items.filter(item => item !== activeId);
@@ -2099,18 +2101,6 @@ function App() {
         });
         markTimerChanged();
       }
-      return;
-    }
-
-    if (overIsHeader && placement === 'inside') {
-      const headerId = String(over.id).slice('header:'.length);
-      setTimerHeaders((headers) => headers.map(header => (
-        header.id === headerId
-          ? { ...header, timerIds: [...new Set([...header.timerIds, activeId])] }
-          : { ...header, timerIds: header.timerIds.filter(id => id !== activeId) }
-      )));
-      setTimerTopLevelItems((items) => items.filter(item => item !== activeId));
-      markTimerChanged();
       return;
     }
 
@@ -2142,24 +2132,32 @@ function App() {
       return;
     }
     const targetIsTopLevel = over
-      && timerTopLevelItems.includes(String(over.id))
+      && topLevelItems.includes(String(over.id))
       && !timerHeaders.some(header => header.timerIds.includes(String(over.id)));
     if (over && active.id !== over.id && targetIsTopLevel) {
       markTimerChanged();
       setTimerHeaders((headers) => headers.map(header => ({ ...header, timerIds: header.timerIds.filter(id => id !== activeId) })));
-      setTimerIds((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over.id as string);
-        const next = arrayMove(items, oldIndex, newIndex);
-        setTimerTopLevelItems((topItems) => {
-          const topWithoutActive = topItems.filter(item => item !== activeId);
-          const targetIndex = topWithoutActive.indexOf(over.id as string);
-          if (targetIndex === -1) return [...topWithoutActive, activeId];
-          topWithoutActive.splice(targetIndex, 0, activeId);
-          return topWithoutActive;
-        });
+      const insertAfter = placement === 'after';
+      setTimerTopLevelItems((items) => {
+        const next = items.filter(item => item !== activeId);
+        const targetIndex = next.indexOf(String(over.id));
+        if (targetIndex === -1) return [...next, activeId];
+        next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
         return next;
       });
+      setTimerIds((items) => {
+        const next = items.filter(id => id !== activeId);
+        const targetIndex = next.indexOf(String(over.id));
+        if (targetIndex === -1) return [...next, activeId];
+        next.splice(targetIndex + (insertAfter ? 1 : 0), 0, activeId);
+        return next;
+      });
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      handleDragEnd(event as unknown as DragEndEvent);
     }
   };
 
@@ -3516,7 +3514,7 @@ function App() {
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={(event) => { setActiveDragId(String(event.active.id)); dragPointerYRef.current = null; setIsListDragging(true); }} onDragCancel={() => { setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} onDragEnd={(event) => { handleDragEnd(event); setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={(event) => { setActiveDragId(String(event.active.id)); dragPointerYRef.current = null; setIsListDragging(true); }} onDragOver={handleDragOver} onDragCancel={() => { setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} onDragEnd={(event) => { handleDragEnd(event); setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
               <div className={`timer-dnd-list relative space-y-2 ${isListDragging ? 'is-dragging' : ''}`}>
                 {topLevelItems.map(item => {
@@ -3526,7 +3524,7 @@ function App() {
                     const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
                     return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
-                      canDrag={header.collapsed || sectionTimerIds.length === 0}
+                      canDrag
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
                       onDelete={() => setSectionDeleteTarget(header)}
@@ -3545,7 +3543,7 @@ function App() {
               {activeDragHeader ? (
                 <TimerHeaderRow
                   header={activeDragHeader}
-                  canDrag={activeDragHeader.collapsed || activeDragHeader.timerIds.length === 0}
+                  canDrag
                   onToggle={() => {}}
                   onRename={() => {}}
                   onDelete={() => {}}
