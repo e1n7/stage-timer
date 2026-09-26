@@ -955,12 +955,17 @@ interface TimerHeader {
 }
 
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = header.timerIds.length === 0, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}`, disabled: !canDrag });
+  const [isHovered, setIsHovered] = useState(false);
+  const dragEnabled = canDrag && (isHovered || Boolean(isSelected));
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}`, disabled: !dragEnabled });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...(canDrag ? attributes : {})} {...(canDrag ? listeners : {})} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!canDrag || target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${canDrag ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!canDrag}>
+    <div ref={setNodeRef} {...(dragEnabled ? attributes : {})} {...(dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
+        <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
+          <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
+        </span>
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
           <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
@@ -3486,7 +3491,7 @@ function App() {
                     const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
                     return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
-                      canDrag={sectionTimerIds.length === 0}
+                      canDrag={header.collapsed || sectionTimerIds.length === 0}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
                       onDelete={() => setSectionDeleteTarget(header)}
