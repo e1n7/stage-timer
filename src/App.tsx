@@ -1272,7 +1272,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         style={{ width: `${rowProgressPercent}%` }}
       />
       {canLink && <div
-        className={`absolute ${isInSection ? '-top-[2.375rem]' : '-top-9'} left-[3.5rem] z-20 flex h-16 w-16 items-center justify-center bg-transparent transition-opacity ${isSequenceAnchor ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
+        className={`absolute ${isInSection ? '-top-[2.25rem]' : '-top-9'} left-[3.5rem] z-20 flex h-16 w-16 items-center justify-center bg-transparent transition-opacity ${isSequenceAnchor ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
       >
         <button
           type="button"
@@ -2134,6 +2134,20 @@ function App() {
         const newIndex = items.indexOf(overId);
         return oldIndex === -1 || newIndex === -1 ? items : arrayMove(items, oldIndex, newIndex);
       });
+      markTimerChanged();
+      return;
+    }
+    const activeSection = timerHeaders.find(header => header.timerIds.includes(activeId));
+    const overSection = timerHeaders.find(header => header.timerIds.includes(overId));
+    if (activeSection && overSection && activeSection.id === overSection.id) {
+      setTimerHeaders(headers => headers.map(header => {
+        if (header.id !== activeSection.id) return header;
+        const oldIndex = header.timerIds.indexOf(activeId);
+        const newIndex = header.timerIds.indexOf(overId);
+        return oldIndex === -1 || newIndex === -1
+          ? header
+          : { ...header, timerIds: arrayMove(header.timerIds, oldIndex, newIndex) };
+      }));
       markTimerChanged();
       return;
     }
@@ -3527,9 +3541,13 @@ function App() {
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
                         setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-3 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id), sectionTimerIds.indexOf(id) > 0, false, true))}</div></SortableContext>}</div>;
+                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-2 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id), sectionTimerIds.indexOf(id) > 0, false, true))}</div></SortableContext>}</div>;
                   }
-                  return timerIds.includes(item) && !timerHeaders.some(header => header.timerIds.includes(item)) ? <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item), timerIds.indexOf(item) > 0)}</div> : null;
+                  if (!timerIds.includes(item) || timerHeaders.some(header => header.timerIds.includes(item))) return null;
+                  const itemIndex = topLevelItems.indexOf(item);
+                  const previousItem = itemIndex > 0 ? topLevelItems[itemIndex - 1] : null;
+                  const canLinkToPreviousTimer = Boolean(previousItem && !previousItem.startsWith('header:') && timerIds.includes(previousItem));
+                  return <div key={item} className="space-y-3">{renderTimerRow(item, visualTimerOrder.indexOf(item), timerIds.indexOf(item), canLinkToPreviousTimer)}</div>;
                 })}
               </div>
             </SortableContext>
@@ -3548,7 +3566,13 @@ function App() {
                   isDragOverlay
                 />
               ) : activeDragId && timerIds.includes(activeDragId)
-                ? renderTimerRow(activeDragId, visualTimerOrder.indexOf(activeDragId), timerIds.indexOf(activeDragId), timerIds.indexOf(activeDragId) > 0, true)
+                ? (() => {
+                  const activeSection = timerHeaders.find(header => header.timerIds.includes(activeDragId));
+                  const activeIndex = activeSection ? activeSection.timerIds.indexOf(activeDragId) : topLevelItems.indexOf(activeDragId);
+                  const previousItem = !activeSection && activeIndex > 0 ? topLevelItems[activeIndex - 1] : null;
+                  const canLinkToPreviousTimer = activeSection ? activeIndex > 0 : Boolean(previousItem && !previousItem.startsWith('header:') && timerIds.includes(previousItem));
+                  return renderTimerRow(activeDragId, visualTimerOrder.indexOf(activeDragId), timerIds.indexOf(activeDragId), canLinkToPreviousTimer, true, Boolean(activeSection));
+                })()
                 : null}
             </DragOverlay>
           </DndContext>
