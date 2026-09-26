@@ -1013,6 +1013,20 @@ const MessageRow = ({
   const cardActive = isShown;
   const [isSizeOpen, setIsSizeOpen] = useState(false);
   const [sizeAnchor, setSizeAnchor] = useState<{ top: number; left: number } | null>(null);
+  const sizeButtonRef = useRef<HTMLButtonElement>(null);
+  const sizePopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isSizeOpen) return;
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && (sizeButtonRef.current?.contains(target) || sizePopoverRef.current?.contains(target))) return;
+      setIsSizeOpen(false);
+      setSizeAnchor(null);
+    };
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [isSizeOpen]);
 
   return (
     <div 
@@ -1072,7 +1086,7 @@ const MessageRow = ({
             <button type="button" onClick={() => onToggleUppercase(msg.id)} className={`inline-flex h-6 w-5 items-center justify-center pb-0.5 transition-all border-b-2 ${msg.uppercase ? 'border-[#ffffff]' : 'border-transparent hover:border-[#888]'}`} title="Caps Lock text" aria-label="Caps Lock text" aria-pressed={msg.uppercase}>
               <Image src="/caps-lock.svg" alt="" width={16} height={16} className={`h-4 w-4 invert transition-opacity ${msg.uppercase ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`} />
             </button>
-            <button type="button" onClick={(e) => {
+            <button ref={sizeButtonRef} type="button" onClick={(e) => {
               if (isSizeOpen) {
                 setIsSizeOpen(false);
                 setSizeAnchor(null);
@@ -1085,7 +1099,7 @@ const MessageRow = ({
               <Image src="/filter.svg" alt="" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
             </button>
             {isSizeOpen && sizeAnchor && typeof document !== 'undefined' && createPortal(
-              <div className="fixed z-[1000] flex items-center gap-1 rounded border border-[#444] bg-[#1c1c1c] px-2 py-1 shadow-lg" style={{ top: sizeAnchor.top, left: sizeAnchor.left, transform: 'translateY(-100%)' }}>
+              <div ref={sizePopoverRef} className="fixed z-[1000] flex items-center gap-1 rounded border border-[#444] bg-[#1c1c1c] px-2 py-1 shadow-lg" style={{ top: sizeAnchor.top, left: sizeAnchor.left, transform: 'translateY(-100%)' }}>
                 <span className="mr-1 text-[10px] uppercase text-[#666]">Size</span>
                 <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
                   <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center border-r border-[#444] text-[#8a8a8a] hover:bg-[#252525] hover:text-white">-</button>
@@ -1113,7 +1127,7 @@ const MessageRow = ({
   );
 };
 
-const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onMoveUp, onMoveDown, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect }: TimerRowProps) => {
+const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTimeZone, onActivate, onSync, onAddAbove, onAddBelow, onDuplicate, onDelete, onApplyToAll, onSettingsUpdate, isActionsOpen, onActionsToggle, onCloseActions, openPanel, onPanelOpen, onPanelClose, isSelectMode, isSelected, onSelect }: TimerRowProps) => {
   const {
     seconds,
     isRunning,
@@ -1438,30 +1452,22 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <IconMore size={18} />
           </button>
           {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-56 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
+            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-48 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
               <span aria-hidden="true" className={`pointer-events-none absolute right-3 z-[-1] h-4 w-4 rotate-45 bg-[#242424] ${index < 4 ? '-top-2 border-l border-t border-[#444]' : '-bottom-2 border-r border-b border-[#444]'}`} />
-              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
                 <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
               </button>
-              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
                 <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert" />
                 <span>Add timer below</span>
               </button>
-              <button type="button" onClick={() => { onMoveUp(); onCloseActions(); }} title="Move timer up" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <span aria-hidden="true" className="w-4 text-center text-[18px] leading-none">↑</span>
-                <span>Move up</span>
-              </button>
-              <button type="button" onClick={() => { onMoveDown(); onCloseActions(); }} title="Move timer down" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
-                <span aria-hidden="true" className="w-4 text-center text-[18px] leading-none">↓</span>
-                <span>Move down</span>
-              </button>
-              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-white hover:bg-[#383838]">
+              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 <span>Clone timer</span>
               </button>
               <div className="my-1 border-t border-[#333]" />
-              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} title="Delete timer" className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-left text-[14px] text-[#fa5252] hover:bg-red-500/10">
+              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} title="Delete timer" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14H5V6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
                 <span>Delete timer</span>
               </button>
@@ -2252,12 +2258,7 @@ function App() {
       setTimerIds([...timerIds, newId]);
     }
     setTimerTopLevelItems((items) => items.includes(newId) ? items : [...items, newId]);
-    // Keep the currently selected/playing timer active — adding a timer
-    // must never steal the selection. If nothing is selected yet and there
-    // are no timers at all, pick the newly added one as the first active.
-    if (!activeTimerId && timerIds.length === 0) {
-      setActiveTimerId(newId);
-    }
+    // Adding a timer never changes the current selection; the user selects it explicitly.
     markTimerChanged();
     return newId;
   };
@@ -3101,9 +3102,9 @@ function App() {
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
         <input ref={roomNameInputRef} type="text" value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} className="min-w-0 flex-1 bg-transparent text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors text-center sm:text-left" />
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md px-4 text-[13px] text-white hover:bg-[#383838] ${hasUnsavedChanges ? 'border border-[#d69e2e] bg-[#4a3415]' : 'bg-[#2d2d2d]'}`}><IconSave className="mr-1" /> Save</button>
+          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838] ${hasUnsavedChanges ? 'border-[#d69e2e] bg-[#4a3415]' : ''}`}><IconSave className="mr-1" /> Save</button>
           <div className="relative">
-            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className="flex h-9 items-center gap-2 rounded-md bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]">Room <IconChevronDown size={14} /></button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && (
               <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
@@ -3189,7 +3190,7 @@ function App() {
   setSaveNotice('Room imported');
   window.setTimeout(() => setSaveNotice(null), 2200);
 } } catch (err) { console.error(err); setSaveNotice('Import failed - invalid backup file'); window.setTimeout(() => setSaveNotice(null), 2600); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} title="Import room backup" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} title="Import room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {
               const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
@@ -3200,7 +3201,7 @@ function App() {
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
                         const exportData = { rooms: exportedRooms, activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
- const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white hover:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
+ const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -3214,7 +3215,7 @@ function App() {
           </button>
         </div>
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} title="Open output links" className="flex h-8 items-center gap-2 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[12px] text-white hover:bg-[#383838]"><IconScreen className="mr-1" /> Output Links</button></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} title="Open output view" className="flex h-8 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-3 text-[12px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconScreen className="mr-1" /> Output View</button></div>
           <div className={`relative flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
 
@@ -3438,12 +3439,12 @@ function App() {
                 <button type="button" onClick={() => { setIsTimerSelectMode(true); setSelectedTimerIds([]); }} title="Select a timer" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a timer</span></button>
               </div>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-0.5">
               <button 
                 type="button" 
                 onClick={() => setIsBlackout(!isBlackout)} 
                 title="Toggle blackout mode"
-                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold text-white transition-all hover:bg-[#383838]`}
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isBlackout ? 'border-[#555] bg-[#383838]' : ''}`}
               >
                 <span className={`inline-block h-2 w-2 rounded-full ${isBlackout ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#555]'}`} /> Blackout
               </button>
@@ -3451,7 +3452,7 @@ function App() {
                 type="button" 
                 onClick={handleFlash} 
                 title="Flash active timer"
-                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-4 text-[13px] font-bold transition-all hover:bg-[#383838] ${isFlashing && isFlash ? 'text-[#ffd43b]' : 'text-white'}`}
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isFlashing && isFlash ? 'border-[#555] bg-[#383838] text-[#ffd43b]' : 'text-white'}`}
               >
                 <IconFlash /> Flash
               </button>
@@ -3465,7 +3466,7 @@ function App() {
                     setIsTimersMenuOpen(!isTimersMenuOpen);
                   }}
                   title="Open timer options"
-                  className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 w-10 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] transition-all ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                  className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-white transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
                 >
                   <IconMore size={20} />
                 </button>
@@ -3518,8 +3519,8 @@ function App() {
             </SortableContext>
           </DndContext>
           <div className="mx-auto mt-10 flex w-[calc(100%-2rem)] max-w-[30rem] flex-nowrap items-center justify-center gap-3 rounded-lg border border-[#333] bg-[#191919]/95 p-3 shadow-inner">
-            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add New Timer</span></button>
-            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:bg-[#383838] active:scale-[0.99] sm:px-4"><IconLayers size={18} /> <span className="whitespace-nowrap">Add New Section</span></button>
+            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99] sm:px-4"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add New Timer</span></button>
+            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99] sm:px-4"><IconLayers size={18} /> <span className="whitespace-nowrap">Add New Section</span></button>
           </div>
           </div>
         </main>
@@ -3533,7 +3534,7 @@ function App() {
             </div>
           ) : (
             <div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(true); setSelectedMessageIds([]); }} title="Select a message" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>
-          )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button>}</div>
+          )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} aria-label="Flash message" className={`flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded border border-transparent bg-transparent px-3 text-[13px] font-bold transition-colors hover:border-[#555] hover:bg-[#333] focus-visible:border-[#666] focus-visible:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'border-[#555] bg-[#333] text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash /><span>Flash</span></button>}</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="w-full space-y-2">
@@ -3588,34 +3589,43 @@ function App() {
           }
           const scrubberPct = total > 0 ? Math.min(1, Math.max(0, elapsed / total)) : 0;
           const lowerTimelinePct = scrubberPct;
+          const visibleTimers = durations
+            .map((duration, index) => ({ duration, index }))
+            .filter(timer => timer.duration > 0);
           const endLabel = total === 0 ? '0:00' : '-' + formatClock(total);
           // Left label: elapsed position (HH:MM:SS while running), or 0:00 before start
           const leftLabel = total > 0 && activeIdx >= 0 ? formatClock(Math.min(elapsed, total)) : '0:00';
           return (
             <div className="flex flex-1 items-center gap-3 px-4">
               <span className="tabular-nums shrink-0 text-white">{leftLabel}</span>
-              {/* Combined timeline: one single track layer with clipped segments on the same baseline */}
-              <div className="relative flex flex-1 items-center self-center mx-2 h-6">
-                {/* Base track */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full rounded-full bg-[#333]"></div>
-                {/* Elapsed portion (dark gray) — clipped at the scrubber, same baseline as track */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 ${100 - lowerTimelinePct * 100}% 0 0)` }}>
-                  <div className="h-full w-full rounded-full bg-[#666]"></div>
+              {/* Separate duration-weighted tracks make each timer easier to distinguish. */}
+              <div className="relative mx-2 flex h-6 flex-1 items-center self-center">
+                <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                  {activeIdx >= 0 && visibleTimers.length > 0 ? visibleTimers.map(({ duration, index }) => {
+                    const segmentStart = durations.slice(0, index).reduce((sum, value) => sum + value, 0);
+                    const segmentElapsed = Math.max(0, Math.min(duration, elapsed - segmentStart));
+                    const segmentProgress = duration > 0 ? (segmentElapsed / duration) * 100 : 0;
+                    return (
+                      <div
+                        key={`stage-${index}`}
+                        aria-label={`Timer ${index + 1} timeline segment`}
+                        className={`relative h-1 min-w-[8px] flex-1 overflow-hidden rounded-none ${total > 0 ? 'bg-white' : 'bg-[#333]'}`}
+                        style={{ flexGrow: Math.max(duration, 0.001), flexBasis: 0 }}
+                      >
+                        <div className="absolute inset-y-0 left-0 rounded-none bg-[#666]" style={{ width: `${segmentProgress}%` }} />
+                      </div>
+                    );
+                  }) : (
+                    <div aria-hidden="true" className="h-1 w-full bg-white" />
+                  )}
                 </div>
-                {/* Remaining portion (white) — clipped after the scrubber */}
-                <div className="absolute inset-y-0 my-auto h-1 w-full overflow-hidden rounded-full" style={{ clipPath: `inset(0 0 0 ${lowerTimelinePct * 100}%)` }}>
-                  <div className="h-full w-full rounded-full bg-white"></div>
-                </div>
-                {/* Thin vertical separators between stages — same height and baseline as the track */}
-                {timerIds.length > 1 && durations.slice(0, -1).map((_, i) => {
-                  let cum = durations[0]; for (let j = 1; j <= i; j++) cum += durations[j];
-                  return <div key={`tick-${i}`} className="absolute inset-y-0 my-auto z-10 h-2.5 w-px bg-[#888]" style={{ left: `${(cum / total) * 100}%` }}></div>;
-                })}
-                {/* Blue position marker centered on the same baseline */}
-                <div 
-                  className="h-4 w-4 rounded-full bg-[#3b82f6] shadow-lg absolute my-auto -translate-x-1/2 z-20" 
-                  style={{ left: `${lowerTimelinePct * 100}%` }}
-                ></div>
+                {/* The position marker follows the existing overall timeline position. */}
+                  {activeIdx >= 0 && (
+                  <div
+                    className={`absolute left-0 top-1/2 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white ${activeTimerState?.isRunning ? 'bg-[#fa5252] shadow-[0_0_10px_rgba(250,82,82,0.75)]' : 'bg-[#3b82f6] shadow-[0_0_10px_rgba(59,130,246,0.65)]'}`}
+                    style={{ left: `${lowerTimelinePct * 100}%` }}
+                  ></div>
+                )}
               </div>
               <span className="tabular-nums shrink-0 text-white">{endLabel}</span>
             </div>
