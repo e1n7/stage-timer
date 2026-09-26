@@ -477,6 +477,9 @@ const IconAddTimer = ({ size = 24 }: IconProps) => (
 const IconLayers = ({ size = 24 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" aria-hidden="true"><path d="m1.75 11 6.25 3.25 6.25-3.25m-12.5-3 6.25 3.25 6.25-3.25m-6.25-6.25-6.25 3.25 6.25 3.25 6.25-3.25z" /></svg>
 );
+const IconDragHandle = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size * 18 / 14} viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
+);
 
 interface TimeAdjustMenuProps {
   direction: 'decrease' | 'increase';
@@ -920,7 +923,7 @@ interface TimerHeader {
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
-  const dragEnabled = canDrag && (isHovered || Boolean(isSelected) || isDragArmed);
+  const dragEnabled = canDrag && (isHovered || isDragArmed);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
@@ -931,7 +934,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
           <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
         ) : (
           <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
-            <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
+            <IconDragHandle />
           </span>
         )}
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
@@ -962,13 +965,17 @@ interface MessageRowProps {
   isSelectMode?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  isDragOverlay?: boolean;
 }
 
 const MessageRow = ({
   msg, idx, isShown, messageShownId, onUpdate, onDelete, onUpdateColor,
-  onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize, isSelectMode, isSelected, onSelect
+  onToggleBold, onToggleUppercase, onUpdateSize, onShow, getMessageSize, isSelectMode, isSelected, onSelect, isDragOverlay = false
 }: MessageRowProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: msg.id });
+  const [isHovered, setIsHovered] = useState(false);
+  const [isDragArmed, setIsDragArmed] = useState(false);
+  const dragEnabled = isHovered || isDragArmed;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:message:${msg.id}` : msg.id, disabled: isDragOverlay || !dragEnabled });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -998,13 +1005,17 @@ const MessageRow = ({
     <div
       ref={setNodeRef}
       style={style}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onPointerUp={() => setIsDragArmed(false)}
+      onPointerCancel={() => setIsDragArmed(false)}
       onClick={(event) => {
         if (!isSelectMode || !onSelect) return;
         const target = event.target as HTMLElement;
         if (target.closest('button, textarea, input, select')) return;
         onSelect();
       }}
-      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'border border-[#22c55e] bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'border border-[#22c55e] bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <button
         type="button"
@@ -1020,13 +1031,18 @@ const MessageRow = ({
           {isSelectMode ? (
             <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`flex h-4 w-4 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected message' : 'Select message'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
           ) : <div
-            {...attributes}
-            {...listeners}
-            className="group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] cursor-grab active:cursor-grabbing"
+            {...(dragEnabled ? attributes : {})}
+            {...(dragEnabled ? listeners : {})}
+            onPointerDown={(event) => {
+              if (!dragEnabled) return;
+              setIsDragArmed(true);
+              listeners?.onPointerDown?.(event);
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            className={`group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
             title="Drag to reorder"
           >
-            <span className="group-hover/index:hidden">{idx + 1}</span>
-            <span className="hidden group-hover/index:inline text-[18px] font-light leading-none">=</span>
+            {dragEnabled || isDragging ? <IconDragHandle size={14} /> : <span>{idx + 1}</span>}
           </div>}
           <textarea
             value={msg.text}
@@ -1114,7 +1130,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
 
-  const dragEnabled = isHovered || Boolean(isSelected) || isDragArmed;
+  const dragEnabled = isHovered || isDragArmed;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:${id}` : id, disabled: isDragOverlay || !dragEnabled });
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
@@ -1298,7 +1314,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         className={`group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 max-[639px]:w-6 ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {dragEnabled || isDragging ? <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg> : <span>{index + 1}</span>}
+        {dragEnabled || isDragging ? <IconDragHandle /> : <span>{index + 1}</span>}
       </div>}
 
       {/* Scheduled Time Display */}
@@ -1920,6 +1936,7 @@ function App() {
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [isListDragging, setIsListDragging] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [activeMessageDragId, setActiveMessageDragId] = useState<string | null>(null);
   const dragPointerYRef = useRef<number | null>(null);
   const gridTrackRef = useRef<HTMLDivElement>(null);
 
@@ -2125,6 +2142,11 @@ function App() {
         return arrayMove(items, oldIndex, newIndex);
       });
       markTimerChanged();
+    }
+  };
+  const handleMessageDragOver = (event: DragOverEvent) => {
+    if (event.over && event.active.id !== event.over.id) {
+      handleMessageDragEnd(event as unknown as DragEndEvent);
     }
   };
 
@@ -3193,7 +3215,7 @@ function App() {
             <Image src="/timer_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
           <button type="button" onClick={() => setMobileSection('messages')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'messages' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show messages" aria-label="Show messages" aria-pressed={mobileSection === 'messages'}>
-            <Image src="/message_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
+            <IconDragHandle size={20} />
           </button>
         </div>
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
@@ -3540,7 +3562,7 @@ function App() {
           ) : (
             <div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(true); setSelectedMessageIds([]); }} title="Select a message" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>
           )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} aria-label="Flash message" className={`flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded border border-transparent bg-transparent px-3 text-[13px] font-bold transition-colors hover:border-[#555] hover:bg-[#333] focus-visible:border-[#666] focus-visible:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'border-[#555] bg-[#333] text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash /><span>Flash</span></button>}</div>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(event) => setActiveMessageDragId(String(event.active.id))} onDragCancel={() => setActiveMessageDragId(null)} onDragOver={handleMessageDragOver} onDragEnd={(event) => { handleMessageDragEnd(event); setActiveMessageDragId(null); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="w-full space-y-2">
                 {messages.map((msg, idx) => (
@@ -3566,6 +3588,29 @@ function App() {
                 ))}
               </div>
             </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeMessageDragId ? (() => {
+                const activeMessage = messages.find(message => message.id === activeMessageDragId);
+                return activeMessage ? <MessageRow
+                  msg={activeMessage}
+                  idx={messages.findIndex(message => message.id === activeMessageDragId)}
+                  isShown={messageShownId === activeMessage.id}
+                  messageShownId={messageShownId}
+                  onUpdate={updateMessage}
+                  onDelete={deleteMessage}
+                  onUpdateColor={updateMessageColor}
+                  onToggleBold={toggleMessageBold}
+                  onToggleUppercase={toggleMessageUppercase}
+                  onUpdateSize={updateMessageSize}
+                  onShow={showMessage}
+                  getMessageSize={getMessageSize}
+                  isSelectMode={isMessageSelectMode}
+                  isSelected={selectedMessageIds.includes(activeMessage.id)}
+                  onSelect={() => {}}
+                  isDragOverlay
+                /> : null;
+              })() : null}
+            </DragOverlay>
           </DndContext>
           <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} title="Add a new message" className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
         </aside>
