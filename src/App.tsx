@@ -963,7 +963,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
       <div className="flex items-center gap-2">
         <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
-          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
+          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
         ) : <button type="button" onClick={() => { setDraft(header.title === 'New Section' || header.title === 'Untitled section' ? '' : header.title); setEditing(true); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4" title="Edit section header">{header.title}</button>}
         <span className="text-[11px] text-[#888]">{header.timerIds.length}</span>
         <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b]" title="Add a sub-timer">+ Add Row</button>
@@ -1019,6 +1019,15 @@ const MessageRow = ({
       }}
       className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'border border-[#22c55e] bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
+      <button
+        type="button"
+        onClick={() => onDelete(msg.id)}
+        className={`absolute bottom-3 left-3 z-10 flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 ${cardActive ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-[#666] hover:bg-[#3a2020] hover:text-[#fa5252]'}`}
+        title="Delete message"
+        aria-label="Delete message"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+      </button>
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
           {isSelectMode ? (
@@ -1044,16 +1053,6 @@ const MessageRow = ({
               textTransform: msg.uppercase ? 'uppercase' : 'none'
             }}
           />
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onDelete(msg.id)}
-              className={`flex items-center justify-center ${cardActive ? 'text-white/70 hover:text-white' : 'text-[#666] hover:text-[#fa5252]'}`}
-              title="Delete message"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            </button>
-          </div>
         </div>
         <div className="ml-10 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -3522,7 +3521,7 @@ function App() {
           )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} className={`flex h-8 w-8 items-center justify-center rounded border border-[#555] bg-transparent hover:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash size={14} /></button>}</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleMessageDragEnd} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
+              <div className="w-full space-y-2">
                 {messages.map((msg, idx) => (
                   <MessageRow 
                     key={msg.id} 
