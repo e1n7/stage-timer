@@ -12,6 +12,7 @@ import { formatTimeOfDay } from './lib/time';
 import {
   DndContext,
   closestCenter,
+  closestCorners,
   type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
@@ -32,7 +33,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 const collisionDetectionStrategy: CollisionDetection = (args) => {
   const activeId = String(args.active.id);
   const droppableContainers = args.droppableContainers.filter((container) => String(container.id) !== activeId);
-  return closestCenter({ ...args, droppableContainers });
+  return closestCorners({ ...args, droppableContainers });
 };
 
 const writeStorageItem = (key: string, value: string): boolean => {
@@ -956,12 +957,13 @@ interface TimerHeader {
 
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = header.timerIds.length === 0, isSelectMode, isSelected, onSelect }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const dragEnabled = canDrag && (isHovered || Boolean(isSelected));
+  const [isDragArmed, setIsDragArmed] = useState(false);
+  const dragEnabled = canDrag && (isHovered || Boolean(isSelected) || isDragArmed);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `header:${header.id}`, disabled: !dragEnabled });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...(dragEnabled ? attributes : {})} {...(dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
+    <div ref={setNodeRef} {...(dragEnabled ? attributes : {})} {...(dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
         <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
           <svg width="14" height="18" viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
@@ -1129,10 +1131,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const isQuickSettingsOpen = openPanel === 'quick';
   const [isAdjustMenuOpen, setIsAdjustMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isDragArmed, setIsDragArmed] = useState(false);
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
 
-  const dragEnabled = isHovered || Boolean(isSelected);
+  const dragEnabled = isHovered || Boolean(isSelected) || isDragArmed;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !dragEnabled });
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
@@ -1270,6 +1273,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       style={style} 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onPointerUp={() => setIsDragArmed(false)}
+      onPointerCancel={() => setIsDragArmed(false)}
       onClick={(event) => {
         if (isSelectMode && onSelect) {
           const target = event.target as HTMLElement;
@@ -1293,6 +1298,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         {...(dragEnabled ? listeners : {})}
         onPointerDown={(event) => {
           if (!dragEnabled) return;
+          setIsDragArmed(true);
           listeners?.onPointerDown?.(event);
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
