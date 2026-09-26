@@ -14,8 +14,6 @@ import {
   DndContext,
   DragOverlay,
   closestCenter,
-  pointerWithin,
-  type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -32,18 +30,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-
-const collisionDetectionStrategy: CollisionDetection = (args) => {
-  const activeId = String(args.active.id);
-  const droppableContainers = args.droppableContainers.filter((container) => String(container.id) !== activeId);
-  // Prefer the item directly under the pointer. Using the dragged rectangle's
-  // corners can select the next row while moving downward, forcing the user
-  // to pass over an extra row before the intended drop target is recognized.
-  const pointerCollisions = pointerWithin({ ...args, droppableContainers });
-  return pointerCollisions.length > 0
-    ? pointerCollisions
-    : closestCenter({ ...args, droppableContainers });
-};
 
 const writeStorageItem = (key: string, value: string): boolean => {
   if (typeof window === 'undefined') return false;
@@ -2128,9 +2114,30 @@ function App() {
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    if (event.over && event.active.id !== event.over.id) {
-      handleDragEnd(event as unknown as DragEndEvent);
+    if (!event.over || event.active.id === event.over.id) return;
+    const activeId = String(event.active.id);
+    const overId = String(event.over.id);
+    const activeIsTopLevelTimer = timerIds.includes(activeId)
+      && topLevelItems.includes(activeId)
+      && !timerHeaders.some(header => header.timerIds.includes(activeId));
+    const overIsTopLevelTimer = timerIds.includes(overId)
+      && topLevelItems.includes(overId)
+      && !timerHeaders.some(header => header.timerIds.includes(overId));
+    if (activeIsTopLevelTimer && overIsTopLevelTimer) {
+      setTimerTopLevelItems(items => {
+        const oldIndex = items.indexOf(activeId);
+        const newIndex = items.indexOf(overId);
+        return oldIndex === -1 || newIndex === -1 ? items : arrayMove(items, oldIndex, newIndex);
+      });
+      setTimerIds(items => {
+        const oldIndex = items.indexOf(activeId);
+        const newIndex = items.indexOf(overId);
+        return oldIndex === -1 || newIndex === -1 ? items : arrayMove(items, oldIndex, newIndex);
+      });
+      markTimerChanged();
+      return;
     }
+    handleDragEnd(event as unknown as DragEndEvent);
   };
 
   const handleMessageDragEnd = (event: DragEndEvent) => {
@@ -3498,7 +3505,7 @@ function App() {
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
-          <DndContext sensors={sensors} collisionDetection={collisionDetectionStrategy} onDragStart={(event) => { setActiveDragId(String(event.active.id)); dragPointerYRef.current = null; setIsListDragging(true); }} onDragOver={handleDragOver} onDragCancel={() => { setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} onDragEnd={(event) => { handleDragEnd(event); setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} modifiers={[restrictToVerticalAxis]}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(event) => { setActiveDragId(String(event.active.id)); dragPointerYRef.current = null; setIsListDragging(true); }} onDragOver={handleDragOver} onDragCancel={() => { setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} onDragEnd={(event) => { handleDragEnd(event); setActiveDragId(null); dragPointerYRef.current = null; setIsListDragging(false); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={topLevelItems} strategy={verticalListSortingStrategy}>
               <div className={`timer-dnd-list relative space-y-2 ${isListDragging ? 'is-dragging' : ''}`}>
                 {topLevelItems.map(item => {
