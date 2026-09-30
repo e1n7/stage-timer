@@ -28,8 +28,6 @@
 
   button {
     font: inherit;
-    outline: 1px solid #555;
-    outline-offset: -1px;
   }
 
   button:hover,
