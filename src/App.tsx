@@ -920,7 +920,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
   return (
-    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg border border-[#3b3b3b] bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
+    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
         {isSelectMode ? (
           <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
@@ -3243,7 +3243,7 @@ function App() {
             <Image src="/timer_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
           <button type="button" onClick={() => setMobileSection('messages')} className={`flex h-12 w-full items-center justify-center border-r-2 bg-transparent p-0 transition-opacity ${mobileSection === 'messages' ? 'border-white opacity-100' : 'border-transparent opacity-45 hover:opacity-80'}`} title="Show messages" aria-label="Show messages" aria-pressed={mobileSection === 'messages'}>
-            <IconDragHandle size={20} />
+            <Image src="/message_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
         </div>
         <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
@@ -3589,7 +3589,7 @@ function App() {
                 : null}
             </DragOverlay>
           </DndContext>
-          <div className="mx-auto mt-10 flex w-[calc(100%-2rem)] max-w-[30rem] flex-nowrap items-center justify-center gap-3 rounded-lg border border-[#333] bg-[#191919]/95 p-3 shadow-inner">
+          <div className="mt-10 flex items-center justify-center gap-3">
             <button type="button" onClick={() => addTimer()} title="Add a new timer" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add Timer</span></button>
             <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconLayers size={18} /> <span className="whitespace-nowrap">Add Section</span></button>
           </div>
@@ -3656,7 +3656,7 @@ function App() {
               })() : null}
             </DragOverlay>
           </DndContext>
-          <div className="mt-6 flex justify-center"><button type="button" onClick={addMessage} title="Add a new message" className="inline-flex h-8 w-auto items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white shadow-md hover:bg-[#383838]"><IconMessagePlus size={18} /> <span className="whitespace-nowrap">Add Message</span></button></div>
+          <div className="mt-10 flex items-center justify-center gap-3"><button type="button" onClick={addMessage} title="Add a new message" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconMessagePlus size={18} /> <span className="whitespace-nowrap">Add Message</span></button></div>
         </aside>
       </div>
 
