@@ -3383,7 +3383,7 @@ function App() {
           <div className="mt-4 flex items-center justify-center gap-2">
             <div className="flex items-center gap-[1.9px]">
             <div className="relative w-[34px] shrink-0">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} title="Decrease timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); const shouldOpen = openAdjustMenu !== 'decrease'; setOpenAdjustMenu(shouldOpen ? 'decrease' : null); if (shouldOpen) setIsTimeZoneMenuOpen(false); }} title="Decrease timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
               {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full left-0 z-50 mb-1"><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
             <button onClick={() => sendControl('ADJUST', -60)} title="Subtract one minute" className="flex h-[38px] w-[46px] shrink-0 items-center justify-center rounded-l-none rounded-r border border-[#333] bg-[#2d2d2d] px-0 text-[13px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
@@ -3403,7 +3403,7 @@ function App() {
             <div className="flex items-center gap-[1.9px]">
             <button onClick={() => sendControl('ADJUST', 60)} title="Add one minute" className="flex h-[38px] w-[46px] shrink-0 items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 text-[13px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
             <div className="relative w-[34px] shrink-0">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} title="Increase timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l-none rounded-r border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); const shouldOpen = openAdjustMenu !== 'increase'; setOpenAdjustMenu(shouldOpen ? 'increase' : null); if (shouldOpen) setIsTimeZoneMenuOpen(false); }} title="Increase timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l-none rounded-r border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
               {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full right-0 z-50 mb-1"><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
             </div>
@@ -3416,7 +3416,7 @@ function App() {
                 <button
                   type="button"
                   className="flex items-center gap-1 rounded px-2 py-1 text-[#8a8a8a] transition-all hover:bg-[#2d2d2d] hover:text-white"
-                  onClick={(e) => { e.stopPropagation(); setIsTimeZoneMenuOpen(!isTimeZoneMenuOpen); }}
+                  onClick={(e) => { e.stopPropagation(); const shouldOpen = !isTimeZoneMenuOpen; setIsTimeZoneMenuOpen(shouldOpen); if (shouldOpen) setOpenAdjustMenu(null); }}
                   title="Click to change timezone"
                 >
                   <span>{timeZone}</span>

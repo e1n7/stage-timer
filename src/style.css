@@ -33,8 +33,7 @@
   button:hover,
   button:focus,
   button:active {
-    outline: 1px solid #fff;
-    outline-offset: -1px;
+    outline: none;
   }
 
   .digit {
