@@ -406,6 +406,9 @@ interface IconProps { className?: string; size?: number; }
 const IconChevronDown = ({ className = "", size = 10 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M7 10l5 5 5-5H7z"/></svg>
 );
+const IconControlChevron = ({ size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+);
 const IconSkipBack = ({ size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
 );
@@ -462,6 +465,9 @@ const IconAddTimer = ({ size = 24 }: IconProps) => (
 );
 const IconLayers = ({ size = 24 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" aria-hidden="true"><path d="m1.75 11 6.25 3.25 6.25-3.25m-12.5-3 6.25 3.25 6.25-3.25m-6.25-6.25-6.25 3.25 6.25 3.25 6.25-3.25z" /></svg>
+);
+const IconMessagePlus = ({ size = 18 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-9.5A7.5 7.5 0 0 1 10.5 4H12a8 8 0 0 1 8 7.5Z" /></svg>
 );
 const IconDragHandle = ({ size = 14 }: IconProps) => (
   <svg width={size} height={size * 18 / 14} viewBox="0 0 14 18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="4" r="1.5" /><circle cx="10" cy="4" r="1.5" /><circle cx="4" cy="9" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="4" cy="14" r="1.5" /><circle cx="10" cy="14" r="1.5" /></svg>
@@ -3151,6 +3157,7 @@ function App() {
                   setMessages([{ id: '1', text: '', color: '#ffffff' }]);
                   setMessageShownId(null);
                   setMessageFlashId(null);
+                  markTimerChanged();
                   setIsRoomMenuOpen(false);
                   requestAnimationFrame(() => {
                     roomNameInputRef.current?.focus();
@@ -3373,26 +3380,32 @@ function App() {
               </div>
             </>
           )}
-          <div className="mt-4 grid grid-cols-7 gap-2">
-            <div className="relative">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} title="Decrease timer adjustment options" className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="flex items-center gap-[1.9px]">
+            <div className="relative w-[34px] shrink-0">
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'decrease' ? null : 'decrease'); }} title="Decrease timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
               {openAdjustMenu === 'decrease' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full left-0 z-50 mb-1"><TimeAdjustMenu direction="decrease" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
             </div>
-            <button onClick={() => sendControl('ADJUST', -60)} title="Subtract one minute" className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
-            <button onClick={() => sendControl('RESET')} className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack /></button>
-            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} title={activeTimerState?.isRunning ? 'Pause timer' : 'Start timer'} className={`group col-span-1 flex h-10 items-center justify-center rounded transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause /> : <IconPlay />}</button>
+            <button onClick={() => sendControl('ADJUST', -60)} title="Subtract one minute" className="flex h-[38px] w-[46px] shrink-0 items-center justify-center rounded-l-none rounded-r border border-[#333] bg-[#2d2d2d] px-0 text-[13px] font-bold hover:bg-[#383838] transition-colors">-1m</button>
+            </div>
+            <div className="flex items-center gap-2">
+            <button onClick={() => sendControl('RESET')} className="flex h-[38px] w-[52px] shrink-0 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors" title="Reset current timer"><IconSkipBack size={17} /></button>
+            <button onClick={() => sendControl(activeTimerState?.isRunning ? 'PAUSE' : 'START')} title={activeTimerState?.isRunning ? 'Pause timer' : 'Start timer'} className={`group flex h-[38px] w-[76px] shrink-0 items-center justify-center rounded px-0 transition-colors ${activeTimerState?.isRunning ? 'border border-[#333] bg-[#2d2d2d] text-[#ef4444] hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white' : 'border border-[#333] bg-[#2d2d2d] text-[#22c55e] hover:border-[#16a34a] hover:bg-[#16a34a] hover:text-white'}`}>{activeTimerState?.isRunning ? <IconPause size={20} /> : <IconPlay size={20} />}</button>
             <button
               onClick={goToNextTimer}
               disabled={timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1}
-              className={`col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] transition-colors ${timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`}
+              className={`flex h-[38px] w-[52px] shrink-0 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] px-0 transition-colors ${timerIds.length <= 1 || timerIds.indexOf(activeTimerId) >= timerIds.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-[#383838]'}`}
               title="Next timer"
             >
-              <IconSkipForward />
+              <IconSkipForward size={17} />
             </button>
-            <button onClick={() => sendControl('ADJUST', 60)} title="Add one minute" className="col-span-1 flex h-10 items-center justify-center rounded border border-[#333] bg-[#2d2d2d] text-[14px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
-            <div className="relative">
-              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} title="Increase timer adjustment options" className={`flex h-10 w-full items-center justify-center rounded border border-[#333] bg-[#2d2d2d] hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconChevronDown /></button>
+            </div>
+            <div className="flex items-center gap-[1.9px]">
+            <button onClick={() => sendControl('ADJUST', 60)} title="Add one minute" className="flex h-[38px] w-[46px] shrink-0 items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 text-[13px] font-bold hover:bg-[#383838] transition-colors">+1m</button>
+            <div className="relative w-[34px] shrink-0">
+              <button type="button" onClick={(e) => { e.stopPropagation(); setOpenAdjustMenu(openAdjustMenu === 'increase' ? null : 'increase'); }} title="Increase timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l-none rounded-r border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'increase' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
               {openAdjustMenu === 'increase' && (<div onClick={(e) => e.stopPropagation()} className="absolute bottom-full right-0 z-50 mb-1"><TimeAdjustMenu direction="increase" onSelect={(secs) => sendControl('ADJUST', secs)} onClose={() => setOpenAdjustMenu(null)} /></div>)}
+            </div>
             </div>
           </div>
           <div className="mt-6 flex flex-col items-center">
@@ -3577,8 +3590,8 @@ function App() {
             </DragOverlay>
           </DndContext>
           <div className="mx-auto mt-10 flex w-[calc(100%-2rem)] max-w-[30rem] flex-nowrap items-center justify-center gap-3 rounded-lg border border-[#333] bg-[#191919]/95 p-3 shadow-inner">
-            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99] sm:px-4"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add New Timer</span></button>
-            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99] sm:px-4"><IconLayers size={18} /> <span className="whitespace-nowrap">Add New Section</span></button>
+            <button type="button" onClick={() => addTimer()} title="Add a new timer" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add Timer</span></button>
+            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconLayers size={18} /> <span className="whitespace-nowrap">Add Section</span></button>
           </div>
           </div>
         </main>
@@ -3643,7 +3656,7 @@ function App() {
               })() : null}
             </DragOverlay>
           </DndContext>
-          <div className="mt-6 space-y-4"><button type="button" onClick={addMessage} title="Add a new message" className="flex w-full items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] px-6 py-2.5 text-[14px] font-bold text-white hover:bg-[#383838] shadow-md">+ Add Message</button></div>
+          <div className="mt-6 flex justify-center"><button type="button" onClick={addMessage} title="Add a new message" className="inline-flex h-8 w-auto items-center justify-center gap-2 rounded-lg border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white shadow-md hover:bg-[#383838]"><IconMessagePlus size={18} /> <span className="whitespace-nowrap">Add Message</span></button></div>
         </aside>
       </div>
 
