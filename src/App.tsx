@@ -1142,6 +1142,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const secondsRef = useRef(seconds);
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
 
+  const adjustTimer = useCallback((adjustment: number) => {
+    const currentSeconds = secondsRef.current;
+    if (settings.mode === 'countup' && currentSeconds <= 0 && adjustment < 0) return;
+    const nextSeconds = settings.mode === 'countup'
+      ? Math.max(0, currentSeconds + adjustment)
+      : currentSeconds + adjustment;
+    updateSettings({ targetDuration: Math.max(0, nextSeconds) });
+    setTime(nextSeconds);
+    onSettingsUpdate();
+  }, [onSettingsUpdate, settings.mode, setTime, updateSettings]);
+
   useEffect(() => {
     const handleInWindowResetAll = (event: Event) => {
       const payload = (event as CustomEvent<string>).detail;
@@ -1170,14 +1181,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             setTime(settings.mode === 'countup' ? Number(settings.targetDuration || 0) : 0);
             break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': {
-            const adjustment = typeof payload === 'number' ? payload : 0;
-            if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
-            setTime(settings.mode === 'countup'
-              ? Math.max(0, secondsRef.current + adjustment)
-              : secondsRef.current + adjustment);
-            break;
-          }
+          case 'ADJUST': adjustTimer(typeof payload === 'number' ? payload : 0); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS':
           case 'REFRESH_SETTINGS': {
@@ -1213,14 +1217,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             setTime(settings.mode === 'countup' ? Number(settings.targetDuration || 0) : 0);
             break;
           case 'RESET': resetTimer(); break;
-          case 'ADJUST': {
-            const adjustment = typeof payload === 'number' ? payload : 0;
-            if (settings.mode === 'countup' && secondsRef.current <= 0 && adjustment < 0) break;
-            setTime(settings.mode === 'countup'
-              ? Math.max(0, secondsRef.current + adjustment)
-              : secondsRef.current + adjustment);
-            break;
-          }
+          case 'ADJUST': adjustTimer(typeof payload === 'number' ? payload : 0); break;
           case 'SET': setTime(payload); break;
           case 'RELOAD_SETTINGS':
           case 'REFRESH_SETTINGS': {
@@ -1237,7 +1234,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       window.removeEventListener('stage-timer-control', handleLocalControl);
       unsubscribe();
     };
-  }, [id, isRunning, settings.mode, settings.targetDuration, startTimer, pauseTimer, resetTimer, setTime, updateSettings]);
+  }, [id, isRunning, settings.mode, settings.targetDuration, startTimer, pauseTimer, resetTimer, setTime, updateSettings, adjustTimer]);
 
   useEffect(() => {
     if (isActive && !isDragOverlay) {
