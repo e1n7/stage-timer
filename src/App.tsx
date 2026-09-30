@@ -561,8 +561,8 @@ const TimerTitleEditModal = ({ isOpen, title, onClose, onSave }: TimerTitleEditM
             className="h-10 w-full rounded-md border border-[#444] bg-[#171717] px-3 text-[14px] text-white outline-none transition-colors focus:border-[#666]"
           />
           <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] px-4 text-[13px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
-            <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-9 rounded-md border border-[#2f9e44] px-4 text-[13px] text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[13px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+            <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
           </div>
         </div>
       </div>
@@ -750,7 +750,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:gap-3"><button type="button" onClick={onClose} className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[14px] font-bold text-white transition-colors hover:bg-[#383838]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-11 flex-1 rounded-md border border-[#2f9e44] px-3 text-[14px] font-bold text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white">Save Settings</button></div>
+        <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:gap-3"><button type="button" onClick={onClose} className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[14px] font-bold text-white transition-colors hover:bg-[#383838]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[14px] font-bold text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44]">Save Settings</button></div>
             </div>
       </div>
     </ModalPortal>
@@ -861,7 +861,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
                 });
                 onClose();
               }}
-              className="h-11 flex-1 rounded-md border border-[#2f9e44] px-4 py-2 text-[14px] font-bold text-[#22c55e] transition-colors hover:bg-[#2f9e44] hover:text-white sm:flex-none"
+              className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-4 py-2 text-[14px] font-bold text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] sm:flex-none"
             >
               Save
             </button>
