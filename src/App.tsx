@@ -862,7 +862,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       <ModalPortal>
         <div
           ref={popoverRef}
-          className="fixed z-[1200] w-[480px] max-w-[calc(100vw-1rem)] text-left"
+          className="fixed z-[1200] w-[520px] max-w-[calc(100vw-1.5rem)] text-left"
           style={{ left: popoverPosition?.left ?? 0, top: popoverPosition?.top ?? 0, visibility: popoverPosition ? 'visible' : 'hidden' }}
           onClick={(event) => event.stopPropagation()}
         >
@@ -886,7 +886,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
               <select
                 value={localSettings.mode || 'countdown'}
                 onChange={(event) => setLocalSettings({ ...localSettings, mode: event.target.value as any })}
-                className="h-9 w-full rounded-md border border-[#333] bg-[#171717] px-3 text-[13px] text-white outline-none focus:border-[#555]"
+                className="h-8 w-full rounded-md border border-[#333] bg-[#171717] px-2.5 text-[12px] text-white outline-none focus:border-[#555]"
               >
                 <option value="countdown">Countdown</option>
                 <option value="countup">Countup</option>
@@ -914,15 +914,15 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
           <p className="mt-2 border-t border-[#333] pt-2 text-[11px] text-[#999]">
             {localSettings.mode === 'countup' ? 'Counting up from zero.' : `Counting down from ${durationLabel}.`}
           </p>
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[12px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+          <div className="mt-2.5 flex justify-end gap-1.5">
+            <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
             <button
               type="button"
               onClick={() => {
                 onConfirm?.({ ...localSettings, targetDuration: totalSeconds, mode: localSettings.mode || 'countdown' });
                 onClose();
               }}
-              className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[12px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
+              className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
             >Save</button>
           </div>
           </div>
