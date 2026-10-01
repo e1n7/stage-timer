@@ -591,7 +591,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
       />
       <div className="mt-2.5 flex justify-end gap-1.5">
         <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
-        <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+        <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
       </div>
     </div>
   );
