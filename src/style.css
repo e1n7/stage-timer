@@ -45,6 +45,51 @@
   container-type: inline-size;
 }
 
+.dashboard-sidebar {
+  container-type: inline-size;
+}
+
+.dashboard-timer-controls {
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: clamp(2px, 2.13cqw, 8px);
+}
+
+.dashboard-timer-controls > div {
+  gap: clamp(1px, 2.13cqw, 8px);
+}
+
+.dashboard-timer-controls > div:first-child,
+.dashboard-timer-controls > div:last-child {
+  gap: clamp(1px, 0.5cqw, 1.9px);
+}
+
+.dashboard-timer-controls > div:first-child > div,
+.dashboard-timer-controls > div:last-child > div {
+  width: clamp(24px, 8.76cqw, 34px);
+}
+
+.dashboard-timer-controls > div:first-child > button,
+.dashboard-timer-controls > div:last-child > button:first-child {
+  width: clamp(32px, 11.86cqw, 46px) !important;
+  height: clamp(30px, 9.8cqw, 38px);
+}
+
+.dashboard-timer-controls > div:first-child > div > button,
+.dashboard-timer-controls > div:last-child > div > button {
+  width: 100% !important;
+  height: clamp(30px, 9.8cqw, 38px) !important;
+}
+
+.dashboard-timer-controls > div:nth-child(2) > button {
+  width: clamp(36px, 13.4cqw, 52px) !important;
+  height: clamp(30px, 9.8cqw, 38px);
+}
+
+.dashboard-timer-controls > div:nth-child(2) > button:nth-child(2) {
+  width: clamp(52px, 19.59cqw, 76px) !important;
+}
+
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;

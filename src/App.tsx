@@ -3559,7 +3559,7 @@ function App() {
                           ? mergeItemById(rooms, activeRoomSnapshot)
                           : rooms;
                         const exportData = { rooms: exportedRooms, activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
- const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
+ const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); gooeyToast.info('Room exported'); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
         </div>
       </header>
 
@@ -3572,7 +3572,7 @@ function App() {
             <Image src="/message_section.svg" alt="" width={20} height={20} className="h-5 w-5 invert" />
           </button>
         </div>
-        <aside className="flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
+        <aside className="dashboard-sidebar flex w-full lg:w-[380px] xl:w-[420px] shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-[#333] bg-[#1a1a1a] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[17px] font-bold text-white">Dashboard</h2><button type="button" onClick={openOutput} title="Open output view" className="flex h-8 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-3 text-[12px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconScreen className="mr-1" /> Output View</button></div>
           <div className={`relative flex aspect-video w-full flex-col items-center justify-center rounded-lg border border-[#333] bg-[#141414] p-3 shadow-xl transition-all duration-300 overflow-hidden shrink-0`}>
             {isBlackout && <div className="absolute inset-0 z-10 rounded-lg bg-black" />}
@@ -3706,7 +3706,7 @@ function App() {
               </div>
             </>
           )}
-          <div className="mt-4 flex items-center justify-center gap-2">
+          <div className="dashboard-timer-controls mt-4 flex w-full items-center justify-center gap-2">
             <div className="flex items-center gap-[1.9px]">
             <div className="relative w-[34px] shrink-0">
               <button type="button" onClick={(e) => { e.stopPropagation(); const shouldOpen = openAdjustMenu !== 'decrease'; setOpenAdjustMenu(shouldOpen ? 'decrease' : null); if (shouldOpen) setIsTimeZoneMenuOpen(false); }} title="Decrease timer adjustment options" className={`flex h-[38px] w-full items-center justify-center rounded-l rounded-r-none border border-[#333] bg-[#2d2d2d] px-0 hover:bg-[#383838] transition-colors ${openAdjustMenu === 'decrease' ? 'bg-[#383838] border-[#555]' : ''}`}><IconControlChevron size={13} /></button>
