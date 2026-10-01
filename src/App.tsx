@@ -128,7 +128,7 @@ const normalizeTimerSettingsForTransfer = (settings: Record<string, any>) => {
   return { ...settings, mode: settings.mode === 'countup' ? 'countup' : 'countdown', scheduledStart, scheduledStartDate };
 };
 
-const DurationInput = ({ value, onChange, compact = false }: { value: number, onChange: (val: number) => void, compact?: boolean }) => {
+const DurationInput = ({ value, onChange, compact = false, inline = false }: { value: number, onChange: (val: number) => void, compact?: boolean, inline?: boolean }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
   const [mStr, setMStr] = useState(pad(Math.floor((value % 3600) / 60)));
   const [sStr, setSStr] = useState(pad(value % 60));
@@ -182,6 +182,21 @@ const DurationInput = ({ value, onChange, compact = false }: { value: number, on
     setSStr(pad(parseInt(sStr) || 0));
   };
 
+  if (inline) {
+    const inlineInputClass = "w-11 bg-transparent px-0 py-1 text-center font-mono text-[16px] text-white outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+    return (
+      <div className="flex h-10 w-full min-w-0 items-center rounded-md bg-[#141414] px-3">
+        <div className="flex min-w-0 flex-1 items-center justify-around">
+          <input type="text" inputMode="numeric" autoComplete="off" aria-label="Duration hours" value={hStr} onChange={(event) => handleChange('h', event.target.value)} onBlur={handleBlur} onFocus={(event) => event.target.select()} className={inlineInputClass} />
+          <span className="text-[16px] text-[#ddd]">:</span>
+          <input ref={minRef} type="text" inputMode="numeric" autoComplete="off" aria-label="Duration minutes" value={mStr} onChange={(event) => handleChange('m', event.target.value)} onBlur={handleBlur} onFocus={(event) => event.target.select()} className={inlineInputClass} />
+          <span className="text-[16px] text-[#ddd]">:</span>
+          <input ref={secRef} type="text" inputMode="numeric" autoComplete="off" aria-label="Duration seconds" value={sStr} onChange={(event) => handleChange('s', event.target.value)} onBlur={handleBlur} onFocus={(event) => event.target.select()} className={inlineInputClass} />
+        </div>
+      </div>
+    );
+  }
+
   const inputClass = `${compact ? 'w-10 px-1 py-1 text-[15px]' : 'w-16 px-2 py-2 text-[18px]'} rounded border border-[#333] bg-[#141414] font-mono text-white text-center focus:outline-none focus:border-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors`;
 
   return (
@@ -233,7 +248,7 @@ const DurationInput = ({ value, onChange, compact = false }: { value: number, on
   );
 };
 
-const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showToggle = true, indent = true }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string, showToggle?: boolean, indent?: boolean }) => {
+const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showToggle = true, indent = true, compact = false }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string, showToggle?: boolean, indent?: boolean, compact?: boolean }) => {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: selectedTimeZone,
@@ -259,11 +274,11 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
     onChange(nextHour24 * 3600 + nextMinute * 60 + nextSecond, nextDate || null);
   };
 
-  const selectClass = "w-[72px] rounded border border-[#333] bg-[#141414] px-2 py-2 text-center text-[16px] font-mono text-white focus:border-[#4a9eff] focus:outline-none";
+  const selectClass = `${compact ? 'w-[52px] px-1 py-1 text-[12px]' : 'w-[72px] px-2 py-2 text-[16px]'} rounded border border-[#333] bg-[#141414] text-center font-mono text-white focus:border-[#4a9eff] focus:outline-none`;
   const options = (count: number, padValue = true) => Array.from({ length: count }, (_, index) => ({ value: index, label: padValue ? pad(index) : String(index) }));
 
   return (
-    <div className="flex flex-col items-end gap-3">
+    <div className={`flex flex-col ${compact ? 'w-full items-start gap-2' : 'items-end gap-3'}`}>
       {showToggle && (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <input
@@ -277,16 +292,16 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
         </div>
       )}
       {(showToggle ? value !== null : true) && (
-        <div className={`${indent ? 'ml-6 ' : ''}flex min-w-0 flex-col gap-3`}>
-          <div className="flex items-center gap-2 rounded border border-[#333] bg-[#141414] p-2">
+        <div className={`${indent ? 'ml-6 ' : ''}flex min-w-0 flex-col ${compact ? 'w-full gap-2' : 'gap-3'}`}>
+          <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2 rounded border border-[#333] bg-[#141414] p-2'}`}>
             <select value={hour12} onChange={(e) => update(Number(e.target.value), minute, second, period)} className={selectClass} aria-label="Start hour">
               {Array.from({ length: 12 }, (_, index) => index + 1).map(hour => <option key={hour} value={hour}>{pad(hour)}</option>)}
             </select>
-            <span className="text-xl font-bold text-[#444]">:</span>
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-[#444]`}>:</span>
             <select value={minute} onChange={(e) => update(hour12, Number(e.target.value), second, period)} className={selectClass} aria-label="Start minute">
               {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
-            <span className="text-xl font-bold text-[#444]">:</span>
+            <span className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-[#444]`}>:</span>
             <select value={second} onChange={(e) => update(hour12, minute, Number(e.target.value), period)} className={selectClass} aria-label="Start second">
               {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
@@ -299,7 +314,7 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
             type="date"
             value={selectedDate}
             onChange={(e) => update(hour12, minute, second, period, e.target.value)}
-            className="w-full rounded border border-[#333] bg-[#141414] px-3 py-2 text-[14px] font-mono text-white focus:border-[#4a9eff] focus:outline-none"
+            className={`rounded border border-[#333] bg-[#141414] font-mono text-white focus:border-[#4a9eff] focus:outline-none ${compact ? 'w-[190px] max-w-full px-2 py-1 text-[12px]' : 'w-full px-3 py-2 text-[14px]'}`}
             aria-label="Start date"
           />
         </div>
@@ -670,11 +685,12 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
               />
             </div>
 
-            <div className="flex items-center justify-between gap-6 py-2">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-4 py-2">
               <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
               <DurationInput
                 value={localSettings.targetDuration || 0}
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
+                inline
               />
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -954,9 +970,9 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
         <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
         <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[6px] border-t-[7px] border-t-[#242424]' : '-top-[6px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
         <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
-          <div className="grid grid-cols-[44px_minmax(0,1fr)] items-start gap-2">
-            <span className="pt-2 text-[12px] text-[#999]">Time</span>
-            <div className="min-w-0">
+          <div className="flex items-start gap-2">
+            <span className="shrink-0 pt-1 text-[12px] text-[#999]">Time</span>
+            <div className="min-w-0 flex-1">
               <StartTimeInput
                 value={localSettings.scheduledStart}
                 dateValue={localSettings.scheduledStartDate}
@@ -964,6 +980,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
                 selectedTimeZone={selectedTimeZone}
                 showToggle={false}
                 indent={false}
+                compact
               />
             </div>
           </div>
