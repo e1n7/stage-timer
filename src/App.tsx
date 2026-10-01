@@ -128,7 +128,7 @@ const normalizeTimerSettingsForTransfer = (settings: Record<string, any>) => {
   return { ...settings, mode: settings.mode === 'countup' ? 'countup' : 'countdown', scheduledStart, scheduledStartDate };
 };
 
-const DurationInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
+const DurationInput = ({ value, onChange, compact = false }: { value: number, onChange: (val: number) => void, compact?: boolean }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
   const [mStr, setMStr] = useState(pad(Math.floor((value % 3600) / 60)));
   const [sStr, setSStr] = useState(pad(value % 60));
@@ -182,11 +182,11 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
     setSStr(pad(parseInt(sStr) || 0));
   };
 
-  const inputClass = "w-16 rounded border border-[#333] bg-[#141414] px-2 py-2 text-[18px] font-mono text-white text-center focus:outline-none focus:border-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors";
+  const inputClass = `${compact ? 'w-10 px-1 py-1 text-[15px]' : 'w-16 px-2 py-2 text-[18px]'} rounded border border-[#333] bg-[#141414] font-mono text-white text-center focus:outline-none focus:border-[#4a9eff] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-colors`;
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col items-center gap-1">
+    <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2'}`}>
+      <div className={`flex flex-col items-center ${compact ? 'gap-0.5' : 'gap-1'}`}>
         <input
           type="text"
           inputMode="numeric"
@@ -197,10 +197,10 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Hours</span>
+        <span className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-tighter text-[#777]`}>Hours</span>
       </div>
-      <span className="text-xl font-bold text-[#444] pb-5">:</span>
-      <div className="flex flex-col items-center gap-1">
+      <span className={`${compact ? 'text-base pb-4' : 'text-xl pb-5'} font-bold text-[#555]`}>:</span>
+      <div className={`flex flex-col items-center ${compact ? 'gap-0.5' : 'gap-1'}`}>
         <input
           ref={minRef}
           type="text"
@@ -212,10 +212,10 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Minutes</span>
+        <span className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-tighter text-[#777]`}>Minutes</span>
       </div>
-      <span className="text-xl font-bold text-[#444] pb-5">:</span>
-      <div className="flex flex-col items-center gap-1">
+      <span className={`${compact ? 'text-base pb-4' : 'text-xl pb-5'} font-bold text-[#555]`}>:</span>
+      <div className={`flex flex-col items-center ${compact ? 'gap-0.5' : 'gap-1'}`}>
         <input
           ref={secRef}
           type="text"
@@ -227,7 +227,7 @@ const DurationInput = ({ value, onChange }: { value: number, onChange: (val: num
           onFocus={(e) => e.target.select()}
           className={inputClass}
         />
-        <span className="text-[10px] uppercase tracking-tighter text-[#555]">Seconds</span>
+        <span className={`${compact ? 'text-[8px]' : 'text-[10px]'} uppercase tracking-tighter text-[#777]`}>Seconds</span>
       </div>
     </div>
   );
@@ -601,6 +601,7 @@ interface TimerSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: any;
+  anchorRef?: React.RefObject<HTMLElement | null>;
   onApplyToAll?: (settings: any) => void;
   onConfirm?: (settings: any) => void;
   onSettingsUpdate: () => void;
@@ -783,14 +784,156 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
     </ModalPortal>
   );
 };
-const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone, section = 'start' }: TimerSettingsModalProps) => {
+const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone, section = 'start' }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number; arrowLeft: number; placement: 'above' | 'below' } | null>(null);
 
   useEffect(() => {
     if (isOpen) setLocalSettings(settings);
   }, [isOpen, settings]);
 
+  useEffect(() => {
+    if (!isOpen || section !== 'duration') {
+      setPopoverPosition(null);
+      return;
+    }
+
+    const positionPopover = () => {
+      const anchor = anchorRef?.current;
+      const popover = popoverRef.current;
+      if (!anchor || !popover) return;
+      const anchorRect = anchor.getBoundingClientRect();
+      const popoverRect = popover.getBoundingClientRect();
+      const panelWidth = popoverRect.width || Math.min(480, window.innerWidth - 16);
+      const panelHeight = popoverRect.height;
+      const left = Math.max(8, Math.min(
+        anchorRect.left + anchorRect.width / 2 - panelWidth / 2,
+        window.innerWidth - panelWidth - 8,
+      ));
+      const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
+      const spaceAbove = anchorRect.top - 16;
+      const placement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
+      const top = placement === 'below'
+        ? anchorRect.bottom + 12
+        : Math.max(8, anchorRect.top - panelHeight - 12);
+      const arrowLeft = Math.max(20, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - 20));
+      setPopoverPosition({ left, top, arrowLeft, placement });
+    };
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(positionPopover);
+    });
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (popoverRef.current?.contains(target) || anchorRef?.current?.contains(target)) return;
+      onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('resize', positionPopover);
+    window.addEventListener('scroll', positionPopover, true);
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.removeEventListener('resize', positionPopover);
+      window.removeEventListener('scroll', positionPopover, true);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, section, anchorRef, onClose]);
+
   if (!isOpen) return null;
+
+  if (section === 'duration') {
+    const totalSeconds = Math.max(0, Number(localSettings.targetDuration) || 0);
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const durationLabel = hours > 0
+      ? `${hours} hr${hours === 1 ? '' : 's'}${minutes > 0 ? ` ${minutes} min` : ''}`
+      : totalMinutes > 0 ? `${totalMinutes} min` : `${totalSeconds} sec`;
+
+    return (
+      <ModalPortal>
+        <div
+          ref={popoverRef}
+          className="fixed z-[1200] w-[480px] max-w-[calc(100vw-1rem)] text-left"
+          style={{ left: popoverPosition?.left ?? 0, top: popoverPosition?.top ?? 0, visibility: popoverPosition ? 'visible' : 'hidden' }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
+          <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[7px] border-t-[7px] border-t-[#242424]' : '-top-[7px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
+          <div role="dialog" aria-modal="false" aria-labelledby="timer-duration-edit-heading" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
+          <div className="mb-3 flex h-10 items-center justify-between rounded-md border border-[#333] bg-[#171717] px-3">
+            <h2 id="timer-duration-edit-heading" className="text-[13px] font-medium text-white">Duration</h2>
+            <Image src="/caret_down.svg" alt="" aria-hidden="true" width={14} height={14} className="h-3.5 w-3.5 brightness-0 invert opacity-50" />
+          </div>
+
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+              <span className="flex items-center gap-1 text-[12px] text-[#999]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
+              <div className="flex min-w-0 justify-center rounded-md bg-[#171717] px-2 py-1.5">
+                <DurationInput
+                  value={localSettings.targetDuration || 0}
+                  compact
+                  onChange={(value) => setLocalSettings({ ...localSettings, targetDuration: value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+              <span className="text-[12px] text-[#999]">Appearance</span>
+              <select
+                value={localSettings.mode || 'countdown'}
+                onChange={(event) => setLocalSettings({ ...localSettings, mode: event.target.value as any })}
+                className="h-9 w-full rounded-md border border-[#333] bg-[#171717] px-3 text-[13px] text-white outline-none focus:border-[#555]"
+              >
+                <option value="countdown">Countdown</option>
+                <option value="countup">Countup</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+              <span className="text-[12px] text-[#999]">Font Height</span>
+              <div className="flex items-center gap-3">
+                <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(event) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
+              <span className="text-[12px] text-[#999]">Font Width</span>
+              <div className="flex items-center gap-3">
+                <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(event) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
+              </div>
+            </div>
+            <div className="flex justify-end pt-0.5">
+              <button type="button" onClick={() => { onApplyToAll?.({ mode: localSettings.mode, fontHeight: localSettings.fontHeight, fontWidth: localSettings.fontWidth }); onSettingsUpdate(); }} className="text-[11px] text-[#888] transition-colors hover:text-white hover:underline">Apply to all</button>
+            </div>
+          </div>
+
+          <p className="mt-2 border-t border-[#333] pt-2 text-[11px] text-[#999]">
+            {localSettings.mode === 'countup' ? 'Counting up from zero.' : `Counting down from ${durationLabel}.`}
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[12px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm?.({ ...localSettings, targetDuration: totalSeconds, mode: localSettings.mode || 'countdown' });
+                onClose();
+              }}
+              className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[12px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
+            >Save</button>
+          </div>
+          </div>
+        </div>
+      </ModalPortal>
+    );
+  }
 
   return (
     <ModalPortal>
@@ -810,52 +953,13 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           <div className="flex items-center justify-between gap-3 pr-1">
             <div className="flex items-center gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#9fc7ff]"><IconSettings size={20} /></span>
-              <h2 id="timer-duration-edit-heading" className="text-[17px] font-bold tracking-tight text-white">{section === 'duration' ? 'Timer settings' : 'Edit timer'}</h2>
+              <h2 id="timer-duration-edit-heading" className="text-[17px] font-bold tracking-tight text-white">Edit timer</h2>
             </div>
             <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close timer settings" title="Close"><IconClose size={16} /></button>
           </div>
           <div className="my-4 h-px bg-[#333]" />
 
-          {section === 'duration' ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-6 py-2">
-                <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
-                <DurationInput
-                  value={localSettings.targetDuration || 0}
-                  onChange={(value) => setLocalSettings({ ...localSettings, targetDuration: value })}
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
-                <select
-                  value={localSettings.mode || 'countdown'}
-                  onChange={(event) => setLocalSettings({ ...localSettings, mode: event.target.value as any })}
-                  className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
-                >
-                  <option value="countdown">Countdown</option>
-                  <option value="countup">Countup</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-[12px] text-[#8a8a8a]">Font Height</span>
-                <div className="flex flex-1 items-center gap-3">
-                  <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(event) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(event.target.value) })} className="flex-1 accent-[#4a9eff]" />
-                  <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-[12px] text-[#8a8a8a]">Font Width</span>
-                <div className="flex flex-1 items-center gap-3">
-                  <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(event) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(event.target.value) })} className="flex-1 accent-[#4a9eff]" />
-                  <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button type="button" onClick={() => { onApplyToAll?.({ mode: localSettings.mode, fontHeight: localSettings.fontHeight, fontWidth: localSettings.fontWidth }); onSettingsUpdate(); }} className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4">
               <div className="flex items-start justify-between gap-6 pb-3">
                 <span className="flex items-center gap-1 pt-1 text-[13px] text-[#8a8a8a]">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
                 <StartTimeInput
@@ -867,8 +971,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
                   indent={false}
                 />
               </div>
-            </div>
-          )}
+          </div>
 
           <div className="mt-7 flex flex-col gap-2 border-t border-[#333] pt-4 sm:flex-row sm:justify-end sm:gap-3">
             <button
@@ -1148,6 +1251,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isDragArmed, setIsDragArmed] = useState(false);
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
+  const durationTriggerRef = useRef<HTMLDivElement>(null);
 
   const dragEnabled = isHovered || isDragArmed;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:${id}` : id, disabled: isDragOverlay || !dragEnabled });
@@ -1357,8 +1461,13 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       <div className="relative z-10 hidden sm:flex shrink-0 flex-col items-center justify-center gap-1 text-center">
         <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Duration</span>
         <div
+          ref={durationTriggerRef}
           onClick={(e) => {
             e.stopPropagation();
+            if (isQuickSettingsOpen && quickSection === 'duration') {
+              onPanelClose();
+              return;
+            }
             setQuickSection('duration');
             onPanelOpen('quick', 'duration');
           }}
@@ -1522,6 +1631,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         isOpen={isQuickSettingsOpen}
         onClose={onPanelClose}
         settings={settings}
+        anchorRef={durationTriggerRef}
         onApplyToAll={onApplyToAll}
         onSettingsUpdate={onSettingsUpdate}
         selectedTimeZone={selectedTimeZone}
