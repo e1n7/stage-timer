@@ -1640,23 +1640,23 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             <IconMore size={18} />
           </button>
           {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-48 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
+            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-44 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
               <span aria-hidden="true" className={`pointer-events-none absolute right-3 z-[-1] h-4 w-4 rotate-45 bg-[#242424] ${index < 4 ? '-top-2 border-l border-t border-[#444]' : '-bottom-2 border-r border-b border-[#444]'}`} />
-              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
-                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert rotate-180" />
+              <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
+                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-3.5 w-3.5 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
               </button>
-              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
-                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 brightness-0 invert" />
+              <button type="button" onClick={() => { onAddBelow(); onCloseActions(); }} title="Add timer below" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
+                <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-3.5 w-3.5 brightness-0 invert" />
                 <span>Add timer below</span>
               </button>
-              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-white hover:bg-[#383838]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <button type="button" onClick={() => { onDuplicate(); onCloseActions(); }} title="Clone timer" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 <span>Clone timer</span>
               </button>
-              <div className="my-1 border-t border-[#333]" />
-              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} title="Delete timer" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] text-[#fa5252] hover:bg-red-500/10">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14H5V6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
+              <div className="my-0.5 border-t border-[#333]" />
+              <button type="button" onClick={() => { onDelete(); onCloseActions(); }} title="Delete timer" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-[#fa5252] hover:bg-red-500/10">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14H5V6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
                 <span>Delete timer</span>
               </button>
             </div>
