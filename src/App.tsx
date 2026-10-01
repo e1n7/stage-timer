@@ -787,6 +787,8 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
 const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone, section = 'start' }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number; arrowLeft: number; placement: 'above' | 'below' } | null>(null);
 
   useEffect(() => {
@@ -798,7 +800,6 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       setPopoverPosition(null);
       return;
     }
-    setPopoverPosition(null);
 
     const positionPopover = () => {
       const anchor = anchorRef?.current;
@@ -819,7 +820,13 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
         ? anchorRect.bottom + 12
         : Math.max(8, anchorRect.top - panelHeight - 12);
       const arrowLeft = Math.max(20, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - 20));
-      setPopoverPosition({ left, top, arrowLeft, placement });
+      setPopoverPosition((current) => current
+        && current.left === left
+        && current.top === top
+        && current.arrowLeft === arrowLeft
+        && current.placement === placement
+        ? current
+        : { left, top, arrowLeft, placement });
     };
 
     let secondFrame = 0;
@@ -829,10 +836,10 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (popoverRef.current?.contains(target) || anchorRef?.current?.contains(target)) return;
-      onClose();
+      onCloseRef.current();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('resize', positionPopover);
     window.addEventListener('scroll', positionPopover, true);
@@ -846,7 +853,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, section, anchorRef, onClose]);
+  }, [isOpen, section, anchorRef]);
 
   if (!isOpen) return null;
 
@@ -946,10 +953,10 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       >
         <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
         <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[6px] border-t-[7px] border-t-[#242424]' : '-top-[6px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
-        <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-4 shadow-2xl custom-scrollbar">
+        <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
           <div className="grid grid-cols-[44px_minmax(0,1fr)] items-start gap-2">
             <span className="pt-2 text-[12px] text-[#999]">Time</span>
-            <div className="min-w-0 rounded-md bg-[#171717] px-2 py-2">
+            <div className="min-w-0">
               <StartTimeInput
                 value={localSettings.scheduledStart}
                 dateValue={localSettings.scheduledStartDate}
@@ -961,8 +968,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
             </div>
           </div>
           <p className="mt-3 border-t border-[#333] pt-3 text-[12px] leading-relaxed text-[#999]">{startTimeDescription}</p>
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[14px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+          <div className="mt-2.5 flex justify-end gap-1.5">
+            <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
             <button
               type="button"
               onClick={() => {
@@ -973,7 +980,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
                 });
                 onClose();
               }}
-              className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[14px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
+              className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
             >Save</button>
           </div>
         </div>
