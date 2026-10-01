@@ -30,6 +30,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { GooeyToaster, gooeyToast } from 'goey-toast';
 
 const writeStorageItem = (key: string, value: string): boolean => {
   if (typeof window === 'undefined') return false;
@@ -1526,6 +1527,20 @@ interface Room {
   linkedTimerIds?: string[];
 }
 
+interface UndoSnapshot {
+  rooms: Room[];
+  currentRoomId: string | null;
+  currentRoomName: string;
+  timerIds: string[];
+  timerHeaders: TimerHeader[];
+  timerTopLevelItems: string[];
+  activeTimerId: string;
+  messages: any[];
+  followActiveTimer: boolean;
+  linkedTimerIds: string[];
+  timerStorage: Record<string, string | null>;
+}
+
 function App() {
   const [rooms, setRooms] = useLocalStorage<Room[]>('stage-timer-rooms', []);
   const [currentRoomId, setCurrentRoomId] = useLocalStorage<string | null>('stage-timer-current-id', null);
@@ -1535,6 +1550,8 @@ function App() {
   const [timerTopLevelItems, setTimerTopLevelItems] = useLocalStorage<string[]>('stage-timer-timer-top-level-items', []);
   const [activeTimerId, setActiveTimerId] = useLocalStorage<string>('stage-timer-active-id', '');
   const [messages, setMessages] = useLocalStorage<any[]>('stage-timer-messages', [{ id: '1', text: '', color: '#ffffff' }]);
+  const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
+  const [linkedTimerIds, setLinkedTimerIds] = useLocalStorage<string[]>('stage-timer-linked-timer-ids', []);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const topLevelItems = useMemo(() => [
     ...timerTopLevelItems.filter((item, index, items) => {
@@ -1620,11 +1637,12 @@ function App() {
   const [isTimersMenuOpen, setIsTimersMenuOpen] = useState(false);
   const [openActionsTimerId, setOpenActionsTimerId] = useState<string | null>(null);
   const [openTimerPanel, setOpenTimerPanel] = useState<{ timerId: string; panel: 'settings' | 'quick' } | null>(null);
-  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [isTimeZoneMenuOpen, setIsTimeZoneMenuOpen] = useState(false);
   const [timeZoneSearch, setTimeZoneSearch] = useState('');
   const [openAdjustMenu, setOpenAdjustMenu] = useState<'decrease' | 'increase' | null>(null);
   const [settingsVersion, setSettingsVersion] = useState(0);
+  const [timerRowsVersion, setTimerRowsVersion] = useState(0);
+  const undoSnapshotRef = useRef<UndoSnapshot | null>(null);
   const [mobileSection, setMobileSection] = useState<'timers' | 'messages'>('timers');
   const [isTimerSelectMode, setIsTimerSelectMode] = useState(false);
   const [selectedTimerIds, setSelectedTimerIds] = useState<string[]>([]);
@@ -1655,6 +1673,91 @@ function App() {
   const initialRoomRestoredRef = useRef(false);
   const savedRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
   const hasUnsavedChanges = timerChangesNeedSave;
+
+  const createUndoSnapshot = useCallback((roomsBeforeSave: Room[], roomBeforeSave?: Room): UndoSnapshot => {
+    const baselineTimerIds = roomBeforeSave?.timerIds || [];
+    const affectedTimerIds = new Set([...baselineTimerIds, ...timerIds]);
+    const timerStorage: Record<string, string | null> = {};
+    const timerStateSuffixes = ['timerSeconds_', 'timerSync_', 'timerLog_'];
+
+    affectedTimerIds.forEach((id) => {
+      const baselineSettings = roomBeforeSave?.timerSettings?.[id];
+      timerStorage[`timerSettings_${id}`] = baselineSettings === undefined
+        ? null
+        : JSON.stringify(baselineSettings);
+      timerStateSuffixes.forEach((prefix) => {
+        timerStorage[`${prefix}${id}`] = typeof window === 'undefined'
+          ? null
+          : window.localStorage.getItem(`${prefix}${id}`);
+      });
+    });
+
+    const sharedDefaultsKey = roomBeforeSave?.id ? `timerSharedDefaults_${roomBeforeSave.id}` : null;
+    if (sharedDefaultsKey) {
+      timerStorage[sharedDefaultsKey] = typeof window === 'undefined' ? null : window.localStorage.getItem(sharedDefaultsKey);
+    }
+
+    return {
+      rooms: roomsBeforeSave.map(room => ({
+        ...room,
+        timerIds: [...room.timerIds],
+        timerHeaders: room.timerHeaders ? room.timerHeaders.map(header => ({ ...header, timerIds: [...header.timerIds] })) : [],
+        timerTopLevelItems: room.timerTopLevelItems ? [...room.timerTopLevelItems] : [],
+        messages: room.messages.map(message => ({ ...message })),
+        timerSettings: room.timerSettings ? JSON.parse(JSON.stringify(room.timerSettings)) : {},
+        linkedTimerIds: room.linkedTimerIds ? [...room.linkedTimerIds] : [],
+      })),
+      currentRoomId: roomBeforeSave?.id || null,
+      currentRoomName: roomBeforeSave?.name || 'Unnamed',
+      timerIds: [...baselineTimerIds],
+      timerHeaders: roomBeforeSave?.timerHeaders ? roomBeforeSave.timerHeaders.map(header => ({ ...header, timerIds: [...header.timerIds] })) : [],
+      timerTopLevelItems: roomBeforeSave?.timerTopLevelItems ? [...roomBeforeSave.timerTopLevelItems] : [],
+      activeTimerId: roomBeforeSave?.activeTimerId || baselineTimerIds[0] || '',
+      messages: (roomBeforeSave?.messages || [{ id: '1', text: '', color: '#ffffff' }]).map(message => ({ ...message })),
+      followActiveTimer: Boolean(roomBeforeSave?.followActiveTimer),
+      linkedTimerIds: (roomBeforeSave?.linkedTimerIds || []).filter(id => baselineTimerIds.includes(id)),
+      timerStorage,
+    };
+  }, [timerIds]);
+
+  const restoreUndoSnapshot = useCallback(() => {
+    const snapshot = undoSnapshotRef.current;
+    if (!snapshot) return;
+
+    const affectedTimerIds = new Set([...snapshot.timerIds, ...timerIds]);
+    affectedTimerIds.forEach((id) => {
+      removeStorageItem(`timerSettings_${id}`);
+      removeStorageItem(`timerSeconds_${id}`);
+      removeStorageItem(`timerSync_${id}`);
+      removeStorageItem(`timerLog_${id}`);
+    });
+    Object.entries(snapshot.timerStorage).forEach(([key, value]) => {
+      if (value === null) removeStorageItem(key);
+      else writeStorageItem(key, value);
+    });
+
+    setRooms(snapshot.rooms);
+    setCurrentRoomId(snapshot.currentRoomId);
+    setIsNewRoomDraft(snapshot.currentRoomId === null);
+    setCurrentRoomName(snapshot.currentRoomName);
+    setTimerIds(snapshot.timerIds);
+    setTimerHeaders(snapshot.timerHeaders);
+    setTimerTopLevelItems(snapshot.timerTopLevelItems);
+    setActiveTimerId(snapshot.activeTimerId);
+    setIsFollowEnabled(snapshot.followActiveTimer);
+    setLinkedTimerIds(snapshot.linkedTimerIds);
+    setMessages(snapshot.messages);
+    setMessageShownId(null);
+    setMessageFlashId(null);
+    setActiveTimerState(null);
+    removeStorageItem('stage-timer-unsaved-draft');
+    setTimerChangesNeedSave(false);
+    setOpenActionsTimerId(null);
+    setOpenTimerPanel(null);
+    setIsRoomMenuOpen(false);
+    setTimerRowsVersion(version => version + 1);
+    undoSnapshotRef.current = null;
+  }, [setCurrentRoomId, setCurrentRoomName, setRooms, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setIsFollowEnabled, setLinkedTimerIds, setMessages, setMessageShownId, setMessageFlashId, timerIds]);
 
   const restoreUnsavedDraft = useCallback(() => {
     const savedTimerIds = savedRoom?.timerIds || [];
@@ -1919,8 +2022,6 @@ function App() {
   const [isBlackout, setIsBlackout] = useState(false);
   const [isFlash, setIsFlash] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
-  const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
-  const [linkedTimerIds, setLinkedTimerIds] = useLocalStorage<string[]>('stage-timer-linked-timer-ids', []);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [isDraggingGrid, setIsDraggingGrid] = useState(false);
   const [isListDragging, setIsListDragging] = useState(false);
@@ -2534,8 +2635,18 @@ function App() {
   }, [rooms, currentRoomId, loadRoom, setCurrentRoomName, setTimerIds, setTimerHeaders, setLinkedTimerIds, setIsFollowEnabled, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
 
   const saveRoom = useCallback(() => {
+    if (!timerChangesNeedSave) {
+      gooeyToast.info('No changes made', {
+        description: 'There are no changes to save. ',
+        showTimestamp: false,
+      });
+      return;
+    }
     const roomName = currentRoomName.trim() || 'Unnamed';
-    const existingRoom = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
+    const roomBeforeSave = currentRoomId ? latestRooms.find(room => room.id === currentRoomId) : undefined;
+    undoSnapshotRef.current = createUndoSnapshot(latestRooms, roomBeforeSave);
+    const existingRoom = roomBeforeSave || (currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined);
     const roomId = existingRoom?.id || currentRoomId || createId('room');
     setCurrentRoomId(roomId);
     setIsNewRoomDraft(false);
@@ -2547,14 +2658,21 @@ function App() {
     const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings, followActiveTimer: isFollowEnabled, linkedTimerIds: [...linkedTimerIds] };
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
-    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
     const nextRooms = mergeItemById(latestRooms, roomData);
     setRooms(nextRooms);
     removeStorageItem('stage-timer-unsaved-draft');
     setTimerChangesNeedSave(false);
-    setSaveNotice('Room saved');
-    window.setTimeout(() => setSaveNotice(null), 2200);
-  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, setCurrentRoomId, setRooms]);
+    gooeyToast.info('Changes saved', {
+      description: 'Your changes have been saved and synced successfully.',
+      action: {
+        label: 'Undo',
+        successLabel: 'Done',
+        onClick: restoreUndoSnapshot,
+      },
+      fillColor: '#ffffff',
+      showTimestamp: false,
+    });
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, setCurrentRoomId, setRooms, createUndoSnapshot, restoreUndoSnapshot]);
 
   const deleteRoom = useCallback((room: Room) => {
     // Re-read immediately before deleting so an older tab cannot overwrite
@@ -3033,7 +3151,7 @@ function App() {
 
   const renderTimerRow = (id: string, displayIndex: number, insertionIndex = timerIds.indexOf(id), canLink = displayIndex > 0, isDragOverlay = false, isInSection = false) => (
     <TimerRow
-      key={isDragOverlay ? `drag-overlay:${id}` : id}
+      key={isDragOverlay ? `drag-overlay:${id}` : `${id}:${timerRowsVersion}`}
       id={id}
       index={displayIndex}
       isActionsOpen={openActionsTimerId === id}
@@ -3094,7 +3212,7 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
-      {saveNotice && <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-md border border-[#3b82f6] bg-[#1e3a8a] px-4 py-2 text-[13px] font-bold text-white shadow-xl" role="status">{saveNotice}</div>}
+      <GooeyToaster position="top-center" closeOnEscape={false} />
       {bulkDeleteOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title">
         <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
           <button type="button" onClick={() => setBulkDeleteOpen(false)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close bulk delete dialog" title="Close"><IconClose size={16} /></button>
@@ -3126,14 +3244,14 @@ function App() {
       <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
         <div className="group flex min-w-0 flex-1 items-center justify-center sm:justify-start">
           <input ref={roomNameInputRef} type="text" size={Math.max(1, currentRoomName.length)} value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} className="min-w-0 max-w-full bg-transparent p-0 text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors text-center sm:text-left" />
-          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="-ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100" title="Edit room name" aria-label="Edit room name">
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="-ml-10 flex h-5 w-5 shrink-0 items-center justify-center rounded p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100" title="Edit room name" aria-label="Edit room name">
             <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
           </button>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838] ${hasUnsavedChanges ? 'border-[#d69e2e] bg-[#4a3415]' : ''}`}><IconSave className="mr-1" /> Save</button>
           <div className="relative">
-            <button type="button" onClick={(e) => { e.stopPropagation(); setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); if (activeTimerState?.isRunning) { gooeyToast.warning('Warning', { description: 'When you change rooms, the timer will stop.', showTimestamp: false }); } setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && (
               <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
                 <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
@@ -3221,9 +3339,8 @@ function App() {
     : undefined);
   if (activeRoom) loadRoom(activeRoom);
   setRooms(nextRooms);
-  setSaveNotice('Room imported');
-  window.setTimeout(() => setSaveNotice(null), 2200);
-} } catch (err) { console.error(err); setSaveNotice('Import failed - invalid backup file'); window.setTimeout(() => setSaveNotice(null), 2600); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
+  gooeyToast.info('Room imported');
+} } catch (err) { console.error(err); gooeyToast.error('Import failed', { description: 'The backup file is invalid.' }); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
           <button type="button" onClick={() => fileInputRef.current?.click()} title="Import room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
           <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
             timerIds.forEach(id => {

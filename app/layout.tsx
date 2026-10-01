@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { JetBrains_Mono } from 'next/font/google';
 import '../src/style.css';
+import 'goey-toast/styles.css';
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ['latin'],
