@@ -45,6 +45,24 @@
   container-type: inline-size;
 }
 
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.mobile-drag-handle {
+  touch-action: none;
+}
+
+@media (max-width: 640px) {
+  .mobile-drag-handle {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}
+
 .custom-scrollbar {
   scrollbar-gutter: stable;
   scrollbar-width: thin;

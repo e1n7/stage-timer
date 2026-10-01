@@ -88,6 +88,20 @@ const InfoHint = ({ text }: { text: string }) => {
   );
 };
 
+const useCoarsePointer = () => {
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(pointer: coarse)');
+    const update = () => setIsCoarsePointer(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.('change', update);
+    return () => mediaQuery.removeEventListener?.('change', update);
+  }, []);
+
+  return isCoarsePointer;
+};
+
 const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: number, timeZone: string): number => {
   const [year, month, day] = dateValue.split('-').map(Number);
   const hours = Math.floor(secondsSinceMidnight / 3600) % 24;
@@ -1091,7 +1105,8 @@ interface TimerHeader {
 const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
-  const dragEnabled = canDrag && (isHovered || isDragArmed);
+  const isCoarsePointer = useCoarsePointer();
+  const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
@@ -1101,7 +1116,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
         {isSelectMode ? (
           <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
         ) : (
-          <span className={`flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
+          <span className={`mobile-drag-handle flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
             <IconDragHandle />
           </span>
         )}
@@ -1142,7 +1157,8 @@ const MessageRow = ({
 }: MessageRowProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
-  const dragEnabled = isHovered || isDragArmed;
+  const isCoarsePointer = useCoarsePointer();
+  const dragEnabled = isHovered || isDragArmed || isCoarsePointer;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:message:${msg.id}` : msg.id, disabled: isDragOverlay || !dragEnabled });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -1207,7 +1223,7 @@ const MessageRow = ({
               listeners?.onPointerDown?.(event);
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
-            className={`group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+            className={`mobile-drag-handle group/index flex w-8 items-center justify-center text-[13px] font-bold text-[#8a8a8a] ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
             title="Drag to reorder"
           >
             {dragEnabled || isDragging ? <IconDragHandle size={14} /> : <span>{idx + 1}</span>}
@@ -1300,7 +1316,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const startTimeTriggerRef = useRef<HTMLDivElement>(null);
   const durationTriggerRef = useRef<HTMLDivElement>(null);
 
-  const dragEnabled = isHovered || isDragArmed;
+  const isCoarsePointer = useCoarsePointer();
+  const dragEnabled = isHovered || isDragArmed || isCoarsePointer;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:${id}` : id, disabled: isDragOverlay || !dragEnabled });
 
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isActionsOpen || isSettingsOpen || isQuickSettingsOpen ? 200 : 1, position: 'relative' as const };
@@ -1478,7 +1495,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           listeners?.onPointerDown?.(event);
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
-        className={`group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 max-[639px]:w-6 ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+        className={`mobile-drag-handle group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 max-[639px]:w-6 ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {dragEnabled || isDragging ? <IconDragHandle /> : <span>{index + 1}</span>}
@@ -3401,7 +3418,7 @@ function App() {
     : null;
 
   return (
-    <div className="flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
+    <div className="app-shell flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       <GooeyToaster position="top-center" closeOnEscape={false} />
       {bulkDeleteOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title">
         <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
@@ -3431,10 +3448,10 @@ function App() {
           </div>
         </div>
       </div>}
-      <header className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a]">
-        <div className="group flex min-w-0 flex-1 items-center justify-center sm:justify-start">
-          <input ref={roomNameInputRef} type="text" size={Math.max(1, currentRoomName.length)} value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} className="min-w-0 max-w-full bg-transparent p-0 text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors text-center sm:text-left" />
-          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="-ml-10 flex h-5 w-5 shrink-0 items-center justify-center rounded p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100" title="Edit room name" aria-label="Edit room name">
+      <header className="flex flex-col items-start justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a] sm:flex-row sm:items-center">
+        <div className="group flex min-w-0 flex-1 items-center justify-start">
+          <input ref={roomNameInputRef} type="text" size={Math.max(1, currentRoomName.length)} value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} style={{ width: `${Math.max(1, currentRoomName.length)}ch` }} className="min-w-0 max-w-full bg-transparent p-0 text-left text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors" />
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:-ml-10" title="Edit room name" aria-label="Edit room name">
             <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
           </button>
         </div>
