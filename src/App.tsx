@@ -3458,7 +3458,7 @@ function App() {
             <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
           </button>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto">
           <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838] ${hasUnsavedChanges ? 'border-[#d69e2e] bg-[#4a3415]' : ''}`}><IconSave className="mr-1" /> Save</button>
           <div className="relative">
             <button type="button" onClick={(e) => { e.stopPropagation(); if (activeTimerState?.isRunning) { gooeyToast.warning('Warning', { description: 'When you change rooms, the timer will stop.', showTimestamp: false }); } setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
