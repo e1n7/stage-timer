@@ -794,10 +794,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
   }, [isOpen, settings]);
 
   useEffect(() => {
-    if (!isOpen || section !== 'duration') {
+    if (!isOpen) {
       setPopoverPosition(null);
       return;
     }
+    setPopoverPosition(null);
 
     const positionPopover = () => {
       const anchor = anchorRef?.current;
@@ -805,7 +806,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       if (!anchor || !popover) return;
       const anchorRect = anchor.getBoundingClientRect();
       const popoverRect = popover.getBoundingClientRect();
-      const panelWidth = popoverRect.width || Math.min(480, window.innerWidth - 16);
+      const panelWidth = popoverRect.width || Math.min(520, window.innerWidth - 24);
       const panelHeight = popoverRect.height;
       const left = Math.max(8, Math.min(
         anchorRect.left + anchorRect.width / 2 - panelWidth / 2,
@@ -931,52 +932,37 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     );
   }
 
+  const startTimeDescription = localSettings.scheduledStart === null
+    ? 'No specific start time set — this timer follows the timers above. Adjust the time or date to schedule it directly.'
+    : `Start time is set in ${selectedTimeZone}. Adjust the time or date to update the schedule.`;
+
   return (
     <ModalPortal>
       <div
-        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) onClose();
-        }}
+        ref={popoverRef}
+        className="fixed z-[1200] w-[520px] max-w-[calc(100vw-1.5rem)] text-left"
+        style={{ left: popoverPosition?.left ?? 0, top: popoverPosition?.top ?? 0, visibility: popoverPosition ? 'visible' : 'hidden' }}
+        onClick={(event) => event.stopPropagation()}
       >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="timer-duration-edit-heading"
-          className="relative w-full max-w-[480px] rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl"
-          onMouseDown={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-center justify-between gap-3 pr-1">
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#9fc7ff]"><IconSettings size={20} /></span>
-              <h2 id="timer-duration-edit-heading" className="text-[17px] font-bold tracking-tight text-white">Edit timer</h2>
+        <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
+        <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[6px] border-t-[7px] border-t-[#242424]' : '-top-[6px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
+        <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-4 shadow-2xl custom-scrollbar">
+          <div className="grid grid-cols-[44px_minmax(0,1fr)] items-start gap-2">
+            <span className="pt-2 text-[12px] text-[#999]">Time</span>
+            <div className="min-w-0 rounded-md bg-[#171717] px-2 py-2">
+              <StartTimeInput
+                value={localSettings.scheduledStart}
+                dateValue={localSettings.scheduledStartDate}
+                onChange={(value, date) => setLocalSettings({ ...localSettings, scheduledStart: value, scheduledStartDate: date })}
+                selectedTimeZone={selectedTimeZone}
+                showToggle={false}
+                indent={false}
+              />
             </div>
-            <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close timer settings" title="Close"><IconClose size={16} /></button>
           </div>
-          <div className="my-4 h-px bg-[#333]" />
-
-          <div className="mt-4 space-y-4">
-              <div className="flex items-start justify-between gap-6 pb-3">
-                <span className="flex items-center gap-1 pt-1 text-[13px] text-[#8a8a8a]">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
-                <StartTimeInput
-                  value={localSettings.scheduledStart}
-                  dateValue={localSettings.scheduledStartDate}
-                  onChange={(value, date) => setLocalSettings({ ...localSettings, scheduledStart: value, scheduledStartDate: date })}
-                  selectedTimeZone={selectedTimeZone}
-                  showToggle={false}
-                  indent={false}
-                />
-              </div>
-          </div>
-
-          <div className="mt-7 flex flex-col gap-2 border-t border-[#333] pt-4 sm:flex-row sm:justify-end sm:gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-4 py-2 text-[14px] font-bold text-white transition-colors hover:bg-[#383838] sm:flex-none"
-            >
-              Cancel
-            </button>
+          <p className="mt-3 border-t border-[#333] pt-3 text-[12px] leading-relaxed text-[#999]">{startTimeDescription}</p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[14px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
             <button
               type="button"
               onClick={() => {
@@ -987,10 +973,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
                 });
                 onClose();
               }}
-              className="h-11 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-4 py-2 text-[14px] font-bold text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] sm:flex-none"
-            >
-              Save
-            </button>
+              className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[14px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
+            >Save</button>
           </div>
         </div>
       </div>
@@ -1247,6 +1231,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [isDragArmed, setIsDragArmed] = useState(false);
   const [isTitleEditOpen, setIsTitleEditOpen] = useState(false);
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
+  const startTimeTriggerRef = useRef<HTMLDivElement>(null);
   const durationTriggerRef = useRef<HTMLDivElement>(null);
 
   const dragEnabled = isHovered || isDragArmed;
@@ -1438,8 +1423,13 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <span className="pointer-events-none absolute left-1/2 -top-4 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium leading-none text-white/55 opacity-0 transition-opacity group-hover:opacity-100">Start</span>
         <div className="relative z-10 flex items-center gap-1">
           <div
+            ref={startTimeTriggerRef}
             onClick={(event) => {
               event.stopPropagation();
+              if (isQuickSettingsOpen && quickSection === 'start') {
+                onPanelClose();
+                return;
+              }
               setQuickSection('start');
               onPanelOpen('quick', 'start');
             }}
@@ -1627,7 +1617,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         isOpen={isQuickSettingsOpen}
         onClose={onPanelClose}
         settings={settings}
-        anchorRef={durationTriggerRef}
+        anchorRef={quickSection === 'duration' ? durationTriggerRef : startTimeTriggerRef}
         onApplyToAll={onApplyToAll}
         onSettingsUpdate={onSettingsUpdate}
         selectedTimeZone={selectedTimeZone}
