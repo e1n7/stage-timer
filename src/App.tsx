@@ -867,12 +867,8 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
-          <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[7px] border-t-[7px] border-t-[#242424]' : '-top-[7px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
-          <div role="dialog" aria-modal="false" aria-labelledby="timer-duration-edit-heading" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
-          <div className="mb-3 flex h-10 items-center justify-between rounded-md border border-[#333] bg-[#171717] px-3">
-            <h2 id="timer-duration-edit-heading" className="text-[13px] font-medium text-white">Duration</h2>
-            <Image src="/caret_down.svg" alt="" aria-hidden="true" width={14} height={14} className="h-3.5 w-3.5 brightness-0 invert opacity-50" />
-          </div>
+          <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[6px] border-t-[7px] border-t-[#242424]' : '-top-[6px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
+          <div role="dialog" aria-modal="false" aria-label="Timer duration settings" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
 
           <div className="space-y-2.5">
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
