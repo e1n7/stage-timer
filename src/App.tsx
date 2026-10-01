@@ -516,58 +516,84 @@ const ModalPortal = ({ children }: { children: React.ReactNode }) => {
   return createPortal(children, document.body);
 };
 
-interface TimerTitleEditModalProps {
+interface TimerTitleEditPopoverProps {
   isOpen: boolean;
   title: string;
+  notes: string;
   onClose: () => void;
-  onSave: (title: string) => void;
+  onSave: (title: string, notes: string) => void;
 }
 
-const TimerTitleEditModal = ({ isOpen, title, onClose, onSave }: TimerTitleEditModalProps) => {
+const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerTitleEditPopoverProps) => {
   const [draftTitle, setDraftTitle] = useState(title);
+  const [draftNotes, setDraftNotes] = useState(notes);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) setDraftTitle(title);
-  }, [isOpen, title]);
+    if (isOpen) {
+      setDraftTitle(title);
+      setDraftNotes(notes);
+    }
+  }, [isOpen, title, notes]);
 
   useEffect(() => {
     if (!isOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) onClose();
+    };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
     };
+    document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     const nextTitle = draftTitle.trim();
-    if (nextTitle) onSave(nextTitle);
+    if (nextTitle) onSave(nextTitle, draftNotes.trim());
   };
 
   return (
-    <ModalPortal>
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-        <div role="dialog" aria-modal="true" aria-labelledby="timer-title-edit-heading" className="w-full max-w-[520px] rounded-lg border border-[#444] bg-[#242424] p-5 shadow-2xl">
-          <h2 id="timer-title-edit-heading" className="mb-4 text-[16px] font-semibold text-white">Edit timer</h2>
-          <label htmlFor="timer-title-edit-input" className="mb-2 block text-[12px] font-medium text-white/60">Title</label>
-          <input
-            id="timer-title-edit-input"
-            type="text"
-            value={draftTitle}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            onKeyDown={(event) => { if (event.key === 'Enter') handleSave(); }}
-            autoFocus
-            className="h-10 w-full rounded-md border border-[#444] bg-[#171717] px-3 text-[14px] text-white outline-none transition-colors focus:border-[#666]"
-          />
-          <div className="mt-5 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="h-9 rounded-md border border-[#555] bg-[#2d2d2d] px-4 text-[13px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
-            <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-9 rounded-md border border-[#444] bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
-          </div>
-        </div>
+    <div
+      ref={popoverRef}
+      role="dialog"
+      aria-label="Edit timer title"
+      className="absolute left-1/2 top-[calc(100%+0.6rem)] z-[300] w-[520px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-lg border border-[#444] bg-[#242424] p-3 text-left shadow-2xl"
+      onClick={(event) => event.stopPropagation()}
+      onMouseEnter={(event) => event.stopPropagation()}
+      onMouseLeave={(event) => event.stopPropagation()}
+    >
+      <span aria-hidden="true" className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-[#444] bg-[#242424]" />
+      <label htmlFor="timer-title-edit-input" className="mb-1 block text-[11px] font-medium text-white/60">Title</label>
+      <input
+        id="timer-title-edit-input"
+        type="text"
+        value={draftTitle}
+        onChange={(event) => setDraftTitle(event.target.value)}
+        onKeyDown={(event) => { if (event.key === 'Enter') handleSave(); }}
+        autoFocus
+        className="h-8 w-full rounded-md border border-[#444] bg-[#171717] px-2.5 text-[12px] text-white outline-none transition-colors focus:border-[#4a9eff]"
+      />
+      <label htmlFor="timer-title-edit-notes" className="mt-2 mb-1 block text-[11px] font-medium text-white/60">Notes</label>
+      <textarea
+        id="timer-title-edit-notes"
+        value={draftNotes}
+        onChange={(event) => setDraftNotes(event.target.value)}
+        placeholder="Notes (optional)"
+        rows={2}
+        className="w-full resize-none rounded-md border border-[#444] bg-[#171717] px-2.5 py-1.5 text-[12px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#4a9eff]"
+      />
+      <div className="mt-2.5 flex justify-end gap-1.5">
+        <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+        <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-white transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
       </div>
-    </ModalPortal>
+    </div>
   );
 };
 
@@ -1254,7 +1280,6 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   return (
     <div
       ref={setNodeRef}
-      style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onPointerUp={() => setIsDragArmed(false)}
@@ -1268,7 +1293,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         if (isActive) onActivate(false);
       }}
       data-timer-id={id}
-      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      style={{ ...style, ...(isTitleEditOpen ? { zIndex: 200 } : {}) }}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isTitleEditOpen ? 'z-[200]' : 'z-0'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div
         aria-hidden="true"
@@ -1362,8 +1388,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-hidden text-center text-[14px] font-bold opacity-90 pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <span className="block min-w-0 max-w-full truncate">{settings.title}</span>
+      <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+        <span className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
         <button
           type="button"
           onClick={(e) => {
@@ -1376,6 +1402,19 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         >
           <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
         </button>
+        <TimerTitleEditPopover
+          isOpen={isTitleEditOpen}
+          title={settings.title || ''}
+          notes={settings.notes || ''}
+          onClose={() => setIsTitleEditOpen(false)}
+          onSave={(title, notes) => {
+            if (title !== (settings.title || '') || notes !== (settings.notes || '')) {
+              updateSettings({ title, notes });
+              onSettingsUpdate();
+            }
+            setIsTitleEditOpen(false);
+          }}
+        />
       </div>
 
       {/* Controls */}
@@ -1462,18 +1501,6 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           )}
         </div>
       </div>
-      <TimerTitleEditModal
-        isOpen={isTitleEditOpen}
-        title={settings.title || ''}
-        onClose={() => setIsTitleEditOpen(false)}
-        onSave={(title) => {
-          if (title !== (settings.title || '')) {
-            updateSettings({ title });
-            onSettingsUpdate();
-          }
-          setIsTitleEditOpen(false);
-        }}
-      />
       <TimerSettingsModal
         isOpen={isSettingsOpen}
         onClose={onPanelClose}
