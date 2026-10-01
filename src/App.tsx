@@ -535,21 +535,24 @@ interface TimerTitleEditPopoverProps {
   isOpen: boolean;
   title: string;
   notes: string;
+  duration: number;
   onClose: () => void;
-  onSave: (title: string, notes: string) => void;
+  onSave: (title: string, notes: string, duration: number) => void;
 }
 
-const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerTitleEditPopoverProps) => {
+const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave }: TimerTitleEditPopoverProps) => {
   const [draftTitle, setDraftTitle] = useState(title);
   const [draftNotes, setDraftNotes] = useState(notes);
+  const [draftDuration, setDraftDuration] = useState(duration);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setDraftTitle(title);
       setDraftNotes(notes);
+      setDraftDuration(duration);
     }
-  }, [isOpen, title, notes]);
+  }, [isOpen, title, notes, duration]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -571,7 +574,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
 
   const handleSave = () => {
     const nextTitle = draftTitle.trim();
-    if (nextTitle) onSave(nextTitle, draftNotes.trim());
+    if (nextTitle) onSave(nextTitle, draftNotes.trim(), draftDuration);
   };
 
   return (
@@ -595,6 +598,10 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
         autoFocus
         className="h-8 w-full rounded-md border border-[#444] bg-[#171717] px-2.5 text-[12px] text-white outline-none transition-colors focus:border-[#4a9eff]"
       />
+      <div className="mt-2 grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2">
+        <span className="text-[11px] font-medium text-white/60">Duration</span>
+        <DurationInput value={draftDuration} onChange={setDraftDuration} inline />
+      </div>
       <label htmlFor="timer-title-edit-notes" className="mt-2 mb-1 block text-[11px] font-medium text-white/60">Notes</label>
       <textarea
         id="timer-title-edit-notes"
@@ -665,6 +672,10 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           <div className="flex items-center gap-4 border-b border-[#333]/60 pb-3">
             <label className="w-24 shrink-0 text-[13px] text-[#aaa]">Title</label>
             <input type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="min-w-0 flex-1 rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[14px] text-white outline-none transition-colors focus:border-[#6b8db5]" />
+          </div>
+          <div className="flex items-start gap-4 border-b border-[#333]/60 pb-3">
+            <label className="w-24 shrink-0 pt-2 text-[13px] text-[#aaa]">Notes</label>
+            <textarea value={localSettings.notes || ''} onChange={(e) => setLocalSettings({ ...localSettings, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="min-w-0 flex-1 resize-none rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[13px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#6b8db5]" />
           </div>
 
         </div>
@@ -1525,10 +1536,16 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           isOpen={isTitleEditOpen}
           title={settings.title || ''}
           notes={settings.notes || ''}
+          duration={Number(settings.targetDuration || 0)}
           onClose={() => setIsTitleEditOpen(false)}
-          onSave={(title, notes) => {
-            if (title !== (settings.title || '') || notes !== (settings.notes || '')) {
-              updateSettings({ title, notes });
+          onSave={(title, notes, targetDuration) => {
+            const titleOrNotesChanged = title !== (settings.title || '') || notes !== (settings.notes || '');
+            const durationChanged = targetDuration !== Number(settings.targetDuration || 0);
+            if (titleOrNotesChanged || durationChanged) {
+              updateSettings({ title, notes, targetDuration });
+              if (durationChanged) {
+                setTime(settings.mode === 'countup' ? 0 : targetDuration);
+              }
               onSettingsUpdate();
             }
             setIsTitleEditOpen(false);
