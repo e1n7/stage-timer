@@ -248,7 +248,26 @@ const DurationInput = ({ value, onChange, compact = false, inline = false }: { v
   );
 };
 
+const PickerColumn = ({ options, selected, onSelect, format = (option: number | string) => String(option) }: { options: (number | string)[], selected: number | string, onSelect: (option: number | string) => void, format?: (option: number | string) => string }) => (
+  <div className="custom-scrollbar h-[220px] min-w-0 flex-1 overflow-y-auto border-r border-[#3a3a3a] last:border-r-0" role="listbox">
+    {options.map((option) => (
+      <button
+        key={String(option)}
+        type="button"
+        role="option"
+        aria-selected={option === selected}
+        onClick={() => onSelect(option)}
+        className={`block w-full px-2 py-1.5 text-center text-[12px] font-mono transition-colors ${option === selected ? 'font-bold text-[#1687e8]' : 'text-[#aaa] hover:bg-[#333] hover:text-white'}`}
+      >
+        {format(option)}
+      </button>
+    ))}
+  </div>
+);
+
 const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showToggle = true, indent = true, compact = false }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string, showToggle?: boolean, indent?: boolean, compact?: boolean }) => {
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: selectedTimeZone,
@@ -259,7 +278,10 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
   });
   const [hNow, mNow, sNow] = formatter.format(now).split(':').map(Number);
   const secondsSinceMidnight = hNow * 3600 + mNow * 60 + sNow;
-  const displayValue = value === null ? secondsSinceMidnight : value;
+  const liveDisplayValue = value === null ? secondsSinceMidnight : value;
+  const [frozenDisplayValue, setFrozenDisplayValue] = useState<number | null>(null);
+  const [frozenSecondOptions, setFrozenSecondOptions] = useState<number[] | null>(null);
+  const displayValue = frozenDisplayValue ?? liveDisplayValue;
   const h24 = Math.floor(displayValue / 3600) % 24;
   const minute = Math.floor((displayValue % 3600) / 60);
   const second = displayValue % 60;
@@ -272,10 +294,33 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
     let nextHour24 = nextHour12 % 12;
     if (nextPeriod === 'PM') nextHour24 += 12;
     onChange(nextHour24 * 3600 + nextMinute * 60 + nextSecond, nextDate || null);
+    setFrozenDisplayValue(null);
   };
 
-  const selectClass = `${compact ? 'w-[52px] px-1 py-1 text-[12px]' : 'w-[72px] px-2 py-2 text-[16px]'} rounded border border-[#333] bg-[#141414] text-center font-mono text-white focus:border-[#4a9eff] focus:outline-none`;
-  const options = (count: number, padValue = true) => Array.from({ length: count }, (_, index) => ({ value: index, label: padValue ? pad(index) : String(index) }));
+  useEffect(() => {
+    if (!isPickerOpen) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) {
+        setIsPickerOpen(false);
+        setFrozenDisplayValue(null);
+        setFrozenSecondOptions(null);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isPickerOpen]);
+
+  const rotateOptions = (options: Array<number | string>, selected: number | string) => {
+    const selectedIndex = options.indexOf(selected);
+    return selectedIndex < 0 ? options : [...options.slice(selectedIndex), ...options.slice(0, selectedIndex)];
+  };
+  const hourOptions = rotateOptions(Array.from({ length: 12 }, (_, index) => index + 1), hour12);
+  const minuteOptions = rotateOptions(Array.from({ length: 60 }, (_, index) => index), minute);
+  // Keep seconds in a stable order while the live clock advances; rotating this
+  // list on every tick makes it difficult to select a precise second.
+  const secondOptions = frozenSecondOptions ?? Array.from({ length: 60 }, (_, index) => index);
+  const periodOptions = rotateOptions(['AM', 'PM'], period);
+  const displayTime = `${pad(hour12)}:${pad(minute)}:${pad(second)} ${period}`;
 
   return (
     <div className={`flex flex-col ${compact ? 'w-full items-start gap-2' : 'items-end gap-3'}`}>
@@ -293,28 +338,44 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
       )}
       {(showToggle ? value !== null : true) && (
         <div className={`${indent ? 'ml-6 ' : ''}flex min-w-0 flex-col ${compact ? 'w-full gap-2' : 'gap-3'}`}>
-          <div className={`flex items-center ${compact ? 'gap-1' : 'gap-2 rounded border border-[#333] bg-[#141414] p-2'}`}>
-            <select value={hour12} onChange={(e) => update(Number(e.target.value), minute, second, period)} className={selectClass} aria-label="Start hour">
-              {Array.from({ length: 12 }, (_, index) => index + 1).map(hour => <option key={hour} value={hour}>{pad(hour)}</option>)}
-            </select>
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-[#444]`}>:</span>
-            <select value={minute} onChange={(e) => update(hour12, Number(e.target.value), second, period)} className={selectClass} aria-label="Start minute">
-              {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-            <span className={`${compact ? 'text-sm' : 'text-xl'} font-bold text-[#444]`}>:</span>
-            <select value={second} onChange={(e) => update(hour12, minute, Number(e.target.value), period)} className={selectClass} aria-label="Start second">
-              {options(60).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-            <select value={period} onChange={(e) => update(hour12, minute, second, e.target.value)} className={selectClass} aria-label="Start period">
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
+          <div ref={pickerRef} className="relative">
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isPickerOpen}
+              aria-label="Start time"
+              onClick={() => {
+                if (!isPickerOpen) {
+                  setFrozenDisplayValue(displayValue);
+                  setFrozenSecondOptions(rotateOptions(Array.from({ length: 60 }, (_, index) => index), second).map(Number));
+                } else {
+                  setFrozenDisplayValue(null);
+                  setFrozenSecondOptions(null);
+                }
+                setIsPickerOpen((open) => !open);
+              }}
+              className={`flex items-center justify-between rounded border border-[#333] bg-[#141414] text-left font-mono text-white transition-colors hover:border-[#4a9eff] focus:border-[#4a9eff] focus:outline-none ${compact ? 'h-9 w-[190px] max-w-full px-3 text-[13px]' : 'h-10 w-[210px] px-3 text-[14px]'}`}
+            >
+              <span>{displayTime}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} text-[#cfcfcf]`} fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7v5l3.2 2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {isPickerOpen && (
+              <div className={`absolute left-0 z-30 mt-1 flex overflow-hidden rounded border border-[#444] bg-[#242424] shadow-xl ${compact ? 'w-[225px]' : 'w-[250px]'}`}>
+                <PickerColumn options={hourOptions} selected={hour12} onSelect={(option) => update(Number(option), minute, second, period)} format={(option) => pad(Number(option))} />
+                <PickerColumn options={minuteOptions} selected={minute} onSelect={(option) => update(hour12, Number(option), second, period)} format={(option) => pad(Number(option))} />
+                <PickerColumn options={secondOptions} selected={second} onSelect={(option) => update(hour12, minute, Number(option), period)} format={(option) => pad(Number(option))} />
+                <PickerColumn options={periodOptions} selected={period} onSelect={(option) => update(hour12, minute, second, String(option))} />
+              </div>
+            )}
           </div>
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => update(hour12, minute, second, period, e.target.value)}
-            className={`rounded border border-[#333] bg-[#141414] font-mono text-white focus:border-[#4a9eff] focus:outline-none ${compact ? 'w-[190px] max-w-full px-2 py-1 text-[12px]' : 'w-full px-3 py-2 text-[14px]'}`}
+            className={`rounded border border-[#333] bg-[#141414] font-mono text-white focus:border-[#4a9eff] focus:outline-none ${compact ? 'h-9 w-[190px] max-w-full px-3 py-2 text-[13px]' : 'w-full px-3 py-2 text-[14px]'}`}
             aria-label="Start date"
           />
         </div>
@@ -535,24 +596,21 @@ interface TimerTitleEditPopoverProps {
   isOpen: boolean;
   title: string;
   notes: string;
-  duration: number;
   onClose: () => void;
-  onSave: (title: string, notes: string, duration: number) => void;
+  onSave: (title: string, notes: string) => void;
 }
 
-const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave }: TimerTitleEditPopoverProps) => {
+const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerTitleEditPopoverProps) => {
   const [draftTitle, setDraftTitle] = useState(title);
   const [draftNotes, setDraftNotes] = useState(notes);
-  const [draftDuration, setDraftDuration] = useState(duration);
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setDraftTitle(title);
       setDraftNotes(notes);
-      setDraftDuration(duration);
     }
-  }, [isOpen, title, notes, duration]);
+  }, [isOpen, title, notes]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -574,7 +632,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave
 
   const handleSave = () => {
     const nextTitle = draftTitle.trim();
-    if (nextTitle) onSave(nextTitle, draftNotes.trim(), draftDuration);
+    if (nextTitle) onSave(nextTitle, draftNotes.trim());
   };
 
   return (
@@ -582,7 +640,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave
       ref={popoverRef}
       role="dialog"
       aria-label="Edit timer title"
-      className="absolute left-1/2 top-[calc(100%+0.6rem)] z-[300] w-[520px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-lg border border-[#444] bg-[#242424] p-3 text-left shadow-2xl"
+      className="custom-scrollbar absolute left-1/2 top-[calc(100%+0.6rem)] z-[300] w-[520px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-lg border border-[#444] bg-[#242424] p-3 text-left shadow-2xl"
       onClick={(event) => event.stopPropagation()}
       onMouseEnter={(event) => event.stopPropagation()}
       onMouseLeave={(event) => event.stopPropagation()}
@@ -598,10 +656,6 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave
         autoFocus
         className="h-8 w-full rounded-md border border-[#444] bg-[#171717] px-2.5 text-[12px] text-white outline-none transition-colors focus:border-[#4a9eff]"
       />
-      <div className="mt-2 grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2">
-        <span className="text-[11px] font-medium text-white/60">Duration</span>
-        <DurationInput value={draftDuration} onChange={setDraftDuration} inline />
-      </div>
       <label htmlFor="timer-title-edit-notes" className="mt-2 mb-1 block text-[11px] font-medium text-white/60">Notes</label>
       <textarea
         id="timer-title-edit-notes"
@@ -609,7 +663,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, duration, onClose, onSave
         onChange={(event) => setDraftNotes(event.target.value)}
         placeholder="Notes (optional)"
         rows={2}
-        className="w-full resize-none rounded-md border border-[#444] bg-[#171717] px-2.5 py-1.5 text-[12px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#4a9eff]"
+        className="custom-scrollbar w-full resize-none rounded-md border border-[#444] bg-[#171717] px-2.5 py-1.5 text-[12px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#4a9eff]"
       />
       <div className="mt-2.5 flex justify-end gap-1.5">
         <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
@@ -654,6 +708,9 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
       : [...segments, { color, threshold }];
     setLocalSettings({ ...localSettings, segments: nextSegments });
   };
+  const startTimeDescription = localSettings.scheduledStart === null
+    ? 'No time set — this cue follows the timers above, landing at the current time when it becomes active.'
+    : `Start time is set in ${selectedTimeZone}. Adjust the time or date to update it.`;
 
   return (
     <ModalPortal>
@@ -669,98 +726,68 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
         <div className="my-4 h-px bg-[#333]" />
 
         <div className="space-y-4">
-          <div className="flex items-center gap-4 border-b border-[#333]/60 pb-3">
-            <label className="w-24 shrink-0 text-[13px] text-[#aaa]">Title</label>
-            <input type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="min-w-0 flex-1 rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[14px] text-white outline-none transition-colors focus:border-[#6b8db5]" />
+          <div>
+            <label htmlFor="gear-timer-title" className="mb-1.5 block text-[13px] text-[#aaa]">Title</label>
+            <input id="gear-timer-title" type="text" value={localSettings.title} onChange={(e) => setLocalSettings({ ...localSettings, title: e.target.value })} className="h-10 w-full rounded-md border border-[#444] bg-[#171717] px-3 text-[14px] text-white outline-none transition-colors focus:border-[#6b8db5]" />
           </div>
-          <div className="flex items-start gap-4 border-b border-[#333]/60 pb-3">
-            <label className="w-24 shrink-0 pt-2 text-[13px] text-[#aaa]">Notes</label>
-            <textarea value={localSettings.notes || ''} onChange={(e) => setLocalSettings({ ...localSettings, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="min-w-0 flex-1 resize-none rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[13px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#6b8db5]" />
+          <div>
+            <label htmlFor="gear-timer-notes" className="mb-1.5 block text-[13px] text-[#aaa]">Notes</label>
+            <textarea id="gear-timer-notes" value={localSettings.notes || ''} onChange={(e) => setLocalSettings({ ...localSettings, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="custom-scrollbar w-full resize-none rounded-md border border-[#444] bg-[#171717] px-3 py-2 text-[13px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#6b8db5]" />
           </div>
-
         </div>
 
         <div className="my-5 h-px bg-[#333]" />
 
-        <div className="grid grid-cols-1 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-4">
-            <h3 className="text-[14px] font-bold tracking-tight text-white">Timing</h3>
+            <h3 className="text-[14px] font-bold tracking-tight text-white">Start</h3>
+            <StartTimeInput
+              value={localSettings.scheduledStart}
+              dateValue={localSettings.scheduledStartDate}
+              onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
+              selectedTimeZone={selectedTimeZone}
+              showToggle={false}
+              indent={false}
+              compact
+            />
+            <p className="text-[12px] leading-relaxed text-[#999]">{startTimeDescription}</p>
+          </div>
 
-            <div className="flex items-start justify-between gap-6 pb-3 border-b border-[#333]">
-              <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a] pt-1">Start Time <InfoHint text="When enabled, this timer starts at the selected time in the chosen timezone." /></span>
-              <StartTimeInput
-                value={localSettings.scheduledStart}
-                dateValue={localSettings.scheduledStartDate}
-                onChange={(val, date) => setLocalSettings({ ...localSettings, scheduledStart: val, scheduledStartDate: date })}
-                selectedTimeZone={selectedTimeZone}
-              />
-            </div>
-
-            <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-4 py-2">
-              <span className="flex items-center gap-1 text-[12px] text-[#8a8a8a]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
+          <div className="space-y-4">
+            <h3 className="text-[14px] font-bold tracking-tight text-white">Duration</h3>
+            <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2">
+              <span className="flex items-center gap-1 text-[11px] text-[#999]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
               <DurationInput
                 value={localSettings.targetDuration || 0}
                 onChange={(val) => setLocalSettings({ ...localSettings, targetDuration: val })}
                 inline
               />
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-[#8a8a8a]">Appearance</span>
+            <div className="flex items-center gap-3">
+              <span className="w-16 shrink-0 text-[11px] text-[#999]">Appearance</span>
               <select
                 value={localSettings.mode || 'countdown'}
                 onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
-                className="flex-1 rounded border border-[#333] bg-[#141414] px-3 py-1.5 text-[13px] text-white focus:outline-none"
+                className="h-8 min-w-0 flex-1 rounded border border-[#333] bg-[#141414] px-2.5 text-[12px] text-white focus:outline-none"
               >
                 <option value="countdown">Countdown</option>
                 <option value="countup">Countup</option>
               </select>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[12px] text-[#8a8a8a]">Font Height</span>
-              <div className="flex flex-1 items-center gap-3">
-                <input
-                  type="range"
-                  min="0.5"
-                  max="3.0"
-                  step="0.1"
-                  value={localSettings.fontHeight || 1.6}
-                  onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })}
-                  className="flex-1 accent-[#4a9eff]"
-                />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className="w-16 shrink-0 text-[11px] text-[#999]">Font Height</span>
+              <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
+              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-[12px] text-[#8a8a8a]">Font Width</span>
-              <div className="flex flex-1 items-center gap-3">
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={localSettings.fontWidth || 1.0}
-                  onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })}
-                  className="flex-1 accent-[#4a9eff]"
-                />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className="w-16 shrink-0 text-[11px] text-[#999]">Font Width</span>
+              <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
+              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
             </div>
             <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  onApplyToAll?.({
-                    mode: localSettings.mode,
-                    fontHeight: localSettings.fontHeight,
-                    fontWidth: localSettings.fontWidth
-                  });
-                  onSettingsUpdate();
-                }}
-                className="text-[11px] text-[#4a9eff] hover:underline"
-              >
-                Apply to all
-              </button>
+              <button type="button" onClick={() => { onApplyToAll?.({ mode: localSettings.mode, fontHeight: localSettings.fontHeight, fontWidth: localSettings.fontWidth }); onSettingsUpdate(); }} className="text-[11px] text-[#4a9eff] hover:underline">Apply to all</button>
             </div>
+            <p className="border-t border-[#333] pt-2 text-[11px] text-[#999]">{localSettings.mode === 'countup' ? 'Counting up from zero.' : `Counting down from ${Math.floor((Number(localSettings.targetDuration) || 0) / 60)} min.`}</p>
           </div>
         </div>
 
@@ -908,13 +935,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
           <div className="space-y-2.5">
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
               <span className="flex items-center gap-1 text-[12px] text-[#999]">Duration <InfoHint text="The total amount of time this timer runs." /></span>
-              <div className="flex min-w-0 justify-center rounded-md bg-[#171717] px-2 py-1.5">
-                <DurationInput
-                  value={localSettings.targetDuration || 0}
-                  compact
-                  onChange={(value) => setLocalSettings({ ...localSettings, targetDuration: value })}
-                />
-              </div>
+              <DurationInput
+                value={localSettings.targetDuration || 0}
+                inline
+                onChange={(value) => setLocalSettings({ ...localSettings, targetDuration: value })}
+              />
             </div>
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
               <span className="text-[12px] text-[#999]">Appearance</span>
@@ -974,15 +999,15 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     <ModalPortal>
       <div
         ref={popoverRef}
-        className="fixed z-[1200] w-[520px] max-w-[calc(100vw-1.5rem)] text-left"
+        className="fixed z-[1200] w-[300px] max-w-[calc(100vw-1.5rem)] text-left"
         style={{ left: popoverPosition?.left ?? 0, top: popoverPosition?.top ?? 0, visibility: popoverPosition ? 'visible' : 'hidden' }}
         onClick={(event) => event.stopPropagation()}
       >
         <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-0 w-0 border-x-[8px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-2 border-t-[8px] border-t-[#444]' : '-top-2 border-b-[8px] border-b-[#444]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 8 }} />
         <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-0 w-0 border-x-[7px] border-x-transparent ${popoverPosition?.placement === 'above' ? '-bottom-[6px] border-t-[7px] border-t-[#242424]' : '-top-[6px] border-b-[7px] border-b-[#242424]'}`} style={{ left: (popoverPosition?.arrowLeft ?? 24) - 7 }} />
-        <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
-          <div className="flex items-start gap-2">
-            <span className="shrink-0 pt-1 text-[12px] text-[#999]">Time</span>
+        <div role="dialog" aria-modal="false" aria-label="Set timer start time" className="relative z-0 max-h-[min(80vh,540px)] overflow-visible rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl custom-scrollbar">
+          <div className="flex items-start gap-8">
+            <span className="w-10 shrink-0 pt-1 text-[12px] text-[#999]">Time</span>
             <div className="min-w-0 flex-1">
               <StartTimeInput
                 value={localSettings.scheduledStart}
@@ -1536,16 +1561,11 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           isOpen={isTitleEditOpen}
           title={settings.title || ''}
           notes={settings.notes || ''}
-          duration={Number(settings.targetDuration || 0)}
           onClose={() => setIsTitleEditOpen(false)}
-          onSave={(title, notes, targetDuration) => {
+          onSave={(title, notes) => {
             const titleOrNotesChanged = title !== (settings.title || '') || notes !== (settings.notes || '');
-            const durationChanged = targetDuration !== Number(settings.targetDuration || 0);
-            if (titleOrNotesChanged || durationChanged) {
-              updateSettings({ title, notes, targetDuration });
-              if (durationChanged) {
-                setTime(settings.mode === 'countup' ? 0 : targetDuration);
-              }
+            if (titleOrNotesChanged) {
+              updateSettings({ title, notes });
               onSettingsUpdate();
             }
             setIsTitleEditOpen(false);
