@@ -65,25 +65,69 @@ const pad = (value: number) => value.toString().padStart(2, '0');
 
 const InfoHint = ({ text }: { text: string }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipId = React.useId();
+  const closeTimerRef = useRef<number | null>(null);
+  const tooltipPosition = useAnchoredPopoverPosition(isOpen, anchorRef, tooltipRef, 256, 'center', () => setIsOpen(false));
+  const cancelClose = () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimerRef.current = window.setTimeout(() => setIsOpen(false), 350);
+  };
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target) || tooltipRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   return (
-    <span className="group relative inline-flex align-middle">
+    <span className="inline-flex align-middle">
       <button
+        ref={anchorRef}
         type="button"
         aria-label={text}
+        aria-describedby={isOpen ? tooltipId : undefined}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
-        onBlur={() => setIsOpen(false)}
-        className="inline-flex h-4 w-4 items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#4a9eff]"
+        onMouseEnter={() => { cancelClose(); setIsOpen(true); }}
+        onMouseLeave={scheduleClose}
+        className="group inline-flex h-4 w-4 items-center justify-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[#4a9eff]"
       >
         <Image src="/info.svg" alt="" aria-hidden="true" width={14} height={14} className="h-3.5 w-3.5 invert opacity-75 transition-opacity group-hover:opacity-100" />
       </button>
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute left-0 top-full z-20 mt-2 w-64 rounded border border-[#444] bg-[#252525] px-2.5 py-2 text-left text-[11px] leading-relaxed text-white shadow-lg transition-opacity ${isOpen ? 'visible opacity-100' : 'invisible opacity-0 group-hover:visible group-hover:opacity-100'}`}
-      >
-        {text}
-      </span>
+      {isOpen && <ModalPortal>
+        <div
+          ref={tooltipRef}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+          className="fixed z-[1400] w-64 max-w-[calc(100vw-1rem)]"
+          style={{ left: tooltipPosition?.left ?? 8, top: tooltipPosition?.top ?? 8, visibility: tooltipPosition ? 'visible' : 'hidden' }}
+        >
+          <span aria-hidden="true" className={`pointer-events-none absolute h-2.5 w-2.5 rotate-45 border-[#444] bg-[#252525] ${tooltipPosition?.placement === 'above' ? '-bottom-1 border-b border-r' : '-top-1 border-l border-t'}`} style={{ left: (tooltipPosition?.arrowLeft ?? 20) - 5 }} />
+          <span id={tooltipId} role="tooltip" className="block max-h-[calc(100dvh-1rem)] overflow-y-auto rounded border border-[#444] bg-[#252525] px-2.5 py-2 text-left text-[11px] leading-relaxed text-white shadow-lg">{text}</span>
+        </div>
+      </ModalPortal>}
     </span>
   );
 };
@@ -100,6 +144,131 @@ const useCoarsePointer = () => {
   }, []);
 
   return isCoarsePointer;
+};
+
+interface AnchoredPopoverPosition {
+  left: number;
+  top: number;
+  arrowLeft: number;
+  placement: 'above' | 'below';
+}
+
+const isElementVisibleInViewport = (element: HTMLElement) => {
+  const rect = element.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  let visibleTop = Math.max(rect.top, viewport?.offsetTop ?? 0);
+  let visibleBottom = Math.min(rect.bottom, (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight));
+  let visibleLeft = Math.max(rect.left, viewport?.offsetLeft ?? 0);
+  let visibleRight = Math.min(rect.right, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth));
+  const clips = (overflow: string) => ['auto', 'scroll', 'hidden', 'clip'].includes(overflow);
+
+  for (let parent = element.parentElement; parent && parent !== document.body && parent !== document.documentElement; parent = parent.parentElement) {
+    const style = window.getComputedStyle(parent);
+    const parentRect = parent.getBoundingClientRect();
+    if (clips(style.overflowY)) {
+      const clipTop = parentRect.top + parent.clientTop;
+      visibleTop = Math.max(visibleTop, clipTop);
+      visibleBottom = Math.min(visibleBottom, clipTop + parent.clientHeight);
+    }
+    if (clips(style.overflowX)) {
+      const clipLeft = parentRect.left + parent.clientLeft;
+      visibleLeft = Math.max(visibleLeft, clipLeft);
+      visibleRight = Math.min(visibleRight, clipLeft + parent.clientWidth);
+    }
+  }
+
+  return visibleBottom > visibleTop && visibleRight > visibleLeft;
+};
+
+const useAnchoredPopoverPosition = (
+  isOpen: boolean,
+  anchorRef: React.RefObject<HTMLElement | null>,
+  popoverRef: React.RefObject<HTMLElement | null>,
+  preferredWidth: number,
+  horizontalAlign: 'center' | 'right' = 'center',
+  onAnchorHidden?: () => void,
+) => {
+  const [position, setPosition] = useState<AnchoredPopoverPosition | null>(null);
+  const placementRef = useRef<'above' | 'below' | null>(null);
+  const onAnchorHiddenRef = useRef(onAnchorHidden);
+  onAnchorHiddenRef.current = onAnchorHidden;
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPosition(null);
+      placementRef.current = null;
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const anchor = anchorRef.current;
+      const popover = popoverRef.current;
+      if (!anchor || !popover) return;
+      if (!isElementVisibleInViewport(anchor)) {
+        setPosition(null);
+        onAnchorHiddenRef.current?.();
+        return;
+      }
+      const anchorRect = anchor.getBoundingClientRect();
+      const popoverRect = popover.getBoundingClientRect();
+      const panelWidth = popoverRect.width || Math.min(preferredWidth, window.innerWidth - 16);
+      const panelHeight = popoverRect.height;
+      const desiredLeft = horizontalAlign === 'right'
+        ? anchorRect.right - panelWidth
+        : anchorRect.left + anchorRect.width / 2 - panelWidth / 2;
+      const left = Math.max(8, Math.min(
+        desiredLeft,
+        window.innerWidth - panelWidth - 8,
+      ));
+      const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
+      const spaceAbove = anchorRect.top - 16;
+      const calculatedPlacement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
+      const placement = placementRef.current ?? calculatedPlacement;
+      if (placementRef.current === null) placementRef.current = placement;
+      const desiredTop = placement === 'below'
+        ? anchorRect.bottom + 12
+        : anchorRect.top - panelHeight - 12;
+      const top = Math.max(8, Math.min(desiredTop, window.innerHeight - panelHeight - 8));
+      const arrowLeft = Math.max(20, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - 20));
+      setPosition(current => current
+        && current.left === left
+        && current.top === top
+        && current.arrowLeft === arrowLeft
+        && current.placement === placement
+        ? current
+        : { left, top, arrowLeft, placement });
+    };
+
+    let secondFrame = 0;
+    let resizeObserver: ResizeObserver | null = null;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        updatePosition();
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(updatePosition);
+          if (anchorRef.current) resizeObserver.observe(anchorRef.current);
+          if (popoverRef.current) resizeObserver.observe(popoverRef.current);
+        }
+      });
+    });
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('scroll', updatePosition, true);
+    window.visualViewport?.addEventListener('resize', updatePosition);
+    window.visualViewport?.addEventListener('scroll', updatePosition);
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('scroll', updatePosition, true);
+      window.visualViewport?.removeEventListener('resize', updatePosition);
+      window.visualViewport?.removeEventListener('scroll', updatePosition);
+    };
+  }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign]);
+
+  return position;
 };
 
 const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: number, timeZone: string): number => {
@@ -602,17 +771,21 @@ const ModalPortal = ({ children }: { children: React.ReactNode }) => {
 
 interface TimerTitleEditPopoverProps {
   isOpen: boolean;
+  anchorRef: React.RefObject<HTMLElement | null>;
   title: string;
   notes: string;
   onClose: () => void;
   onSave: (title: string, notes: string) => void;
 }
 
-const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerTitleEditPopoverProps) => {
+const TimerTitleEditPopover = ({ isOpen, anchorRef, title, notes, onClose, onSave }: TimerTitleEditPopoverProps) => {
   const [draftTitle, setDraftTitle] = useState(title);
   const [draftNotes, setDraftNotes] = useState(notes);
   const popoverRef = useRef<HTMLDivElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const popoverPosition = useAnchoredPopoverPosition(isOpen, anchorRef, popoverRef, 520, 'center', () => onCloseRef.current());
 
   useEffect(() => {
     if (isOpen) {
@@ -624,10 +797,12 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
   useEffect(() => {
     if (!isOpen) return;
     const handlePointerDown = (event: PointerEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) onClose();
+      const target = event.target as Node;
+      if (popoverRef.current?.contains(target) || anchorRef.current?.contains(target)) return;
+      onCloseRef.current();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
@@ -635,7 +810,7 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
       document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, anchorRef]);
   useEffect(() => {
     if (!isOpen || !notesRef.current) return;
     notesRef.current.style.height = 'auto';
@@ -650,41 +825,46 @@ const TimerTitleEditPopover = ({ isOpen, title, notes, onClose, onSave }: TimerT
   };
 
   return (
-    <div
-      ref={popoverRef}
-      role="dialog"
-      aria-label="Edit timer title"
-      className="custom-scrollbar absolute left-1/2 top-[calc(100%+0.6rem)] z-[300] w-[520px] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-lg border border-[#444] bg-[#242424] p-3 text-left shadow-2xl"
-      onClick={(event) => event.stopPropagation()}
-      onMouseEnter={(event) => event.stopPropagation()}
-      onMouseLeave={(event) => event.stopPropagation()}
-    >
-      <span aria-hidden="true" className="pointer-events-none absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-l border-t border-[#444] bg-[#242424]" />
-      <label htmlFor="timer-title-edit-input" className="mb-1 block text-[11px] font-medium text-white/60">Title</label>
-      <input
-        id="timer-title-edit-input"
-        type="text"
-        value={draftTitle}
-        onChange={(event) => setDraftTitle(event.target.value)}
-        onKeyDown={(event) => { if (event.key === 'Enter') handleSave(); }}
-        autoFocus
-        className="h-8 w-full rounded-md border border-[#444] bg-[#171717] px-2.5 text-[12px] text-white outline-none transition-colors focus:border-[#4a9eff]"
-      />
-      <label htmlFor="timer-title-edit-notes" className="mt-2 mb-1 block text-[11px] font-medium text-white/60">Notes</label>
-      <textarea
-        id="timer-title-edit-notes"
-        ref={notesRef}
-        value={draftNotes}
-        onChange={(event) => setDraftNotes(event.target.value)}
-        placeholder="Notes (optional)"
-        rows={3}
-        className="custom-scrollbar min-h-[64px] w-full resize-none overflow-hidden rounded-md border border-[#444] bg-[#171717] px-2.5 py-1.5 text-[12px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#4a9eff]"
-      />
-      <div className="mt-2.5 flex justify-end gap-1.5">
-        <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
-        <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+    <ModalPortal>
+      <div
+        ref={popoverRef}
+        role="dialog"
+        aria-label="Edit timer title"
+        className="fixed z-[1300] w-[520px] max-w-[calc(100vw-1rem)] text-left"
+        style={{ left: popoverPosition?.left ?? 8, top: popoverPosition?.top ?? 8, visibility: popoverPosition ? 'visible' : 'hidden' }}
+        onClick={(event) => event.stopPropagation()}
+        onMouseEnter={(event) => event.stopPropagation()}
+        onMouseLeave={(event) => event.stopPropagation()}
+      >
+        <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${popoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (popoverPosition?.arrowLeft ?? 20) - 8 }} />
+        <div className="custom-scrollbar max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
+        <label htmlFor="timer-title-edit-input" className="mb-1 block text-[11px] font-medium text-white/60">Title</label>
+        <input
+          id="timer-title-edit-input"
+          type="text"
+          value={draftTitle}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter') handleSave(); }}
+          autoFocus
+          className="h-8 w-full rounded-md border border-[#444] bg-[#171717] px-2.5 text-[12px] text-white outline-none transition-colors focus:border-[#4a9eff]"
+        />
+        <label htmlFor="timer-title-edit-notes" className="mt-2 mb-1 block text-[11px] font-medium text-white/60">Notes</label>
+        <textarea
+          id="timer-title-edit-notes"
+          ref={notesRef}
+          value={draftNotes}
+          onChange={(event) => setDraftNotes(event.target.value)}
+          placeholder="Notes (optional)"
+          rows={3}
+          className="custom-scrollbar min-h-[64px] w-full resize-none overflow-hidden rounded-md border border-[#444] bg-[#171717] px-2.5 py-1.5 text-[12px] text-white outline-none placeholder:text-white/25 transition-colors focus:border-[#4a9eff]"
+        />
+        <div className="mt-2.5 flex justify-end gap-1.5">
+          <button type="button" onClick={onClose} className="h-7 rounded-md border border-[#555] bg-[#2d2d2d] px-3 text-[11px] text-white/80 transition-colors hover:bg-[#333] hover:text-white">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={!draftTitle.trim()} className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] active:bg-[#2f9e44] disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+        </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 };
 
@@ -852,7 +1032,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-3"><button type="button" onClick={onClose} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#383838]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] focus-visible:text-white active:bg-[#2f9e44] active:text-white">Save Settings</button></div>
+        <div className="mt-4 flex flex-row gap-2 sm:gap-3"><button type="button" onClick={onClose} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#383838] max-[639px]:text-[13px]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] focus-visible:text-white active:bg-[#2f9e44] active:text-white max-[639px]:text-[13px]"><span className="sm:hidden">Confirm</span><span className="hidden sm:inline">Save Settings</span></button></div>
             </div>
       </div>
     </ModalPortal>
@@ -864,6 +1044,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [popoverPosition, setPopoverPosition] = useState<{ left: number; top: number; arrowLeft: number; placement: 'above' | 'below' } | null>(null);
+  const placementRef = useRef<'above' | 'below' | null>(null);
 
   useEffect(() => {
     if (isOpen) setLocalSettings(settings);
@@ -872,6 +1053,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
   useEffect(() => {
     if (!isOpen) {
       setPopoverPosition(null);
+      placementRef.current = null;
       return;
     }
 
@@ -879,6 +1061,11 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       const anchor = anchorRef?.current;
       const popover = popoverRef.current;
       if (!anchor || !popover) return;
+      if (!isElementVisibleInViewport(anchor)) {
+        setPopoverPosition(null);
+        onCloseRef.current();
+        return;
+      }
       const anchorRect = anchor.getBoundingClientRect();
       const popoverRect = popover.getBoundingClientRect();
       const panelWidth = popoverRect.width || Math.min(520, window.innerWidth - 24);
@@ -889,7 +1076,9 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       ));
       const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
       const spaceAbove = anchorRect.top - 16;
-      const placement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
+      const calculatedPlacement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
+      const placement = placementRef.current ?? calculatedPlacement;
+      if (placementRef.current === null) placementRef.current = placement;
       const top = placement === 'below'
         ? anchorRect.bottom + 12
         : Math.max(8, anchorRect.top - panelHeight - 12);
@@ -904,8 +1093,16 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     };
 
     let secondFrame = 0;
+    let resizeObserver: ResizeObserver | null = null;
     const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(positionPopover);
+      secondFrame = window.requestAnimationFrame(() => {
+        positionPopover();
+        if (typeof ResizeObserver !== 'undefined') {
+          resizeObserver = new ResizeObserver(positionPopover);
+          if (anchorRef?.current) resizeObserver.observe(anchorRef.current);
+          if (popoverRef.current) resizeObserver.observe(popoverRef.current);
+        }
+      });
     });
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
@@ -917,13 +1114,20 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     };
     window.addEventListener('resize', positionPopover);
     window.addEventListener('scroll', positionPopover, true);
+    document.addEventListener('scroll', positionPopover, true);
+    window.visualViewport?.addEventListener('resize', positionPopover);
+    window.visualViewport?.addEventListener('scroll', positionPopover);
     document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.cancelAnimationFrame(firstFrame);
       window.cancelAnimationFrame(secondFrame);
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', positionPopover);
       window.removeEventListener('scroll', positionPopover, true);
+      document.removeEventListener('scroll', positionPopover, true);
+      window.visualViewport?.removeEventListener('resize', positionPopover);
+      window.visualViewport?.removeEventListener('scroll', positionPopover);
       document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -1102,32 +1306,70 @@ interface TimerHeader {
   timerIds: string[];
 }
 
-const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: () => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
+const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: (deleteTimers: boolean) => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragArmed, setIsDragArmed] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const deleteConfirmRef = useRef<HTMLDivElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const deletePopoverRef = useRef<HTMLDivElement>(null);
+  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 288, 'right', () => setIsDeleteConfirmOpen(false));
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(header.title);
+  useEffect(() => {
+    if (!isDeleteConfirmOpen || isDragOverlay) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (deleteConfirmRef.current?.contains(target) || deletePopoverRef.current?.contains(target)) return;
+      setIsDeleteConfirmOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsDeleteConfirmOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isDeleteConfirmOpen, isDragOverlay]);
   return (
-    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 200 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg bg-[#202020] px-3 py-2 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
+    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isDeleteConfirmOpen ? 250 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg bg-[#202020] px-3 py-2 max-[639px]:px-2 max-[639px]:py-0.5 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
       <div className="flex items-center gap-2">
         {isSelectMode ? (
           <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
         ) : (
-          <span className={`mobile-drag-handle flex h-7 w-5 shrink-0 items-center justify-center ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
+          <span className={`mobile-drag-handle flex h-7 w-5 shrink-0 items-center justify-center max-[639px]:h-6 max-[639px]:w-4 ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
             <IconDragHandle />
           </span>
         )}
-        <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030]" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
+        <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030] max-[639px]:h-6 max-[639px]:w-6" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
         {editing ? (
           <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
-        ) : <button type="button" onClick={() => { setDraft(header.title === 'New Section' || header.title === 'Untitled section' ? '' : header.title); setEditing(true); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4" title="Edit section header">{header.title}</button>}
+        ) : <button type="button" onClick={() => { setDraft(header.title === 'New Section' || header.title === 'Untitled section' ? '' : header.title); setEditing(true); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 max-[639px]:text-[12px]" title="Edit section header">{header.title}</button>}
         <span className="text-[11px] text-[#888]">{header.timerIds.length}</span>
-        <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b]" title="Add a sub-timer">+ Add Row</button>
-        <button type="button" onClick={onDelete} className="rounded px-2 py-1 text-[12px] text-[#999] hover:bg-[#3a2020] hover:text-[#ff8b8b]" title="Delete section">×</button>
+        <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b] max-[639px]:px-1.5 max-[639px]:py-0.5" title="Add a sub-timer">+ Add Row</button>
+        <div ref={deleteConfirmRef} className="relative shrink-0">
+          <button ref={deleteTriggerRef} type="button" onClick={() => setIsDeleteConfirmOpen(open => !open)} className={`rounded px-2 py-1 text-[12px] transition-colors max-[639px]:px-1 max-[639px]:py-0 ${isDeleteConfirmOpen ? 'bg-[#3a2020] text-[#ff8b8b]' : 'text-[#999] hover:bg-[#3a2020] hover:text-[#ff8b8b]'}`} title="Delete section" aria-label={`Delete section ${header.title}`} aria-haspopup="dialog" aria-expanded={isDeleteConfirmOpen}>×</button>
+        </div>
       </div>
+      {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
+        <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-72 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
+          <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 8 }} />
+          <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
+          <h2 id={`section-delete-title-${header.id}`} className="relative text-[13px] font-bold text-white">Delete “{header.title}”?</h2>
+          <p className="relative mt-1.5 text-[11px] leading-relaxed text-[#aaa]">This section contains <strong className="font-bold text-white">{header.timerIds.length}</strong> timer row(s). Choose what should happen to them.</p>
+          <div className="relative mt-3 flex flex-col gap-1.5">
+            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-2.5 py-2 text-center text-[11px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-2.5 py-2 text-center text-[11px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
+            <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-2.5 py-2 text-center text-[11px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
+          </div>
+          </div>
+        </div>
+      </ModalPortal>}
     </div>
   );
 };
@@ -1315,6 +1557,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
   const startTimeTriggerRef = useRef<HTMLDivElement>(null);
   const durationTriggerRef = useRef<HTMLDivElement>(null);
+  const titleEditTriggerRef = useRef<HTMLSpanElement>(null);
+  const actionsAnchorRef = useRef<HTMLDivElement>(null);
+  const actionsPopoverRef = useRef<HTMLDivElement>(null);
+  const actionsPopoverPosition = useAnchoredPopoverPosition(isActionsOpen && !isDragOverlay, actionsAnchorRef, actionsPopoverRef, 176, 'right', onCloseActions);
 
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = isHovered || isDragArmed || isCoarsePointer;
@@ -1567,11 +1813,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
       {/* Title */}
       <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <span className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
+        <span ref={titleEditTriggerRef} className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            onCloseActions();
             setIsTitleEditOpen(true);
           }}
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
@@ -1582,6 +1829,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         </button>
         <TimerTitleEditPopover
           isOpen={isTitleEditOpen}
+          anchorRef={titleEditTriggerRef}
           title={settings.title || ''}
           notes={settings.notes || ''}
           onClose={() => setIsTitleEditOpen(false)}
@@ -1644,11 +1892,12 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         >
           {isRunning ? <IconPause size={18} /> : <IconPlay size={18} />}
         </button>
-        <div className="timer-row-more relative ml-1 max-[639px]:ml-0">
+        <div ref={actionsAnchorRef} className="timer-row-more relative ml-1 max-[639px]:ml-0">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              setIsTitleEditOpen(false);
               onActionsToggle();
             }}
             className="flex h-9 w-8 max-[639px]:h-8 max-[639px]:w-6 items-center justify-center text-white/40 hover:text-white transition-colors"
@@ -1656,9 +1905,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
           >
             <IconMore size={18} />
           </button>
-          {isActionsOpen && (
-            <div onClick={(e) => e.stopPropagation()} className={`absolute right-0 z-[250] w-44 rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl ${index < 4 ? 'top-full mt-2' : 'bottom-full mb-2'}`}>
-              <span aria-hidden="true" className={`pointer-events-none absolute right-3 z-[-1] h-4 w-4 rotate-45 bg-[#242424] ${index < 4 ? '-top-2 border-l border-t border-[#444]' : '-bottom-2 border-r border-b border-[#444]'}`} />
+          {isActionsOpen && !isDragOverlay && <ModalPortal>
+            <div ref={actionsPopoverRef} onClick={(event) => event.stopPropagation()} className="fixed z-[1300] w-44 max-w-[calc(100vw-1rem)]" style={{ left: actionsPopoverPosition?.left ?? 8, top: actionsPopoverPosition?.top ?? 8, visibility: actionsPopoverPosition ? 'visible' : 'hidden' }}>
+              <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${actionsPopoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (actionsPopoverPosition?.arrowLeft ?? 20) - 8 }} />
+              <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
               <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
                 <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-3.5 w-3.5 brightness-0 invert rotate-180" />
                 <span>Add timer above</span>
@@ -1676,8 +1926,9 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14H5V6"/><path d="M10 11v5"/><path d="M14 11v5"/></svg>
                 <span>Delete timer</span>
               </button>
+              </div>
             </div>
-          )}
+          </ModalPortal>}
         </div>
       </div>
       <TimerSettingsModal
@@ -1828,6 +2079,9 @@ function App() {
   const [isMessageFlash, setIsMessageFlash] = useState(false);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  const roomMenuAnchorRef = useRef<HTMLButtonElement>(null);
+  const roomMenuRef = useRef<HTMLDivElement>(null);
+  const roomMenuPosition = useAnchoredPopoverPosition(isRoomMenuOpen, roomMenuAnchorRef, roomMenuRef, 256, 'center', () => setIsRoomMenuOpen(false));
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -1836,7 +2090,6 @@ function App() {
       setOpenActionsTimerId(null);
       setOpenTimerPanel(null);
       setBulkDeleteOpen(false);
-      setSectionDeleteTarget(null);
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
@@ -1856,7 +2109,6 @@ function App() {
   const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
   const [isMessageSelectMode, setIsMessageSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
-  const [sectionDeleteTarget, setSectionDeleteTarget] = useState<TimerHeader | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const allItemsCount = timerIds.length + timerHeaders.length;
   const selectedItemsCount = selectedTimerIds.length + selectedSectionIds.length;
@@ -2530,7 +2782,6 @@ function App() {
     setSelectedSectionIds(sectionIds => sectionIds.filter(sectionId => sectionId !== id));
     setLinkedTimerIds(linkedIds => linkedIds.filter(timerId => !childIds.includes(timerId)));
     markTimerChanged();
-    setSectionDeleteTarget(null);
   };
 
   const addTimer = (atIndex?: number) => {
@@ -3432,22 +3683,6 @@ function App() {
           </div>
         </div>
       </div>}
-      {sectionDeleteTarget && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="section-delete-title">
-        <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
-          <button type="button" onClick={() => setSectionDeleteTarget(null)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close delete section dialog" title="Close"><IconClose size={16} /></button>
-          <div className="flex items-center gap-3 pr-8">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center text-[#ff8b8b]"><IconTrash size={22} /></span>
-            <h2 id="section-delete-title" className="text-[17px] font-bold tracking-tight text-white">Delete “{sectionDeleteTarget.title}”?</h2>
-          </div>
-          <div className="my-4 h-px bg-[#333]" />
-          <p className="text-[13px] leading-5 text-[#aaa]">This section contains <strong className="font-bold text-white">{sectionDeleteTarget.timerIds.filter(id => timerIds.includes(id)).length}</strong> timer row(s). Choose what should happen to them.</p>
-          <div className="mt-4 flex flex-col gap-2">
-            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, true)} className="h-10 rounded-md border border-[#8b3d3d] bg-[#542626] px-3 text-[13px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
-            <button type="button" onClick={() => deleteTimerHeader(sectionDeleteTarget.id, false)} className="h-10 rounded-md border border-[#4b79a8] bg-[#263d59] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
-            <button type="button" onClick={() => setSectionDeleteTarget(null)} className="h-10 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
-          </div>
-        </div>
-      </div>}
       <header className="flex flex-col items-start justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a] sm:flex-row sm:items-center">
         <div className="group flex min-w-0 flex-1 items-center justify-start">
           <input ref={roomNameInputRef} type="text" size={Math.max(1, currentRoomName.length)} value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} style={{ width: `${Math.max(1, currentRoomName.length)}ch` }} className="min-w-0 max-w-full bg-transparent p-0 text-left text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors" />
@@ -3461,10 +3696,11 @@ function App() {
         <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto">
           <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838] ${hasUnsavedChanges ? 'border-[#d69e2e] bg-[#4a3415]' : ''}`}><IconSave className="mr-1" /> Save</button>
           <div className="relative">
-            <button type="button" onClick={(e) => { e.stopPropagation(); if (activeTimerState?.isRunning) { gooeyToast.warning('Warning', { description: 'When you change rooms, the timer will stop.', showTimestamp: false }); } setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
+            <button ref={roomMenuAnchorRef} type="button" onClick={(e) => { e.stopPropagation(); if (activeTimerState?.isRunning) { gooeyToast.warning('Warning', { description: 'When you change rooms, the timer will stop.', showTimestamp: false }); } setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" aria-label="Open saved rooms" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && (
-              <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl">
-                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms</div>
+              <ModalPortal>
+              <div ref={roomMenuRef} role="menu" onClick={(e) => e.stopPropagation()} className="custom-scrollbar fixed z-[1300] max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl" style={{ left: roomMenuPosition?.left ?? 8, top: roomMenuPosition?.top ?? 8, visibility: roomMenuPosition ? 'visible' : 'hidden' }}>
+                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms<span className="mt-0.5 block text-[11px] normal-case tracking-normal text-[#999] sm:hidden">Open saved rooms</span></div>
                 {rooms.map((room) => (
                   <div key={room.id} role="menuitem" tabIndex={0} onClick={() => loadRoom(room)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadRoom(room); } }} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#4a9eff] cursor-pointer ${currentRoomId === room.id ? 'bg-[#3a3a3a] text-white' : ''}`}>
                     <span className="truncate">{room.name}</span>
@@ -3495,6 +3731,7 @@ function App() {
                   });
                 }} title="Create a new room" className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
               </div>
+              </ModalPortal>
             )}
           </div>
           <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); const validation = validateRoomBackup(imported); if (!validation.valid) throw new Error(validation.reason); if (imported.rooms && Array.isArray(imported.rooms)) {
@@ -3877,7 +4114,7 @@ function App() {
                       onSelect={() => setSelectedSectionIds(current => current.includes(header.id) ? current.filter(sectionId => sectionId !== header.id) : [...current, header.id])}
                       onToggle={() => updateTimerHeader(header.id, { collapsed: !header.collapsed })}
                       onRename={(title) => updateTimerHeader(header.id, { title })}
-                      onDelete={() => setSectionDeleteTarget(header)}
+                      onDelete={(deleteTimers) => deleteTimerHeader(header.id, deleteTimers)}
                       onAddTimer={() => {
                         const newId = addTimer();
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
