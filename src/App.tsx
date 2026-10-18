@@ -878,8 +878,8 @@ const TimerTitleEditPopover = ({ isOpen, anchorRef, title, notes, onClose, onSav
         onMouseEnter={(event) => event.stopPropagation()}
         onMouseLeave={(event) => event.stopPropagation()}
       >
-        <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${popoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (popoverPosition?.arrowLeft ?? 20) - 5 }} />
-        <div className="custom-scrollbar max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
+        <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-3 w-3 rotate-45 border-[#444] bg-[#242424] ${popoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (popoverPosition?.arrowLeft ?? 20) - 6 }} />
+        <div className="relative z-10 custom-scrollbar max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
         <label htmlFor="timer-title-edit-input" className="mb-1 block text-[11px] font-medium text-white/60">Title</label>
         <input
           id="timer-title-edit-input"
@@ -1358,7 +1358,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   const deleteConfirmRef = useRef<HTMLDivElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const deletePopoverRef = useRef<HTMLDivElement>(null);
-  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 224, 'right', () => setIsDeleteConfirmOpen(false), 0, 12);
+  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 224, 'center', () => setIsDeleteConfirmOpen(false), 0, 12);
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
@@ -1403,8 +1403,8 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
       </div>
       {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
         <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-56 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
-          <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 5 }} />
-          <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-2 shadow-2xl">
+          <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-3 w-3 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 6 }} />
+          <div className="relative z-10 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-2 shadow-2xl">
           <h2 id={`section-delete-title-${header.id}`} className="relative text-[12px] font-bold text-white">Delete “{header.title}”?</h2>
           <div className="relative mt-2 flex flex-col gap-1">
             <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-2 py-1.5 text-center text-[11px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
@@ -1601,7 +1601,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
   const startTimeTriggerRef = useRef<HTMLDivElement>(null);
   const durationTriggerRef = useRef<HTMLDivElement>(null);
-  const titleEditTriggerRef = useRef<HTMLButtonElement>(null);
+  const timerTitleRef = useRef<HTMLSpanElement>(null);
   const actionsAnchorRef = useRef<HTMLDivElement>(null);
   const actionsPopoverRef = useRef<HTMLDivElement>(null);
   const actionsPopoverPosition = useAnchoredPopoverPosition(isActionsOpen && !isDragOverlay, actionsAnchorRef, actionsPopoverRef, 176, 'right', onCloseActions, 6);
@@ -1857,9 +1857,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
       {/* Title */}
       <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <span className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
+        <span ref={timerTitleRef} className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
         <button
-          ref={titleEditTriggerRef}
           type="button"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -1875,7 +1874,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         </button>
         <TimerTitleEditPopover
           isOpen={isTitleEditOpen}
-          anchorRef={titleEditTriggerRef}
+          anchorRef={timerTitleRef}
           title={settings.title || ''}
           notes={settings.notes || ''}
           onClose={() => setIsTitleEditOpen(false)}
