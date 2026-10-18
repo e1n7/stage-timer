@@ -200,7 +200,7 @@ const useAnchoredPopoverPosition = (
       return undefined;
     }
 
-    const updatePosition = () => {
+    const updatePosition = (recalculatePlacement = false) => {
       const anchor = anchorRef.current;
       const popover = popoverRef.current;
       if (!anchor || !popover) return;
@@ -223,8 +223,10 @@ const useAnchoredPopoverPosition = (
       const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
       const spaceAbove = anchorRect.top - 16;
       const calculatedPlacement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
-      const placement = placementRef.current ?? calculatedPlacement;
-      if (placementRef.current === null) placementRef.current = placement;
+      const placement = recalculatePlacement || placementRef.current === null
+        ? calculatedPlacement
+        : placementRef.current;
+      placementRef.current = placement;
       const desiredTop = placement === 'below'
         ? anchorRect.bottom + 12
         : anchorRect.top - panelHeight - 12;
@@ -239,32 +241,33 @@ const useAnchoredPopoverPosition = (
         : { left, top, arrowLeft, placement });
     };
 
+    const recalculateOnViewportChange = () => updatePosition(true);
     let secondFrame = 0;
     let resizeObserver: ResizeObserver | null = null;
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
-        updatePosition();
+        updatePosition(true);
         if (typeof ResizeObserver !== 'undefined') {
-          resizeObserver = new ResizeObserver(updatePosition);
+          resizeObserver = new ResizeObserver(() => updatePosition());
           if (anchorRef.current) resizeObserver.observe(anchorRef.current);
           if (popoverRef.current) resizeObserver.observe(popoverRef.current);
         }
       });
     });
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    document.addEventListener('scroll', updatePosition, true);
-    window.visualViewport?.addEventListener('resize', updatePosition);
-    window.visualViewport?.addEventListener('scroll', updatePosition);
+    window.addEventListener('resize', recalculateOnViewportChange);
+    window.addEventListener('scroll', recalculateOnViewportChange, true);
+    document.addEventListener('scroll', recalculateOnViewportChange, true);
+    window.visualViewport?.addEventListener('resize', recalculateOnViewportChange);
+    window.visualViewport?.addEventListener('scroll', recalculateOnViewportChange);
     return () => {
       window.cancelAnimationFrame(firstFrame);
       window.cancelAnimationFrame(secondFrame);
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-      document.removeEventListener('scroll', updatePosition, true);
-      window.visualViewport?.removeEventListener('resize', updatePosition);
-      window.visualViewport?.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', recalculateOnViewportChange);
+      window.removeEventListener('scroll', recalculateOnViewportChange, true);
+      document.removeEventListener('scroll', recalculateOnViewportChange, true);
+      window.visualViewport?.removeEventListener('resize', recalculateOnViewportChange);
+      window.visualViewport?.removeEventListener('scroll', recalculateOnViewportChange);
     };
   }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign]);
 
@@ -450,7 +453,9 @@ const PickerColumn = ({ options, selected, onSelect, format = (option: number | 
 
 const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showToggle = true, indent = true, compact = false }: { value: number | null, dateValue?: string | null, onChange: (val: number | null, date?: string | null) => void, selectedTimeZone: string, showToggle?: boolean, indent?: boolean, compact?: boolean }) => {
   const pickerRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: selectedTimeZone,
@@ -493,6 +498,22 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [isPickerOpen]);
 
+  useEffect(() => {
+    if (!isDatePickerOpen) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dateInputRef.current?.contains(event.target as Node)) setIsDatePickerOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsDatePickerOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDatePickerOpen]);
+
   const rotateOptions = (options: Array<number | string>, selected: number | string) => {
     const selectedIndex = options.indexOf(selected);
     return selectedIndex < 0 ? options : [...options.slice(selectedIndex), ...options.slice(0, selectedIndex)];
@@ -506,7 +527,7 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
   const displayTime = `${pad(hour12)}:${pad(minute)}:${pad(second)} ${period}`;
 
   return (
-    <div className={`flex flex-col ${compact ? 'w-full items-start gap-2' : 'items-end gap-3'}`}>
+    <div className={`flex flex-col ${compact ? 'w-full items-start gap-2' : 'items-end gap-3'} select-none`}>
       {showToggle && (
         <div className="flex items-center gap-2 whitespace-nowrap">
           <input
@@ -555,10 +576,29 @@ const StartTimeInput = ({ value, dateValue, onChange, selectedTimeZone, showTogg
             )}
           </div>
           <input
+            ref={dateInputRef}
             type="date"
             value={selectedDate}
-            onChange={(e) => update(hour12, minute, second, period, e.target.value)}
-            className={`rounded border border-[#333] bg-[#141414] font-mono text-white focus:border-[#4a9eff] focus:outline-none ${compact ? 'h-10 w-full max-w-full px-3 py-2 text-[13px]' : 'w-full px-3 py-2 text-[14px]'}`}
+            onChange={(e) => {
+              setIsDatePickerOpen(false);
+              update(hour12, minute, second, period, e.target.value);
+            }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              setIsDatePickerOpen(true);
+              const input = event.currentTarget;
+              try {
+                if (typeof input.showPicker === 'function') input.showPicker();
+                else {
+                  input.focus({ preventScroll: true });
+                  input.click();
+                }
+              } catch {
+                input.focus({ preventScroll: true });
+                input.click();
+              }
+            }}
+            className={`h-11 min-w-0 w-full cursor-pointer touch-manipulation select-none rounded border bg-[#141414] px-3 font-mono text-white transition-colors hover:border-[#4a9eff] active:border-[#4a9eff] focus:border-[#4a9eff] focus:outline-none ${isDatePickerOpen ? 'border-[#4a9eff]' : 'border-[#333]'} ${compact ? 'max-w-full text-[13px]' : 'text-[14px]'}`}
             aria-label="Start date"
           />
         </div>
@@ -1057,7 +1097,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       return;
     }
 
-    const positionPopover = () => {
+    const positionPopover = (recalculatePlacement = false) => {
       const anchor = anchorRef?.current;
       const popover = popoverRef.current;
       if (!anchor || !popover) return;
@@ -1077,8 +1117,10 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
       const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
       const spaceAbove = anchorRect.top - 16;
       const calculatedPlacement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
-      const placement = placementRef.current ?? calculatedPlacement;
-      if (placementRef.current === null) placementRef.current = placement;
+      const placement = recalculatePlacement || placementRef.current === null
+        ? calculatedPlacement
+        : placementRef.current;
+      placementRef.current = placement;
       const top = placement === 'below'
         ? anchorRect.bottom + 12
         : Math.max(8, anchorRect.top - panelHeight - 12);
@@ -1092,13 +1134,14 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
         : { left, top, arrowLeft, placement });
     };
 
+    const recalculateOnViewportChange = () => positionPopover(true);
     let secondFrame = 0;
     let resizeObserver: ResizeObserver | null = null;
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
-        positionPopover();
+        positionPopover(true);
         if (typeof ResizeObserver !== 'undefined') {
-          resizeObserver = new ResizeObserver(positionPopover);
+          resizeObserver = new ResizeObserver(() => positionPopover());
           if (anchorRef?.current) resizeObserver.observe(anchorRef.current);
           if (popoverRef.current) resizeObserver.observe(popoverRef.current);
         }
@@ -1112,22 +1155,22 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCloseRef.current();
     };
-    window.addEventListener('resize', positionPopover);
-    window.addEventListener('scroll', positionPopover, true);
-    document.addEventListener('scroll', positionPopover, true);
-    window.visualViewport?.addEventListener('resize', positionPopover);
-    window.visualViewport?.addEventListener('scroll', positionPopover);
+    window.addEventListener('resize', recalculateOnViewportChange);
+    window.addEventListener('scroll', recalculateOnViewportChange, true);
+    document.addEventListener('scroll', recalculateOnViewportChange, true);
+    window.visualViewport?.addEventListener('resize', recalculateOnViewportChange);
+    window.visualViewport?.addEventListener('scroll', recalculateOnViewportChange);
     document.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.cancelAnimationFrame(firstFrame);
       window.cancelAnimationFrame(secondFrame);
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', positionPopover);
-      window.removeEventListener('scroll', positionPopover, true);
-      document.removeEventListener('scroll', positionPopover, true);
-      window.visualViewport?.removeEventListener('resize', positionPopover);
-      window.visualViewport?.removeEventListener('scroll', positionPopover);
+      window.removeEventListener('resize', recalculateOnViewportChange);
+      window.removeEventListener('scroll', recalculateOnViewportChange, true);
+      document.removeEventListener('scroll', recalculateOnViewportChange, true);
+      window.visualViewport?.removeEventListener('resize', recalculateOnViewportChange);
+      window.visualViewport?.removeEventListener('scroll', recalculateOnViewportChange);
       document.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };

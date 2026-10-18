@@ -13,15 +13,15 @@ export const metadata: Metadata = {
   description: 'A professional stage timer application',
   manifest: '/manifest.json',
   icons: {
-    icon: '/Timer--Streamline-Radix.svg?v=87',
-    apple: '/icon-192.png?v=87',
+    icon: '/Timer--Streamline-Radix.svg?v=88',
+    apple: '/icon-192.png?v=88',
   },
 };
 
 const versionScript = `
   try {
     if ('localStorage' in window) {
-      var currentVersion = 'v87';
+      var currentVersion = 'v88';
       var storedVersion = localStorage.getItem('appVersion');
       if (storedVersion !== currentVersion) {
         localStorage.setItem('appVersion', currentVersion);
