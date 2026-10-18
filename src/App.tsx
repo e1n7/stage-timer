@@ -187,6 +187,7 @@ const useAnchoredPopoverPosition = (
   preferredWidth: number,
   horizontalAlign: 'center' | 'right' = 'center',
   onAnchorHidden?: () => void,
+  popoverGap = 12,
 ) => {
   const [position, setPosition] = useState<AnchoredPopoverPosition | null>(null);
   const placementRef = useRef<'above' | 'below' | null>(null);
@@ -220,16 +221,16 @@ const useAnchoredPopoverPosition = (
         desiredLeft,
         window.innerWidth - panelWidth - 8,
       ));
-      const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
-      const spaceAbove = anchorRect.top - 16;
+      const spaceBelow = window.innerHeight - anchorRect.bottom - popoverGap;
+      const spaceAbove = anchorRect.top - popoverGap;
       const calculatedPlacement = panelHeight <= spaceBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
       const placement = recalculatePlacement || placementRef.current === null
         ? calculatedPlacement
         : placementRef.current;
       placementRef.current = placement;
       const desiredTop = placement === 'below'
-        ? anchorRect.bottom + 12
-        : anchorRect.top - panelHeight - 12;
+        ? anchorRect.bottom + popoverGap
+        : anchorRect.top - panelHeight - popoverGap;
       const top = Math.max(8, Math.min(desiredTop, window.innerHeight - panelHeight - 8));
       const arrowLeft = Math.max(20, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - 20));
       setPosition(current => current
@@ -269,7 +270,7 @@ const useAnchoredPopoverPosition = (
       window.visualViewport?.removeEventListener('resize', recalculateOnViewportChange);
       window.visualViewport?.removeEventListener('scroll', recalculateOnViewportChange);
     };
-  }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign]);
+  }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign, popoverGap]);
 
   return position;
 };
@@ -825,7 +826,7 @@ const TimerTitleEditPopover = ({ isOpen, anchorRef, title, notes, onClose, onSav
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const popoverPosition = useAnchoredPopoverPosition(isOpen, anchorRef, popoverRef, 520, 'center', () => onCloseRef.current());
+  const popoverPosition = useAnchoredPopoverPosition(isOpen, anchorRef, popoverRef, 520, 'center', () => onCloseRef.current(), 6);
 
   useEffect(() => {
     if (isOpen) {
@@ -876,7 +877,7 @@ const TimerTitleEditPopover = ({ isOpen, anchorRef, title, notes, onClose, onSav
         onMouseEnter={(event) => event.stopPropagation()}
         onMouseLeave={(event) => event.stopPropagation()}
       >
-        <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${popoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (popoverPosition?.arrowLeft ?? 20) - 8 }} />
+        <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${popoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (popoverPosition?.arrowLeft ?? 20) - 5 }} />
         <div className="custom-scrollbar max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
         <label htmlFor="timer-title-edit-input" className="mb-1 block text-[11px] font-medium text-white/60">Title</label>
         <input
@@ -1356,7 +1357,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   const deleteConfirmRef = useRef<HTMLDivElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const deletePopoverRef = useRef<HTMLDivElement>(null);
-  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 288, 'right', () => setIsDeleteConfirmOpen(false));
+  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 288, 'right', () => setIsDeleteConfirmOpen(false), 0);
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
@@ -1401,7 +1402,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
       </div>
       {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
         <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-72 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
-          <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 8 }} />
+          <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 5 }} />
           <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
           <h2 id={`section-delete-title-${header.id}`} className="relative text-[13px] font-bold text-white">Delete “{header.title}”?</h2>
           <p className="relative mt-1.5 text-[11px] leading-relaxed text-[#aaa]">This section contains <strong className="font-bold text-white">{header.timerIds.length}</strong> timer row(s). Choose what should happen to them.</p>
@@ -1600,10 +1601,10 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const [quickSection, setQuickSection] = useState<'start' | 'duration'>('start');
   const startTimeTriggerRef = useRef<HTMLDivElement>(null);
   const durationTriggerRef = useRef<HTMLDivElement>(null);
-  const titleEditTriggerRef = useRef<HTMLSpanElement>(null);
+  const titleEditTriggerRef = useRef<HTMLButtonElement>(null);
   const actionsAnchorRef = useRef<HTMLDivElement>(null);
   const actionsPopoverRef = useRef<HTMLDivElement>(null);
-  const actionsPopoverPosition = useAnchoredPopoverPosition(isActionsOpen && !isDragOverlay, actionsAnchorRef, actionsPopoverRef, 176, 'right', onCloseActions);
+  const actionsPopoverPosition = useAnchoredPopoverPosition(isActionsOpen && !isDragOverlay, actionsAnchorRef, actionsPopoverRef, 176, 'right', onCloseActions, 6);
 
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = isHovered || isDragArmed || isCoarsePointer;
@@ -1856,15 +1857,17 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
 
       {/* Title */}
       <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
-        <span ref={titleEditTriggerRef} className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
+        <span className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
         <button
+          ref={titleEditTriggerRef}
           type="button"
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onCloseActions();
             setIsTitleEditOpen(true);
           }}
-          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-70 transition-opacity hover:bg-white/10 hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
           title="Edit timer title"
           aria-label="Edit timer title"
         >
@@ -1938,19 +1941,20 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         <div ref={actionsAnchorRef} className="timer-row-more relative ml-1 max-[639px]:ml-0">
           <button
             type="button"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               setIsTitleEditOpen(false);
               onActionsToggle();
             }}
-            className="flex h-9 w-8 max-[639px]:h-8 max-[639px]:w-6 items-center justify-center text-white/40 hover:text-white transition-colors"
+            className="flex h-9 w-8 max-[639px]:h-8 max-[639px]:w-8 items-center justify-center rounded text-white/60 hover:bg-white/10 hover:text-white transition-colors"
             title="Timer actions"
           >
             <IconMore size={18} />
           </button>
           {isActionsOpen && !isDragOverlay && <ModalPortal>
             <div ref={actionsPopoverRef} onClick={(event) => event.stopPropagation()} className="fixed z-[1300] w-44 max-w-[calc(100vw-1rem)]" style={{ left: actionsPopoverPosition?.left ?? 8, top: actionsPopoverPosition?.top ?? 8, visibility: actionsPopoverPosition ? 'visible' : 'hidden' }}>
-              <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-4 w-4 rotate-45 border-[#444] bg-[#242424] ${actionsPopoverPosition?.placement === 'above' ? '-bottom-2 border-b border-r' : '-top-2 border-l border-t'}`} style={{ left: (actionsPopoverPosition?.arrowLeft ?? 20) - 8 }} />
+              <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${actionsPopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (actionsPopoverPosition?.arrowLeft ?? 20) - 5 }} />
               <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
               <button type="button" onClick={() => { onAddAbove(); onCloseActions(); }} title="Add timer above" className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
                 <Image src="/caret_down.svg" alt="" aria-hidden="true" width={16} height={16} className="h-3.5 w-3.5 brightness-0 invert rotate-180" />
