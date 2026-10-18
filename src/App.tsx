@@ -1402,15 +1402,16 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
         </div>
       </div>
       {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
-        <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-56 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
+        <div ref={deletePopoverRef} role="dialog" aria-label="Section deletion options" className="fixed z-[1300] w-56 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
           <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-3 w-3 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 6 }} />
-          <div className="relative z-10 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-2 shadow-2xl">
-          <h2 id={`section-delete-title-${header.id}`} className="relative text-[12px] font-bold text-white">Delete “{header.title}”?</h2>
-          <div className="relative mt-2 flex flex-col gap-1">
-            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-2 py-1.5 text-center text-[11px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
-            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-2 py-1.5 text-center text-[11px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
-            <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-2 py-1.5 text-center text-[11px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
-          </div>
+          <div className="relative z-10 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
+          <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
+            <span>Delete section only</span>
+          </button>
+          <div className="my-0.5 border-t border-[#333]" />
+          <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-[#fa5252] hover:bg-red-500/10">
+            <span>Delete section and timers</span>
+          </button>
           </div>
         </div>
       </ModalPortal>}
