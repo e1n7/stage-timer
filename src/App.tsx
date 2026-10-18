@@ -188,6 +188,7 @@ const useAnchoredPopoverPosition = (
   horizontalAlign: 'center' | 'right' = 'center',
   onAnchorHidden?: () => void,
   popoverGap = 12,
+  arrowInset = 20,
 ) => {
   const [position, setPosition] = useState<AnchoredPopoverPosition | null>(null);
   const placementRef = useRef<'above' | 'below' | null>(null);
@@ -232,7 +233,7 @@ const useAnchoredPopoverPosition = (
         ? anchorRect.bottom + popoverGap
         : anchorRect.top - panelHeight - popoverGap;
       const top = Math.max(8, Math.min(desiredTop, window.innerHeight - panelHeight - 8));
-      const arrowLeft = Math.max(20, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - 20));
+      const arrowLeft = Math.max(arrowInset, Math.min(anchorRect.left + anchorRect.width / 2 - left, panelWidth - arrowInset));
       setPosition(current => current
         && current.left === left
         && current.top === top
@@ -270,7 +271,7 @@ const useAnchoredPopoverPosition = (
       window.visualViewport?.removeEventListener('resize', recalculateOnViewportChange);
       window.visualViewport?.removeEventListener('scroll', recalculateOnViewportChange);
     };
-  }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign, popoverGap]);
+  }, [isOpen, anchorRef, popoverRef, preferredWidth, horizontalAlign, popoverGap, arrowInset]);
 
   return position;
 };
@@ -1357,7 +1358,7 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
   const deleteConfirmRef = useRef<HTMLDivElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
   const deletePopoverRef = useRef<HTMLDivElement>(null);
-  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 288, 'right', () => setIsDeleteConfirmOpen(false), 0);
+  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 224, 'right', () => setIsDeleteConfirmOpen(false), 0, 12);
   const isCoarsePointer = useCoarsePointer();
   const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
@@ -1401,15 +1402,14 @@ const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canD
         </div>
       </div>
       {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
-        <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-72 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
+        <div ref={deletePopoverRef} role="dialog" aria-labelledby={`section-delete-title-${header.id}`} className="fixed z-[1300] w-56 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
           <span aria-hidden="true" className={`pointer-events-none absolute z-10 h-2.5 w-2.5 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 5 }} />
-          <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-3 shadow-2xl">
-          <h2 id={`section-delete-title-${header.id}`} className="relative text-[13px] font-bold text-white">Delete “{header.title}”?</h2>
-          <p className="relative mt-1.5 text-[11px] leading-relaxed text-[#aaa]">This section contains <strong className="font-bold text-white">{header.timerIds.length}</strong> timer row(s). Choose what should happen to them.</p>
-          <div className="relative mt-3 flex flex-col gap-1.5">
-            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-2.5 py-2 text-center text-[11px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
-            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-2.5 py-2 text-center text-[11px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
-            <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-2.5 py-2 text-center text-[11px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
+          <div className="max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-2 shadow-2xl">
+          <h2 id={`section-delete-title-${header.id}`} className="relative text-[12px] font-bold text-white">Delete “{header.title}”?</h2>
+          <div className="relative mt-2 flex flex-col gap-1">
+            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="rounded-md border border-[#8b3d3d] bg-[#542626] px-2 py-1.5 text-center text-[11px] font-bold text-[#ffb0b0] transition-colors hover:bg-[#6b2d2d]">Delete Section and Timers</button>
+            <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="rounded-md border border-[#4b79a8] bg-[#263d59] px-2 py-1.5 text-center text-[11px] font-bold text-white transition-colors hover:bg-[#315276]">Delete Section Only</button>
+            <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} className="rounded-md border border-[#444] bg-[#2d2d2d] px-2 py-1.5 text-center text-[11px] text-white transition-colors hover:bg-[#383838]">Cancel</button>
           </div>
           </div>
         </div>
