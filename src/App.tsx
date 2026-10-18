@@ -1789,7 +1789,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         className={`mobile-drag-handle group/index relative z-10 flex w-8 shrink-0 items-center justify-center text-[16px] font-bold opacity-60 max-[639px]:w-6 ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {dragEnabled || isDragging ? <IconDragHandle /> : <span>{index + 1}</span>}
+        {isHovered || isDragArmed || isDragging ? <IconDragHandle /> : <span>{index + 1}</span>}
       </div>}
 
       {/* Scheduled Time Display */}
