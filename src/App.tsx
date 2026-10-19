@@ -1629,15 +1629,19 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
 
   const adjustTimer = useCallback((adjustment: number) => {
-    const currentSeconds = secondsRef.current;
-    if (settings.mode === 'countup' && currentSeconds <= 0 && adjustment < 0) return;
-    const nextSeconds = settings.mode === 'countup'
-      ? Math.max(0, currentSeconds + adjustment)
-      : currentSeconds + adjustment;
-    updateSettings({ targetDuration: Math.max(0, nextSeconds) });
-    setTime(nextSeconds);
+    const currentTargetDuration = Math.max(0, Number(settings.targetDuration) || 0);
+    const nextTargetDuration = Math.max(0, currentTargetDuration + adjustment);
+    // Count-up keeps its live elapsed value. Countdown shifts its remaining
+    // value by the same amount as the total, preserving elapsed progress.
+    const nextLiveSeconds = settings.mode === 'countup'
+      ? secondsRef.current
+      : secondsRef.current + adjustment;
+    updateSettings({ targetDuration: nextTargetDuration });
+    if (settings.mode !== 'countup') {
+      setTime(nextLiveSeconds);
+    }
     onSettingsUpdate();
-  }, [onSettingsUpdate, settings.mode, setTime, updateSettings]);
+  }, [onSettingsUpdate, settings.mode, settings.targetDuration, setTime, updateSettings]);
 
   useEffect(() => {
     const handleInWindowResetAll = (event: Event) => {
