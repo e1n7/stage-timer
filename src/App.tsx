@@ -1861,7 +1861,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       </div>
 
       {/* Title */}
-      <div className="timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
+      <div className="group/title timer-row-title relative z-10 ml-0 min-w-0 flex-1 flex items-center justify-center gap-2 overflow-visible text-center text-[14px] font-bold pr-2 max-[639px]:ml-0 max-[639px]:text-[13px]" onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()}>
         <span ref={timerTitleRef} className="block min-w-0 max-w-full truncate opacity-90">{settings.title}</span>
         <button
           type="button"
@@ -1871,7 +1871,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             onCloseActions();
             setIsTitleEditOpen(true);
           }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-70 transition-opacity hover:bg-white/10 hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-white/10 group-hover/title:opacity-100 focus-visible:opacity-100 max-[639px]:opacity-100"
           title="Edit timer title"
           aria-label="Edit timer title"
         >
