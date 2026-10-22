@@ -1748,6 +1748,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       onPointerUp={() => setIsDragArmed(false)}
       onPointerCancel={() => setIsDragArmed(false)}
       onClick={(event) => {
+        setIsHovered(true);
         if (isSelectMode && onSelect) {
           const target = event.target as HTMLElement;
           if (!target.closest('button, input, select, textarea')) onSelect();
@@ -1871,7 +1872,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             onCloseActions();
             setIsTitleEditOpen(true);
           }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-white/10 group-hover:opacity-100 focus-visible:opacity-100"
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded transition-opacity hover:bg-white/10 group-hover:opacity-100 focus-visible:opacity-100 ${isHovered || isTitleEditOpen ? 'opacity-100' : 'opacity-0'}`}
           title="Edit timer title"
           aria-label="Edit timer title"
         >
