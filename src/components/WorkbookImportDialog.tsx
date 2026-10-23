@@ -17,7 +17,6 @@ const getFileKey = (file: File) => `${file.name}|${file.size}|${file.lastModifie
 export default function WorkbookImportDialog({ open, onClose, onImport, onDeleteSchedules }: Props) {
   const [meeting, setMeeting] = useState<MeetingType>('Midweek');
   const [week, setWeek] = useState('');
-  const [weekTitleDraft, setWeekTitleDraft] = useState('');
   const [workbookSchedules, setWorkbookSchedules] = useState<WorkbookSchedule[]>([]);
   const [editedSectionsByWeek, setEditedSectionsByWeek] = useState<Record<string, WorkbookSection[]>>({});
   const [talkTitle, setTalkTitle] = useState('Public Talk');
@@ -44,7 +43,6 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
     setDateFallbackNotice(false);
     setWorkbookSchedules([]);
     setWeek('');
-    setWeekTitleDraft('');
     setEditedSectionsByWeek({});
     try {
       const text = await readWorkbookPdf(file);
@@ -65,7 +63,6 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
       const schedules = availableWeeks.map((item) => ({ week: item, sections: parsedByWeek.get(item) || [] }));
       setWorkbookSchedules(schedules);
       setWeek(schedules[0]?.week || '');
-      setWeekTitleDraft(schedules[0]?.week || '');
       if (fileMeeting === 'Midweek' && schedules.every((schedule) => !schedule.sections.length)) {
         setError('No timed Midweek parts were recognized. Review the file or try a text-based workbook.');
       }
@@ -138,7 +135,6 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
       setSavedPdfChecked(true);
       setWorkbookSchedules([]);
       setWeek('');
-      setWeekTitleDraft('');
       setEditedSectionsByWeek({});
       setError('');
       setDateFallbackNotice(false);
@@ -191,30 +187,6 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
     setError('');
   };
 
-  const commitWeekTitle = () => {
-    const updatedWeek = weekTitleDraft.trim();
-    if (!week || !updatedWeek) {
-      setWeekTitleDraft(week);
-      return;
-    }
-    if (workbookSchedules.some((schedule) => schedule.week === updatedWeek && schedule.week !== week)) {
-      setError('That week title is already in this workbook. Choose a unique label.');
-      setWeekTitleDraft(week);
-      return;
-    }
-    setWorkbookSchedules((current) => current.map((schedule) => schedule.week === week ? { ...schedule, week: updatedWeek } : schedule));
-    setEditedSectionsByWeek((current) => {
-      const existing = current[week];
-      if (!existing) return current;
-      const next = { ...current, [updatedWeek]: existing };
-      delete next[week];
-      return next;
-    });
-    setWeek(updatedWeek);
-    setWeekTitleDraft(updatedWeek);
-    setError('');
-  };
-
   const importSchedule = () => {
     const schedules = workbookSchedules.map((schedule) => ({
       week: schedule.week,
@@ -254,22 +226,12 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
             </select>
           </label>
           <label className="text-xs text-[#aaa]">Workbook week to preview
-            <select value={week} disabled={!workbookSchedules.length || loading} onChange={(event) => { setWeek(event.target.value); setWeekTitleDraft(event.target.value); }} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white disabled:opacity-60">
+            <select value={week} disabled={!workbookSchedules.length || loading} onChange={(event) => setWeek(event.target.value)} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white disabled:opacity-60">
               {workbookSchedules.length ? workbookSchedules.map((item) => <option key={item.week}>{item.week}</option>) : <option value="">Upload a PDF to read weeks</option>}
             </select>
           </label>
         </div>
-        {workbookSchedules.length > 0 && <label className="mt-3 block text-xs text-[#aaa]">Week date or title (editable)
-          <input
-            value={weekTitleDraft}
-            onChange={(event) => setWeekTitleDraft(event.target.value)}
-            onBlur={commitWeekTitle}
-            onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitWeekTitle(); } }}
-            className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white"
-            aria-label="Editable week date or title"
-          />
-        </label>}
-        {dateFallbackNotice && workbookSchedules.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Printed week dates were not recognized. Sequential week labels were created; edit the selected week title above before importing.</p>}
+        {dateFallbackNotice && workbookSchedules.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Printed week dates were not recognized, so sequential week labels were created for this PDF.</p>}
         {missingWeeks.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">No timers were recognized for {missingWeeks.join('; ')}. Those weeks are skipped so existing schedules are not replaced with blank ones.</p>}
         <label className="mt-4 block text-xs text-[#aaa]">{meeting === 'Midweek' ? 'Life and Ministry Meeting Workbook PDF' : 'The Watchtower PDF'}
           {savedPdf ? <span className="mt-1 flex h-10 items-center gap-2 rounded border border-[#444] bg-[#151515] px-2">

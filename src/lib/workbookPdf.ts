@@ -57,6 +57,22 @@ const cleanLine = (value: string) => value
   .replace(/\s+/g, ' ')
   .trim();
 
+function normalizeDateHeaderSpacing(value: string): string {
+  // PDF.js may expose a single uppercase month as several text fragments.
+  // Only repair all-uppercase date lines, so ordinary mixed-case language
+  // phrases (for example Spanish or French words) keep their word spaces.
+  if ([...value].some((character) => /\p{Ll}/u.test(character))) return value;
+  return value
+    .replace(/\bWEEK\s+OF\b/gu, 'WEEK␞OF')
+    .replace(/(\p{Nd})\s+(\p{Lu}{1,2})\s+(?=\p{Lu}{3,})/gu, '$1 $2␟')
+    .replace(/(\p{Lu}{1,2})\s+(?=\p{Lu}{1,2}\s+\p{Lu}{3,})/gu, '$1␟')
+    .replace(/(\p{Lu}{2,})\s+(?=\p{Lu}\s+\p{Nd})/gu, '$1␟')
+    .replace(/(\p{Lu}{1,2})\s+(?=\p{Nd})/gu, '$1␟')
+    .replace(/([A-Z])\s+(?=[A-Z])/g, '$1')
+    .replaceAll('␟', ' ')
+    .replaceAll('␞', ' ');
+}
+
 const isStandalonePageNumber = (line: string | undefined) => Boolean(line && /^\p{Nd}{1,4}$/u.test(normalizeDecimalDigits(line.replace(/^\s*\[[LR]\]\s*/u, '').trim())));
 
 const normalize = (value: string) => cleanLine(value)
@@ -180,7 +196,7 @@ function parseWeekHeader(value: string, fallbackYear: number): string | null {
   }
 
   for (const line of sourceHeader.split(/\r?\n/).slice(0, 8)) {
-    const normalizedLine = normalizeDecimalDigits(line);
+    const normalizedLine = normalizeDecimalDigits(normalizeDateHeaderSpacing(line));
     if (getDuration(normalizedLine) !== null || numberedPartPattern.test(normalizedLine)) continue;
     for (const column of normalizedLine.split('|')) {
       const normalizedColumn = column.replace(/^\s*\[[LR]\]\s*/u, '').trim();

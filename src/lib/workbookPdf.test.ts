@@ -176,14 +176,14 @@ describe('workbook PDF parsing', () => {
 [L] NUESTRA VIDA CRISTIANA
 [L] 7. Tercera parte (15 mins.)`).join('\f')}`;
     const expected = [
-      'Week of 7-13 DE SEPTIEMB RE, 2026',
-      'Week of 14 -20 DE SEPTIEMB RE, 2026',
-      'Week of 21-27 DE SEPTIEMB RE, 2026',
-      'Week of 28 DE SEPTIEMB RE A 4 DE OCTU B RE, 2026',
-      'Week of 5-11 DE OCTU B RE, 2026',
-      'Week of 12-18 DE OCTU B RE, 2026',
-      'Week of 19-25 DE OCTU B RE, 2026',
-      'Week of 26 DE OCTU B RE A 1 DE N OVIEMB RE, 2026',
+      'Week of 7-13 DE SEPTIEMBRE, 2026',
+      'Week of 14 -20 DE SEPTIEMBRE, 2026',
+      'Week of 21-27 DE SEPTIEMBRE, 2026',
+      'Week of 28 DE SEPTIEMBRE A 4 DE OCTUBRE, 2026',
+      'Week of 5-11 DE OCTUBRE, 2026',
+      'Week of 12-18 DE OCTUBRE, 2026',
+      'Week of 19-25 DE OCTUBRE, 2026',
+      'Week of 26 DE OCTUBRE A 1 DE NOVIEMBRE, 2026',
     ];
     expect(extractWorkbookWeeks(text)).toEqual(expected);
     expect(parseWorkbookSchedules(text).map((schedule) => schedule.week)).toEqual(expected);
@@ -215,13 +215,13 @@ describe('workbook PDF parsing', () => {
     const text = headings.map((header) => `2026\f[L] ${header} | [L] JEREMIAS 32-33\nKAYAMANAN MULA SA SALITA NG DIYOS\n1. Pag-isipan ang mga Katangian ni Jehova (10 min.)`).join('\n');
     const expectedWeeks = [
       'Week of SETYEMBRE 7-13, 2026',
-      'Week of SE TYE MB RE 14 - 20, 2026',
+      'Week of SETYEMBRE 14 - 20, 2026',
       'Week of SETYEMBRE 21 - 27, 2026',
-      'Week of S ETYEMB RE 28 – OKTUB RE 4, 2026',
-      'Week of OKTUB RE 5 -11, 2026',
-      'Week of OKTUB RE 12 -18, 2026',
-      'Week of OKTUB RE 19 - 25, 2026',
-      'Week of OKTUB RE 26 –N OBYEMB RE 1, 2026',
+      'Week of SETYEMBRE 28 – OKTUBRE 4, 2026',
+      'Week of OKTUBRE 5 -11, 2026',
+      'Week of OKTUBRE 12 -18, 2026',
+      'Week of OKTUBRE 19 - 25, 2026',
+      'Week of OKTUBRE 26 –NOBYEMBRE 1, 2026',
     ];
     expect(extractWorkbookWeeks(text)).toEqual(expectedWeeks);
     expect(parseWorkbookSchedules(text).map((schedule) => schedule.week)).toEqual(expectedWeeks);
@@ -251,8 +251,8 @@ describe('workbook PDF parsing', () => {
 [L] (10 min.)
 `;
     const schedules = parseWorkbookSchedules(text);
-    expect(extractWorkbookWeeks(text)).toEqual(['Week of SEPTEMB ER 7-13, 2026', 'Week of SEPTEMBER 14-20, 2026']);
-    expect(schedules.map((schedule) => schedule.week)).toEqual(['Week of SEPTEMB ER 7-13, 2026', 'Week of SEPTEMBER 14-20, 2026']);
+    expect(extractWorkbookWeeks(text)).toEqual(['Week of SEPTEMBER 7-13, 2026', 'Week of SEPTEMBER 14-20, 2026']);
+    expect(schedules.map((schedule) => schedule.week)).toEqual(['Week of SEPTEMBER 7-13, 2026', 'Week of SEPTEMBER 14-20, 2026']);
     expect(schedules[0].sections[0].title).toBe("TREASURES FROM GOD'S WORD");
     expect(schedules[0].sections.flatMap((section) => section.parts.map((part) => part.title))).toEqual([
       'Reflecting on Jehovah\'s Qualities Builds Faith', 'Spiritual Gems', 'Starting a Conversation',
