@@ -7,9 +7,10 @@ import { MessageStage } from './components/MessageStage';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import { readJsonStorage } from './lib/storage';
-import { mergeItemById, mergeItemsById } from './lib/roomStorage';
+import { mergeItemById } from './lib/roomStorage';
 import { getCanonicalTimerOrder } from './lib/timerOrder';
-import { validateRoomBackup } from './lib/roomBackup';
+import WorkbookImportDialog from './components/WorkbookImportDialog';
+import { getWorkbookSectionColor, type MeetingType, type WorkbookSchedule } from './lib/workbookPdf';
 import {
   DndContext,
   DragOverlay,
@@ -62,6 +63,30 @@ const getStorageKeys = (): string[] => {
 };
 
 const pad = (value: number) => value.toString().padStart(2, '0');
+
+const getCurrentWorkbookWeek = () => {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const monthDay = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `Week of ${monthDay(monday)} – ${monthDay(sunday)}, ${sunday.getFullYear()}`;
+};
+
+const getWorkbookWeekOptions = () => {
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  return Array.from({ length: 53 }, (_, index) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() + (index - 26) * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const monthDay = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `Week of ${monthDay(start)} – ${monthDay(end)}, ${end.getFullYear()}`;
+  });
+};
 
 const InfoHint = ({ text }: { text: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -303,18 +328,6 @@ const getZonedDateTimeTimestamp = (dateValue: string, secondsSinceMidnight: numb
 };
 
 const createId = (prefix: string) => `${prefix}_${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
-
-const normalizeTimerSettingsForTransfer = (settings: Record<string, any>) => {
-  const rawStart = settings.scheduledStart;
-  const scheduledStart = Number.isFinite(rawStart)
-    ? Math.max(0, Math.min(86399, Math.floor(rawStart)))
-    : null;
-  const rawDate = settings.scheduledStartDate;
-  const scheduledStartDate = typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
-    ? rawDate
-    : null;
-  return { ...settings, mode: settings.mode === 'countup' ? 'countup' : 'countdown', scheduledStart, scheduledStartDate };
-};
 
 const DurationInput = ({ value, onChange, compact = false, inline = false }: { value: number, onChange: (val: number) => void, compact?: boolean, inline?: boolean }) => {
   const [hStr, setHStr] = useState(pad(Math.floor(value / 3600)));
@@ -720,11 +733,8 @@ const IconPause = ({ size = 16 }: IconProps) => (
 const IconSettings = ({ size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2 2.01 2.01 0 0 1-2.02 2 2 2 0 0 0-2 2 2.01 2.01 0 0 1-2 2.02 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2.01 2.01 0 0 1 2.02 2 2 2 0 0 0 2 2 2.01 2.01 0 0 1 2 2.02 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2.01 2.01 0 0 1 2.02-2 2 2 0 0 0 2-2 2.01 2.01 0 0 1 2-2.02 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2.01 2.01 0 0 1-2.02-2 2 2 0 0 0-2-2 2.01 2.01 0 0 1-2-2.02 2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></svg>
 );
-const IconDownload = ({ className = "", size = 14 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-);
-const IconUpload = ({ className = "", size = 14 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+const IconPdf = ({ className = "", size = 14 }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 16h8M8 19h5"/></svg>
 );
 const IconSave = ({ className = "", size = 14 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 2H5a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V7z"/><path d="M13 2v6H7V2"/><path d="M6 18h12v4H6z"/></svg>
@@ -758,9 +768,6 @@ const IconDuplicate = ({ size = 14 }: IconProps) => (
 );
 const IconAddTimer = ({ size = 24 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10.5" cy="12" r="8.5" /><path d="M10.5 7.5v4l-3.5 3.5" /></svg>
-);
-const IconLayers = ({ size = 24 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" aria-hidden="true"><path d="m1.75 11 6.25 3.25 6.25-3.25m-12.5-3 6.25 3.25 6.25-3.25m-6.25-6.25-6.25 3.25 6.25 3.25 6.25-3.25z" /></svg>
 );
 const IconMessagePlus = ({ size = 18 }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-9.5A7.5 7.5 0 0 1 10.5 4H12a8 8 0 0 1 8 7.5Z" /></svg>
@@ -1349,72 +1356,35 @@ interface TimerHeader {
   title: string;
   collapsed: boolean;
   timerIds: string[];
+  color?: string;
 }
 
-const TimerHeaderRow = ({ header, onToggle, onRename, onDelete, onAddTimer, canDrag = true, isSelectMode, isSelected, onSelect, isDragOverlay = false }: { header: TimerHeader; onToggle: () => void; onRename: (title: string) => void; onDelete: (deleteTimers: boolean) => void; onAddTimer: () => void; canDrag?: boolean; isSelectMode?: boolean; isSelected?: boolean; onSelect?: () => void; isDragOverlay?: boolean }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isDragArmed, setIsDragArmed] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const deleteConfirmRef = useRef<HTMLDivElement>(null);
-  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
-  const deletePopoverRef = useRef<HTMLDivElement>(null);
-  const deletePopoverPosition = useAnchoredPopoverPosition(isDeleteConfirmOpen && !isDragOverlay, deleteTriggerRef, deletePopoverRef, 224, 'center', () => setIsDeleteConfirmOpen(false), 0, 12);
-  const isCoarsePointer = useCoarsePointer();
-  const dragEnabled = canDrag && (isHovered || isDragArmed || isCoarsePointer);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`, disabled: isDragOverlay || !dragEnabled });
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(header.title);
-  useEffect(() => {
-    if (!isDeleteConfirmOpen || isDragOverlay) return undefined;
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (deleteConfirmRef.current?.contains(target) || deletePopoverRef.current?.contains(target)) return;
-      setIsDeleteConfirmOpen(false);
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsDeleteConfirmOpen(false);
-    };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isDeleteConfirmOpen, isDragOverlay]);
+const TimerHeaderRow = ({ header, canDrag = true, isDragOverlay = false }: {
+  header: TimerHeader;
+  onToggle: () => void;
+  onRename: (title: string) => void;
+  onDelete: (deleteTimers: boolean) => void;
+  onAddTimer: () => void;
+  canDrag?: boolean;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  isDragOverlay?: boolean;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: isDragOverlay ? `overlay:header:${header.id}` : `header:${header.id}`,
+    disabled: isDragOverlay || !canDrag,
+  });
   return (
-    <div ref={setNodeRef} {...(!isDragOverlay && dragEnabled ? attributes : {})} {...(!isDragOverlay && dragEnabled ? listeners : {})} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onPointerDown={(event) => { const target = event.target as HTMLElement; if (!dragEnabled || target.closest('button, input, select, textarea')) return; setIsDragArmed(true); listeners?.onPointerDown?.(event); event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={() => setIsDragArmed(false)} onPointerCancel={() => setIsDragArmed(false)} style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging || isDeleteConfirmOpen ? 250 : 1, position: 'relative' }} className={`stage-section-host group/section relative rounded-lg bg-[#202020] px-3 py-2 max-[639px]:px-2 max-[639px]:py-0.5 transition-colors ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${dragEnabled ? 'touch-none cursor-grab active:cursor-grabbing' : 'cursor-default'}`} aria-disabled={!dragEnabled}>
-      <div className="flex items-center gap-2">
-        {isSelectMode ? (
-          <button type="button" onClick={(event) => { event.stopPropagation(); onSelect?.(); }} className={`relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${isSelected ? 'border-[#22c55e] bg-[#22c55e] text-white' : 'border-[#777] bg-transparent text-transparent hover:border-white'}`} title={isSelected ? 'Selected section' : 'Select section'} aria-label={isSelected ? 'Selected section' : 'Select section'} aria-pressed={isSelected}><span className="text-[10px] leading-none">✓</span></button>
-        ) : (
-          <span className={`mobile-drag-handle flex h-7 w-5 shrink-0 items-center justify-center max-[639px]:h-6 max-[639px]:w-4 ${dragEnabled ? 'text-[#888]' : 'text-[#444]'}`} title={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'} aria-label={canDrag ? (dragEnabled ? 'Drag section' : 'Hover or select to drag') : 'Collapse section to drag'}>
-            <IconDragHandle />
-          </span>
-        )}
-        <button type="button" onClick={onToggle} className="flex h-7 w-7 items-center justify-center rounded text-[#aaa] hover:bg-[#303030] max-[639px]:h-6 max-[639px]:w-6" title={header.collapsed ? 'Expand header' : 'Collapse header'}>{header.collapsed ? '▸' : '▾'}</button>
-        {editing ? (
-          <input autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={() => { onRename(draft.trim() || header.title); setEditing(false); }} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Enter') { onRename(draft.trim() || header.title); setEditing(false); } if (event.key === 'Escape') setEditing(false); }} className="min-w-0 flex-1 rounded border border-[#555] bg-[#151515] px-2 py-1 text-[13px] font-bold text-white outline-none focus:border-[#4a9eff]" />
-        ) : <button type="button" onClick={() => { setDraft(header.title === 'New Section' || header.title === 'Untitled section' ? '' : header.title); setEditing(true); }} className="min-w-0 flex-1 truncate text-left text-[13px] font-bold text-white hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 max-[639px]:text-[12px]" title="Edit section header">{header.title}</button>}
-        <span className="text-[11px] text-[#888]">{header.timerIds.length}</span>
-        <button type="button" onClick={onAddTimer} className="rounded border border-[#444] px-2 py-1 text-[11px] font-bold text-[#b8e6c2] hover:bg-[#263d2b] max-[639px]:px-1.5 max-[639px]:py-0.5" title="Add a sub-timer">+ Add Row</button>
-        <div ref={deleteConfirmRef} className="relative shrink-0">
-          <button ref={deleteTriggerRef} type="button" onClick={() => setIsDeleteConfirmOpen(open => !open)} className={`rounded px-2 py-1 text-[12px] transition-colors max-[639px]:px-1 max-[639px]:py-0 ${isDeleteConfirmOpen ? 'bg-[#3a2020] text-[#ff8b8b]' : 'text-[#999] hover:bg-[#3a2020] hover:text-[#ff8b8b]'}`} title="Delete section" aria-label={`Delete section ${header.title}`} aria-haspopup="dialog" aria-expanded={isDeleteConfirmOpen}>×</button>
-        </div>
-      </div>
-      {isDeleteConfirmOpen && !isDragOverlay && <ModalPortal>
-        <div ref={deletePopoverRef} role="dialog" aria-label="Section deletion options" className="fixed z-[1300] w-56 max-w-[calc(100vw-1rem)]" style={{ left: deletePopoverPosition?.left ?? 8, top: deletePopoverPosition?.top ?? 8, visibility: deletePopoverPosition ? 'visible' : 'hidden' }}>
-          <span aria-hidden="true" className={`pointer-events-none absolute z-20 h-3 w-3 rotate-45 border-[#444] bg-[#242424] ${deletePopoverPosition?.placement === 'above' ? '-bottom-1.5 border-b border-r' : '-top-1.5 border-l border-t'}`} style={{ left: (deletePopoverPosition?.arrowLeft ?? 20) - 6 }} />
-          <div className="relative z-10 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-lg border border-[#444] bg-[#242424] p-1 shadow-2xl">
-          <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(false); }} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-white hover:bg-[#383838]">
-            <span>Delete section only</span>
-          </button>
-          <div className="my-0.5 border-t border-[#333]" />
-          <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); onDelete(true); }} className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-[12px] text-[#fa5252] hover:bg-red-500/10">
-            <span>Delete section and timers</span>
-          </button>
-          </div>
-        </div>
-      </ModalPortal>}
+    <div
+      ref={setNodeRef}
+      {...(!isDragOverlay && canDrag ? attributes : {})}
+      {...(!isDragOverlay && canDrag ? listeners : {})}
+      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 2 : 1, backgroundColor: header.color || getWorkbookSectionColor(header.title) }}
+      className={`mb-2 flex min-h-10 items-center rounded-md px-3 py-2 text-white ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'opacity-60 shadow-2xl ring-2 ring-white/20' : ''}`}
+      aria-label={header.title}
+    >
+      <span className="truncate text-[13px] font-semibold tracking-wide">{header.title}</span>
     </div>
   );
 };
@@ -2063,6 +2033,10 @@ function App() {
   const [isFollowEnabled, setIsFollowEnabled] = useLocalStorage<boolean>('stage-timer-follow-active', false);
   const [linkedTimerIds, setLinkedTimerIds] = useLocalStorage<string[]>('stage-timer-linked-timer-ids', []);
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
+  const [meetingType, setMeetingType] = useLocalStorage<MeetingType>('stage-timer-meeting-type', 'Midweek');
+  const [meetingWeek, setMeetingWeek] = useLocalStorage<string>('stage-timer-meeting-week', getCurrentWorkbookWeek);
+  const [scheduleRoomMap, setScheduleRoomMap] = useLocalStorage<Record<string, string>>('stage-timer-schedule-rooms', {});
+  const [isWorkbookImportOpen, setIsWorkbookImportOpen] = useState(false);
   const topLevelItems = useMemo(() => [
     ...timerTopLevelItems.filter((item, index, items) => {
       if (items.indexOf(item) !== index) return false;
@@ -2073,8 +2047,6 @@ function App() {
     ...timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id)) && !timerTopLevelItems.includes(id)),
   ], [timerTopLevelItems, timerHeaders, timerIds]);
   const [isNewRoomDraft, setIsNewRoomDraft] = useState(false);
-  const roomNameInputRef = useRef<HTMLInputElement>(null);
-  const roomNamePlaceholderRef = useRef<string | null>(null);
   const completedScheduledTimersRef = useRef<Set<string>>(new Set());
   const manuallyStartedScheduledTimersRef = useRef<Set<string>>(new Set());
 
@@ -2543,7 +2515,6 @@ function App() {
 
 
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const prevIsRunningRef = useRef(false);
   const prevSecondsRef = useRef<number | null>(null);
   const prevModeRef = useRef<string | null>(null);
@@ -2784,17 +2755,6 @@ function App() {
     if (event.over && event.active.id !== event.over.id) {
       handleMessageDragEnd(event as unknown as DragEndEvent);
     }
-  };
-
-  const addTimerHeader = () => {
-    const nextSectionNumber = timerHeaders.reduce((highest, header) => {
-      const match = header.title.match(/^Section\s+(\d+)$/i);
-      return match ? Math.max(highest, Number(match[1])) : highest;
-    }, 0) + 1;
-    const header: TimerHeader = { id: createId('header'), title: `Section ${nextSectionNumber}`, collapsed: false, timerIds: [] };
-    setTimerHeaders((headers) => [...headers, header]);
-    setTimerTopLevelItems((items) => [...items, `header:${header.id}`]);
-    markTimerChanged();
   };
 
   const updateTimerHeader = (id: string, updates: Partial<TimerHeader>) => {
@@ -3166,9 +3126,13 @@ function App() {
       if (storedSettings) timerSettings[id] = storedSettings;
     });
     const roomData: Room = { id: roomId, name: roomName, timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings, followActiveTimer: isFollowEnabled, linkedTimerIds: [...linkedTimerIds] };
+    const nextScheduleMap = { ...scheduleRoomMap, [`${meetingType}|${meetingWeek}`]: roomId };
+    writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(nextScheduleMap));
+    setScheduleRoomMap(nextScheduleMap);
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
     const nextRooms = mergeItemById(latestRooms, roomData);
+    writeStorageItem('stage-timer-rooms', JSON.stringify(nextRooms));
     setRooms(nextRooms);
     removeStorageItem('stage-timer-unsaved-draft');
     setTimerChangesNeedSave(false);
@@ -3182,37 +3146,173 @@ function App() {
       fillColor: '#ffffff',
       showTimestamp: false,
     });
-  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, setCurrentRoomId, setRooms, createUndoSnapshot, restoreUndoSnapshot]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, createUndoSnapshot, restoreUndoSnapshot]);
 
-  const deleteRoom = useCallback((room: Room) => {
-    // Re-read immediately before deleting so an older tab cannot overwrite
-    // rooms created or updated by another tab since this tab last rendered.
-    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
-    const roomToDelete = latestRooms.find(candidate => candidate.id === room.id) || room;
-    const nextRooms = latestRooms.filter(candidate => candidate.id !== room.id);
-    const remainingTimerIds = new Set(nextRooms.flatMap(candidate => candidate.timerIds || []));
-    (roomToDelete.timerIds || []).forEach(timerId => {
-      if (!remainingTimerIds.has(timerId)) {
-        removeStorageItem(`timerSettings_${timerId}`);
-        removeStorageItem(`timerSync_${timerId}`);
-        removeStorageItem(`timerSeconds_${timerId}`);
-        removeStorageItem(`timerLog_${timerId}`);
-      }
-    });
-    setRooms(nextRooms);
-    if (currentRoomId === room.id) {
-      setCurrentRoomId(null);
-      setIsNewRoomDraft(true);
-      setCurrentRoomName('Unnamed');
-      setTimerIds([]);
-      setTimerHeaders([]);
-      setTimerTopLevelItems([]);
-      setActiveTimerId('');
-      setActiveTimerState(null);
-      setMessages([{ id: '1', text: '', color: '#ffffff' }]);
-      setMessageShownId(null);
+  const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string) => {
+    const key = `${nextMeeting}|${nextWeek}`;
+    if (currentRoomId) {
+      const map = { ...scheduleRoomMap, [`${meetingType}|${meetingWeek}`]: currentRoomId };
+      writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(map));
+      setScheduleRoomMap(map);
     }
-  }, [currentRoomId, setCurrentRoomId, setCurrentRoomName, setTimerIds, setTimerHeaders, setTimerTopLevelItems, setActiveTimerId, setMessages, setMessageShownId, setRooms]);
+    if (currentRoomId && timerChangesNeedSave) saveRoom();
+    setMeetingType(nextMeeting);
+    setMeetingWeek(nextWeek);
+    const mappedRoomId = scheduleRoomMap[key];
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
+    const existing = mappedRoomId ? latestRooms.find((room) => room.id === mappedRoomId) : undefined;
+    if (existing) {
+      loadRoom(existing);
+      setCurrentRoomName(`${nextMeeting} Meeting`);
+      return;
+    }
+    const draftId = createId('schedule');
+    setCurrentRoomId(draftId);
+    setIsNewRoomDraft(true);
+    setCurrentRoomName(`${nextMeeting} Meeting`);
+    setTimerIds([]);
+    setTimerHeaders([]);
+    setTimerTopLevelItems([]);
+    setActiveTimerId('');
+    setActiveTimerState(null);
+    setMessages([{ id: '1', text: '', color: '#ffffff' }]);
+    setLinkedTimerIds([]);
+    setIsFollowEnabled(false);
+  };
+
+  const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string) => {
+    const nextScheduleMap = { ...readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap) };
+    let nextRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
+    const importedRooms = new Map<string, Room>();
+    let totalTimerCount = 0;
+
+    for (const schedule of schedules) {
+      const newTimerIds: string[] = [];
+      const newHeaders: TimerHeader[] = [];
+      const timerSettings: Record<string, any> = {};
+      for (const section of schedule.sections) {
+        const sectionTimerIds: string[] = [];
+        for (const part of section.parts) {
+          const id = createId('timer');
+          const targetDuration = Math.max(1, part.minutes) * 60;
+          const settings = {
+            title: part.title.trim(), speaker: '', notes: '', audioVolume: 0.5,
+            beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
+            warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
+            targetDuration, mode: 'countdown', fontHeight: 1.6, fontWidth: 1,
+            scheduledStart: null,
+            segments: [{ threshold: 60, color: '#f08c00' }, { threshold: 10, color: '#fa5252' }],
+          };
+          writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
+          writeStorageItem(`timerSeconds_${id}`, JSON.stringify(targetDuration));
+          writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: targetDuration, isRunning: false, mode: 'countdown', lastUpdated: Date.now() }));
+          newTimerIds.push(id);
+          sectionTimerIds.push(id);
+          timerSettings[id] = settings;
+        }
+        if (sectionTimerIds.length) {
+          newHeaders.push({ id: createId('header'), title: section.title, collapsed: false, timerIds: sectionTimerIds, color: section.color });
+        }
+      }
+
+      const scheduleKey = `${meeting}|${schedule.week}`;
+      const roomId = nextScheduleMap[scheduleKey] || createId('schedule');
+      const nextRoom: Room = {
+        id: roomId,
+        name: `${meeting} Meeting`,
+        timerIds: newTimerIds,
+        timerHeaders: newHeaders,
+        timerTopLevelItems: newHeaders.map((header) => `header:${header.id}`),
+        activeTimerId: newTimerIds[0] || '',
+        messages: [{ id: '1', text: '', color: '#ffffff' }],
+        timerSettings,
+        followActiveTimer: false,
+        linkedTimerIds: [],
+      };
+      nextScheduleMap[scheduleKey] = roomId;
+      nextRooms = mergeItemById(nextRooms, nextRoom);
+      importedRooms.set(schedule.week, nextRoom);
+      totalTimerCount += newTimerIds.length;
+    }
+
+    const activeRoom = importedRooms.get(activeWeek) || importedRooms.values().next().value as Room | undefined;
+    if (!activeRoom) return;
+    setMeetingType(meeting);
+    setMeetingWeek(activeWeek || schedules[0].week);
+    setCurrentRoomId(activeRoom.id);
+    setIsNewRoomDraft(false);
+    setCurrentRoomName(activeRoom.name);
+    setTimerIds(activeRoom.timerIds);
+    setTimerHeaders(activeRoom.timerHeaders || []);
+    setTimerTopLevelItems(activeRoom.timerTopLevelItems || []);
+    setActiveTimerId(activeRoom.activeTimerId);
+    setActiveTimerState(null);
+    setMessages(activeRoom.messages);
+    setLinkedTimerIds([]);
+    setIsFollowEnabled(false);
+    writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(nextScheduleMap));
+    setScheduleRoomMap(nextScheduleMap);
+    writeStorageItem('stage-timer-rooms', JSON.stringify(nextRooms));
+    setRooms(nextRooms);
+    setTimerChangesNeedSave(false);
+    gooeyToast.info('Workbook schedules imported', { description: `${totalTimerCount} timers saved for ${schedules.length} ${meeting} week${schedules.length === 1 ? '' : 's'}.`, showTimestamp: false });
+  };
+
+  const deleteWorkbookSchedules = (meeting: MeetingType, weeks: string[]) => {
+    const nextScheduleMap = { ...readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap) };
+    const scheduleKeys = new Set(weeks.map((week) => `${meeting}|${week}`));
+    const mappedRoomIds = new Set([...scheduleKeys].map((key) => nextScheduleMap[key]).filter((id): id is string => Boolean(id)));
+    scheduleKeys.forEach((key) => { delete nextScheduleMap[key]; });
+    const roomIdsStillScheduled = new Set(Object.values(nextScheduleMap));
+    const roomIdsToDelete = new Set([...mappedRoomIds].filter((id) => !roomIdsStillScheduled.has(id)));
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
+    const roomsToDelete = latestRooms.filter((room) => roomIdsToDelete.has(room.id));
+    const nextRooms = latestRooms.filter((room) => !roomIdsToDelete.has(room.id));
+    const retainedTimerIds = new Set(nextRooms.flatMap((room) => room.timerIds || []));
+    const timerIdsToDelete = new Set(roomsToDelete.flatMap((room) => room.timerIds || []).filter((id) => !retainedTimerIds.has(id)));
+
+    timerIdsToDelete.forEach((id) => {
+      removeStorageItem(`timerSettings_${id}`);
+      removeStorageItem(`timerSeconds_${id}`);
+      removeStorageItem(`timerSync_${id}`);
+      removeStorageItem(`timerLog_${id}`);
+      try { postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }); } catch { /* ignore */ }
+    });
+
+    writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(nextScheduleMap));
+    setScheduleRoomMap(nextScheduleMap);
+    writeStorageItem('stage-timer-rooms', JSON.stringify(nextRooms));
+    setRooms(nextRooms);
+
+    if (currentRoomId && roomIdsToDelete.has(currentRoomId)) {
+      const prefix = `${meeting}|`;
+      const fallbackEntry = Object.entries(nextScheduleMap).find(([key, roomId]) => key.startsWith(prefix) && !roomIdsToDelete.has(roomId));
+      const fallbackRoom = fallbackEntry ? nextRooms.find((room) => room.id === fallbackEntry[1]) : undefined;
+      setMeetingType(meeting);
+      setTimerChangesNeedSave(false);
+      if (fallbackEntry && fallbackRoom) {
+        setMeetingWeek(fallbackEntry[0].slice(prefix.length));
+        loadRoom(fallbackRoom);
+      } else {
+        setMeetingWeek(getCurrentWorkbookWeek());
+        setCurrentRoomId(null);
+        setCurrentRoomName(`${meeting} Meeting`);
+        setIsNewRoomDraft(true);
+        setTimerIds([]);
+        setTimerHeaders([]);
+        setTimerTopLevelItems([]);
+        setActiveTimerId('');
+        setActiveTimerState(null);
+        setMessages([{ id: '1', text: '', color: '#ffffff' }]);
+        setMessageShownId(null);
+        setMessageFlashId(null);
+        setLinkedTimerIds([]);
+        setIsFollowEnabled(false);
+      }
+    }
+
+    return timerIdsToDelete.size;
+  };
 
   const lastOutputPersistRef = useRef({ lastPersistAt: 0, lastUpdated: null as number | null, isRunning: null as boolean | null });
   const syncOutput = useCallback((payload: Record<string, unknown>) => {
@@ -3719,10 +3819,14 @@ function App() {
   const activeDragHeader = activeDragId?.startsWith('header:')
     ? timerHeaders.find(header => `header:${header.id}` === activeDragId) || null
     : null;
+  const importedMeetingWeeks = Object.keys(scheduleRoomMap)
+    .filter((key) => key.startsWith(`${meetingType}|`))
+    .map((key) => key.slice(meetingType.length + 1));
 
   return (
     <div className="app-shell flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       <GooeyToaster position="top-center" closeOnEscape={false} />
+      <WorkbookImportDialog open={isWorkbookImportOpen} onClose={() => setIsWorkbookImportOpen(false)} onImport={importWorkbookSchedule} onDeleteSchedules={deleteWorkbookSchedules} />
       {bulkDeleteOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title">
         <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
           <button type="button" onClick={() => setBulkDeleteOpen(false)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close bulk delete dialog" title="Close"><IconClose size={16} /></button>
@@ -3735,123 +3839,29 @@ function App() {
           </div>
         </div>
       </div>}
-      <header className="flex flex-col items-start justify-between gap-3 px-3 py-2 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a] sm:flex-row sm:items-center">
-        <div className="group flex min-w-0 flex-1 items-center justify-start">
-          <input ref={roomNameInputRef} type="text" size={Math.max(1, currentRoomName.length)} value={currentRoomName} onChange={(e) => { const nextName = e.target.value; setCurrentRoomName(nextName); if (savedRoom && nextName.trim() !== savedRoom.name.trim()) markTimerChanged(); }} onFocus={() => { if (currentRoomName === 'New Room' || currentRoomName === 'Unnamed') { roomNamePlaceholderRef.current = currentRoomName; setCurrentRoomName(''); } }} onBlur={() => { if (!currentRoomName.trim()) setCurrentRoomName(roomNamePlaceholderRef.current || 'Unnamed'); roomNamePlaceholderRef.current = null; }} style={{ width: `${Math.max(1, currentRoomName.length)}ch` }} className="min-w-0 max-w-full bg-transparent p-0 text-left text-[20px] font-bold text-white outline-none hover:text-[#9fc7ff] hover:underline hover:decoration-dashed hover:underline-offset-4 focus:text-white transition-colors" />
-          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:-ml-10 sm:hidden" title="Edit room name" aria-label="Edit room name">
-            <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
-          </button>
-          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { roomNameInputRef.current?.focus(); roomNameInputRef.current?.select(); }} className="hidden h-7 w-7 shrink-0 items-center justify-center rounded p-0 text-[#9fc7ff] transition-colors hover:bg-[#2d2d2d] hover:text-white focus-visible:bg-[#2d2d2d] focus-visible:text-white sm:flex" title="Edit room name" aria-label="Edit room name">
-            <Image src="/edit.svg" alt="" aria-hidden="true" width={16} height={16} className="h-4 w-4 invert opacity-70 transition-opacity hover:opacity-100" />
-          </button>
+      <header className="flex flex-col items-start justify-between gap-2 px-3 py-1 border-b border-[#333] shrink-0 z-20 bg-[#1a1a1a] sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center justify-start">
+          <h1 className="truncate text-[20px] font-normal text-white">{meetingType} Meeting</h1>
         </div>
         <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto">
-          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838] ${hasUnsavedChanges ? 'border-[#d69e2e] bg-[#4a3415]' : ''}`}><IconSave className="mr-1" /> Save</button>
+          <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${hasUnsavedChanges ? 'bg-[#4a3415]' : ''}`}><IconSave /> Save</button>
           <div className="relative">
-            <button ref={roomMenuAnchorRef} type="button" onClick={(e) => { e.stopPropagation(); if (activeTimerState?.isRunning) { gooeyToast.warning('Warning', { description: 'When you change rooms, the timer will stop.', showTimestamp: false }); } setIsRoomMenuOpen(!isRoomMenuOpen); }} title="Open saved rooms" aria-label="Open saved rooms" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] ${isRoomMenuOpen ? 'border-[#555] bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
-            {isRoomMenuOpen && (
-              <ModalPortal>
-              <div ref={roomMenuRef} role="menu" onClick={(e) => e.stopPropagation()} className="custom-scrollbar fixed z-[1300] max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md border border-[#444] bg-[#242424] p-1 shadow-xl" style={{ left: roomMenuPosition?.left ?? 8, top: roomMenuPosition?.top ?? 8, visibility: roomMenuPosition ? 'visible' : 'hidden' }}>
-                <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-[#777]">Saved Rooms<span className="mt-0.5 block text-[11px] normal-case tracking-normal text-[#999] sm:hidden">Open saved rooms</span></div>
-                {rooms.map((room) => (
-                  <div key={room.id} role="menuitem" tabIndex={0} onClick={() => loadRoom(room)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadRoom(room); } }} className={`group flex items-center justify-between rounded px-2 py-2 text-left text-[13px] text-white hover:bg-[#383838] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[#4a9eff] cursor-pointer ${currentRoomId === room.id ? 'bg-[#3a3a3a] text-white' : ''}`}>
-                    <span className="truncate">{room.name}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteRoom(room); }} title="Delete saved room" className="opacity-0 group-hover:opacity-100 text-[#fa5252] hover:text-red-400 p-1">✕</button>
-                  </div>
-                ))}
-                <div className="mt-1 border-t border-[#333] pt-1"><button onClick={() => {
-                  // Reset only the active room state; preserve existing rooms and their timers.
-                  removeStorageItem('stage-timer-message-shown-id');
-                  setCurrentRoomId(createId('room-draft'));
-                  setIsNewRoomDraft(true);
-                  setCurrentRoomName('New Room');
-                  setTimerIds([]);
-                  setTimerHeaders([]);
-                  setLinkedTimerIds([]);
-                  setIsFollowEnabled(false);
-                  setTimerTopLevelItems([]);
-                  setActiveTimerId('');
-                  setActiveTimerState(null);
-                  setMessages([{ id: '1', text: '', color: '#ffffff' }]);
-                  setMessageShownId(null);
-                  setMessageFlashId(null);
-                  markTimerChanged();
-                  setIsRoomMenuOpen(false);
-                  requestAnimationFrame(() => {
-                    roomNameInputRef.current?.focus();
-                    roomNameInputRef.current?.select();
-                  });
-                }} title="Create a new room" className="w-full rounded px-2 py-2 text-left text-[12px] text-[#22c55e] hover:bg-[#383838]">+ Create New Room</button></div>
+            <button ref={roomMenuAnchorRef} type="button" onClick={(event) => { event.stopPropagation(); setIsRoomMenuOpen((open) => !open); }} title="Choose meeting type and week" aria-label="Choose meeting type and week" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${isRoomMenuOpen ? 'bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
+            {isRoomMenuOpen && <ModalPortal>
+              <div ref={roomMenuRef} role="menu" onClick={(event) => event.stopPropagation()} className="fixed z-[1300] w-64 max-w-[calc(100vw-1rem)] rounded-md border border-[#444] bg-[#242424] p-2 shadow-xl" style={{ left: roomMenuPosition?.left ?? 8, top: roomMenuPosition?.top ?? 8, visibility: roomMenuPosition ? 'visible' : 'hidden' }}>
+                <div className="mb-1 px-1 text-xs text-[#aaa]">Room</div>
+                <div className="flex flex-col gap-1">
+                  {(['Midweek', 'Weekend'] as MeetingType[]).map((type) => <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, meetingWeek)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>)}
+                </div>
+                <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
+                  <select value={meetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
+                    {[...new Set([...getWorkbookWeekOptions(), ...importedMeetingWeeks, meetingWeek])].map((week) => <option key={week}>{week}</option>)}
+                  </select>
+                </label>
               </div>
-              </ModalPortal>
-            )}
+            </ModalPortal>}
           </div>
-          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { try { const imported = JSON.parse(event.target?.result as string); const validation = validateRoomBackup(imported); if (!validation.valid) throw new Error(validation.reason); if (imported.rooms && Array.isArray(imported.rooms)) {
-  const importedRoomIdMap = new Map<string, string>();
-  const importedRooms = imported.rooms.map((room: any, index: number) => {
-    const sourceRoomId = room.id || `imported_${Date.now()}_${index}`;
-    const importedRoomId = createId('imported_room');
-    importedRoomIdMap.set(sourceRoomId, importedRoomId);
-    const timerIdMap = new Map<string, string>();
-    const remapTimerId = (sourceTimerId: string) => {
-      if (!timerIdMap.has(sourceTimerId)) timerIdMap.set(sourceTimerId, createId('imported_timer'));
-      return timerIdMap.get(sourceTimerId)!;
-    };
-    const sourceTimerIds = Array.isArray(room.timerIds) ? room.timerIds : [];
-    const timerIds = sourceTimerIds.map((sourceTimerId: string) => remapTimerId(sourceTimerId));
-    const sourceSettings = room.timerSettings && typeof room.timerSettings === 'object' ? room.timerSettings : {};
-    const timerSettings = Object.fromEntries(Object.entries(sourceSettings).map(([sourceTimerId, settings]) => [
-      remapTimerId(sourceTimerId),
-      normalizeTimerSettingsForTransfer((settings && typeof settings === 'object') ? settings as Record<string, any> : {}),
-    ]));
-    const timerHeaders = Array.isArray(room.timerHeaders) ? room.timerHeaders.map((header: TimerHeader) => ({
-      ...header,
-      id: createId('imported_header'),
-      timerIds: (header.timerIds || []).map(remapTimerId),
-    })) : [];
-    const importedHeaderIds = new Map((Array.isArray(room.timerHeaders) ? room.timerHeaders : []).map((header: TimerHeader, index: number) => [header.id, timerHeaders[index]?.id]));
-    const timerTopLevelItems = Array.isArray(room.timerTopLevelItems)
-      ? room.timerTopLevelItems.map((item: string) => item.startsWith('header:') ? `header:${importedHeaderIds.get(item.slice('header:'.length)) || ''}` : remapTimerId(item)).filter(Boolean)
-      : [
-        ...timerIds.filter(id => !timerHeaders.some(header => header.timerIds.includes(id))),
-        ...timerHeaders.map(header => `header:${header.id}`),
-      ];
-    return {
-      ...room,
-      id: importedRoomId,
-      timerIds,
-      activeTimerId: room.activeTimerId ? remapTimerId(room.activeTimerId) : '',
-      timerHeaders,
-      timerTopLevelItems,
-      followActiveTimer: Boolean(room.followActiveTimer),
-      linkedTimerIds: Array.isArray(room.linkedTimerIds) ? room.linkedTimerIds.map(remapTimerId).filter(id => timerIds.includes(id)) : [],
-      timerSettings,
-    } as Room;
-  });
-  const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
-  const nextRooms = mergeItemsById(latestRooms, importedRooms);
-  const mappedActiveRoom = imported.activeRoomId
-    ? importedRooms.find((room: Room) => room.id === importedRoomIdMap.get(imported.activeRoomId))
-    : undefined;
-  const activeRoom = mappedActiveRoom || (imported.activeRoomName
-    ? importedRooms.find((room: Room) => room.name === imported.activeRoomName)
-    : undefined);
-  if (activeRoom) loadRoom(activeRoom);
-  setRooms(nextRooms);
-  gooeyToast.info('Room imported');
-} } catch (err) { console.error(err); gooeyToast.error('Import failed', { description: 'The backup file is invalid.' }); } }; reader.readAsText(file); e.target.value = ''; }} accept=".json" className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} title="Import room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconDownload className="mr-1" /> Import</button>
-          <button type="button" onClick={() => { const exportTimerSettings: Record<string, any> = {};
-            timerIds.forEach(id => {
-              const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
-              if (settings) exportTimerSettings[id] = normalizeTimerSettingsForTransfer(settings);
-            });
-                        const activeRoomSnapshot: Room | null = currentRoomId ? { id: currentRoomId, name: currentRoomName.trim() || 'Unnamed', timerIds: [...timerIds], timerHeaders: [...timerHeaders], timerTopLevelItems: [...topLevelItems], activeTimerId, messages: [...messages], timerSettings: exportTimerSettings, followActiveTimer: isFollowEnabled, linkedTimerIds: [...linkedTimerIds] } : null;
-                        const exportedRooms = activeRoomSnapshot
-                          ? mergeItemById(rooms, activeRoomSnapshot)
-                          : rooms;
-                        const exportData = { rooms: exportedRooms, activeRoomId: currentRoomId, activeRoomName: currentRoomName, exportedAt: new Date().toISOString() };
- const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `stage-timer-backup-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); gooeyToast.info('Room exported'); }} title="Export room backup" className="flex h-9 items-center gap-2 rounded-md border border-transparent bg-[#2d2d2d] px-4 text-[13px] text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:bg-[#383838]"><IconUpload className="mr-1" /> Export</button>
+          <button type="button" onClick={() => setIsWorkbookImportOpen(true)} title="Import meeting workbook PDF" className="flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838]"><IconPdf /> Import PDF</button>
         </div>
       </header>
 
@@ -4172,7 +4182,7 @@ function App() {
                         setTimerHeaders(headers => headers.map(current => current.id === header.id ? { ...current, timerIds: [...current.timerIds, newId] } : current));
                         setTimerTopLevelItems(items => items.filter(current => current !== newId));
                       }}
-                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-2 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, visualTimerOrder.indexOf(id), timerIds.indexOf(id), sectionTimerIds.indexOf(id) > 0, false, true))}</div></SortableContext>}</div>;
+                    />{!header.collapsed && sectionTimerIds.length > 0 && <SortableContext items={sectionTimerIds} strategy={verticalListSortingStrategy}><div className="ml-4 space-y-2 border-l border-[#333] pl-3 pt-2">{sectionTimerIds.map(id => renderTimerRow(id, sectionTimerIds.indexOf(id), timerIds.indexOf(id), sectionTimerIds.indexOf(id) > 0, false, true))}</div></SortableContext>}</div>;
                   }
                   if (!timerIds.includes(item) || timerHeaders.some(header => header.timerIds.includes(item))) return null;
                   const itemIndex = topLevelItems.indexOf(item);
@@ -4209,7 +4219,6 @@ function App() {
           </DndContext>
           <div className="mt-10 flex items-center justify-center gap-3">
             <button type="button" onClick={() => addTimer()} title="Add a new timer" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconAddTimer size={18} /> <span className="whitespace-nowrap">Add Timer</span></button>
-            <button type="button" onClick={addTimerHeader} title="Add a parent timer section" className="inline-flex h-8 w-auto shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#383838] focus-visible:border-[#555] focus-visible:bg-[#383838] active:scale-[0.99]"><IconLayers size={18} /> <span className="whitespace-nowrap">Add Section</span></button>
           </div>
           </div>
         </main>
