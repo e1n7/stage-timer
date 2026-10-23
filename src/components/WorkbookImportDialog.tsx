@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gooeyToast } from 'goey-toast';
-import { extractWorkbookWeeks, makeWeekendSections, parseWorkbookSchedules, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
-import { deleteWorkbookPdfLocally, loadWorkbookPdfLocally, saveWorkbookPdfLocally, type SavedWorkbookPdfInfo } from '../lib/workbookPdfStorage';
+import { extractWeekendWeeks, extractWorkbookWeeks, makeWeekendSections, parseWorkbookSchedules, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
+import { deleteWorkbookPdfLocally, loadWorkbookPdfsLocally, saveWorkbookPdfLocally, type SavedWorkbookPdf } from '../lib/workbookPdfStorage';
 
 interface Props {
   open: boolean;
@@ -12,24 +12,23 @@ interface Props {
   onDeleteSchedules: (meeting: MeetingType, weeks: string[]) => number;
 }
 
-const getFileKey = (file: File) => `${file.name}|${file.size}|${file.lastModified}`;
-
 export default function WorkbookImportDialog({ open, onClose, onImport, onDeleteSchedules }: Props) {
   const [meeting, setMeeting] = useState<MeetingType>('Midweek');
   const [week, setWeek] = useState('');
   const [workbookSchedules, setWorkbookSchedules] = useState<WorkbookSchedule[]>([]);
   const [editedSectionsByWeek, setEditedSectionsByWeek] = useState<Record<string, WorkbookSection[]>>({});
-  const [talkTitle, setTalkTitle] = useState('Public Talk');
-  const [studyTitle, setStudyTitle] = useState('Watchtower Study');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [dateFallbackNotice, setDateFallbackNotice] = useState(false);
-  const [savedPdf, setSavedPdf] = useState<SavedWorkbookPdfInfo | null>(null);
+  const [savedPdfs, setSavedPdfs] = useState<Partial<Record<MeetingType, SavedWorkbookPdf>>>({});
   const [savedPdfChecked, setSavedPdfChecked] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const lastProcessedFileRef = useRef<string | null>(null);
   const uploadLockRef = useRef(false);
+  const savedPdfsRef = useRef<Partial<Record<MeetingType, SavedWorkbookPdf>>>({});
+  const meetingRef = useRef(meeting);
+  meetingRef.current = meeting;
+  const savedPdf = savedPdfs[meeting] || null;
 
   const processFile = useCallback(async (file: File, persist: boolean, fileMeeting: MeetingType) => {
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
@@ -46,18 +45,20 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
     setEditedSectionsByWeek({});
     try {
       const text = await readWorkbookPdf(file);
-      const extractedWeeks = extractWorkbookWeeks(text);
+      const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(text) : extractWorkbookWeeks(text);
       setDateFallbackNotice(!extractedWeeks.length);
-      const parsed = parseWorkbookSchedules(text);
+      const parsed = fileMeeting === 'Midweek' ? parseWorkbookSchedules(text) : [];
       const availableWeeks = extractedWeeks.length
         ? extractedWeeks
         : parsed.length ? parsed.map((schedule) => schedule.week) : ['Week 1'];
 
       if (persist) {
         const info = await saveWorkbookPdfLocally(file, fileMeeting);
-        setSavedPdf(info);
+        const saved = { ...info, file };
+        const nextSavedPdfs = { ...savedPdfsRef.current, [fileMeeting]: saved };
+        savedPdfsRef.current = nextSavedPdfs;
+        setSavedPdfs(nextSavedPdfs);
       }
-      lastProcessedFileRef.current = getFileKey(file);
 
       const parsedByWeek = new Map(parsed.map((schedule) => [schedule.week, schedule.sections]));
       const schedules = availableWeeks.map((item) => ({ week: item, sections: parsedByWeek.get(item) || [] }));
@@ -83,24 +84,27 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
     if (!open) return undefined;
     let active = true;
     setSavedPdfChecked(false);
-    loadWorkbookPdfLocally().then(async (stored) => {
+    loadWorkbookPdfsLocally().then(async (storedPdfs) => {
       if (!active) return;
-      if (!stored) {
-        setSavedPdf(null);
-        setSavedPdfChecked(true);
-        return;
-      }
-      const { file, ...info } = stored;
-      setSavedPdf(info);
-      setMeeting(stored.meetingType);
-      if (lastProcessedFileRef.current !== getFileKey(file)) {
-        await processFile(file, false, stored.meetingType);
+      const savedByMeeting = Object.fromEntries(storedPdfs.map((stored) => [stored.meetingType, stored])) as Partial<Record<MeetingType, SavedWorkbookPdf>>;
+      savedPdfsRef.current = savedByMeeting;
+      setSavedPdfs(savedByMeeting);
+      const selectedMeeting = meetingRef.current;
+      const selectedPdf = savedByMeeting[selectedMeeting];
+      if (selectedPdf) {
+        await processFile(selectedPdf.file, false, selectedMeeting);
+      } else {
+        setWorkbookSchedules([]);
+        setWeek('');
+        setEditedSectionsByWeek({});
+        setDateFallbackNotice(false);
       }
       if (active) setSavedPdfChecked(true);
     }).catch((cause: unknown) => {
       console.error(cause);
       if (!active) return;
-      setSavedPdf(null);
+      savedPdfsRef.current = {};
+      setSavedPdfs({});
       setSavedPdfChecked(true);
       const message = 'Could not check local workbook storage. You may need to refresh or clear browser site data.';
       setError(message);
@@ -120,7 +124,7 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
       return;
     }
     if (savedPdf) {
-      gooeyToast.info('A workbook PDF is already saved', { description: 'Delete the saved PDF before uploading another one.', showTimestamp: false });
+      gooeyToast.info('A workbook PDF is already saved for this meeting', { description: 'Delete this meeting’s saved PDF before uploading another one.', showTimestamp: false });
       return;
     }
     await processFile(file, true, meeting);
@@ -129,16 +133,18 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
   const deleteSavedPdf = async () => {
     setDeletingPdf(true);
     try {
-      await deleteWorkbookPdfLocally();
-      const deletedTimerCount = onDeleteSchedules(savedPdf?.meetingType || meeting, workbookSchedules.map((schedule) => schedule.week));
-      setSavedPdf(null);
+      await deleteWorkbookPdfLocally(meeting);
+      const deletedTimerCount = onDeleteSchedules(meeting, workbookSchedules.map((schedule) => schedule.week));
+      const nextSavedPdfs = { ...savedPdfsRef.current };
+      delete nextSavedPdfs[meeting];
+      savedPdfsRef.current = nextSavedPdfs;
+      setSavedPdfs(nextSavedPdfs);
       setSavedPdfChecked(true);
       setWorkbookSchedules([]);
       setWeek('');
       setEditedSectionsByWeek({});
       setError('');
       setDateFallbackNotice(false);
-      lastProcessedFileRef.current = null;
       if (fileInputRef.current) fileInputRef.current.value = '';
       const description = deletedTimerCount
         ? `${deletedTimerCount} imported timer${deletedTimerCount === 1 ? '' : 's'} from this PDF were deleted.`
@@ -156,8 +162,8 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
   const sections = useMemo(() => {
     if (editedSectionsByWeek[week]) return editedSectionsByWeek[week];
     if (!workbookSchedules.length) return [];
-    return meeting === 'Weekend' ? makeWeekendSections(talkTitle, studyTitle) : selectedSchedule?.sections || [];
-  }, [editedSectionsByWeek, meeting, selectedSchedule, studyTitle, talkTitle, week, workbookSchedules.length]);
+    return meeting === 'Weekend' ? makeWeekendSections() : selectedSchedule?.sections || [];
+  }, [editedSectionsByWeek, meeting, selectedSchedule, week, workbookSchedules.length]);
   const partsCount = useMemo(() => sections.reduce((count, section) => count + section.parts.length, 0), [sections]);
   const missingWeeks = meeting === 'Midweek' ? workbookSchedules.filter((schedule) => !schedule.sections.length).map((schedule) => schedule.week) : [];
   const hasNoParsedMidweekSchedules = meeting === 'Midweek' && workbookSchedules.length > 0 && !workbookSchedules.some((schedule) => schedule.sections.length > 0);
@@ -183,14 +189,21 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
   };
 
   const updateMeeting = (value: MeetingType) => {
+    if (value === meeting) return;
     setMeeting(value);
     setError('');
+    setWorkbookSchedules([]);
+    setWeek('');
+    setEditedSectionsByWeek({});
+    setDateFallbackNotice(false);
+    const storedPdf = savedPdfsRef.current[value];
+    if (storedPdf) void processFile(storedPdf.file, false, value);
   };
 
   const importSchedule = () => {
     const schedules = workbookSchedules.map((schedule) => ({
       week: schedule.week,
-      sections: editedSectionsByWeek[schedule.week] || (meeting === 'Weekend' ? makeWeekendSections(talkTitle, studyTitle) : schedule.sections),
+      sections: editedSectionsByWeek[schedule.week] || (meeting === 'Weekend' ? makeWeekendSections() : schedule.sections),
     })).filter((schedule) => meeting === 'Weekend' || schedule.sections.length > 0);
 
     if (!schedules.length) {
@@ -221,7 +234,7 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-[#aaa]">Meeting type
-            <select value={meeting} disabled={!savedPdfChecked || Boolean(savedPdf)} onChange={(event) => updateMeeting(event.target.value as MeetingType)} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white disabled:opacity-60">
+            <select value={meeting} disabled={!savedPdfChecked || loading} onChange={(event) => updateMeeting(event.target.value as MeetingType)} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white disabled:opacity-60">
               <option>Midweek</option><option>Weekend</option>
             </select>
           </label>
@@ -254,10 +267,6 @@ export default function WorkbookImportDialog({ open, onClose, onImport, onDelete
             className="mt-1 block w-full rounded border border-[#444] bg-[#151515] p-2 text-sm text-white file:mr-3 file:rounded file:border-0 file:bg-[#303030] file:px-3 file:py-1 file:text-white"
           />}
         </label>
-        {meeting === 'Weekend' && <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-xs text-[#aaa]">Public Talk timer title<input value={talkTitle} onChange={(event) => setTalkTitle(event.target.value)} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white" /></label>
-          <label className="text-xs text-[#aaa]">Watchtower Study timer title<input value={studyTitle} onChange={(event) => setStudyTitle(event.target.value)} className="mt-1 block h-10 w-full rounded border border-[#444] bg-[#151515] px-3 text-sm text-white" /></label>
-        </div>}
         {loading && <p className="mt-4 text-sm text-[#9fc7ff]">Reading PDF…</p>}
         {error && <p role="alert" className="mt-4 rounded border border-[#754040] bg-[#351f1f] p-3 text-sm text-[#ffb0b0]">{error}</p>}
         {sections.length > 0 && <div className="mt-4 space-y-3">

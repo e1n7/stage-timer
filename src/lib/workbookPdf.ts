@@ -221,6 +221,24 @@ function parseWeekHeader(value: string, fallbackYear: number): string | null {
   return null;
 }
 
+function parseWeekendDateBanner(value: string, fallbackYear: number): string | null {
+  const source = normalizeSplitDateHeader(value.replaceAll(TEXT_GAP_MARKER, ' '));
+  const normalizedLine = normalizeDecimalDigits(normalizeDateHeaderSpacing(source));
+  const hasStructuredNumericDate = [ISO_NUMERIC_WEEK_PATTERN, SLASH_NUMERIC_WEEK_PATTERN, EAST_ASIAN_NUMERIC_WEEK_PATTERN]
+    .some((pattern) => pattern.test(normalizedLine));
+  if (hasStructuredNumericDate) return parseWeekHeader(value, fallbackYear);
+  if (normalizedLine.length > 80) return null;
+
+  const numericTokens: string[] = normalizedLine.match(/\p{Nd}+/gu) || [];
+  const dayTokens = numericTokens.filter((token) => token.length <= 2);
+  const yearTokens = numericTokens.filter((token) => /^20\p{Nd}{2}$/u.test(token));
+  if (dayTokens.length !== 2 || numericTokens.length !== dayTokens.length + yearTokens.length) return null;
+
+  const range = UNIVERSAL_DAY_RANGE_PATTERN.exec(normalizedLine);
+  if (!range || !/[-–—~～〜/]|[\p{L}]{2,}/u.test(range[2])) return null;
+  return parseWeekHeader(value, fallbackYear);
+}
+
 function getYear(text: string): number {
   const year = normalizeDecimalDigits(text).match(/(?<!\p{N})(20\p{Nd}{2})(?!\p{N})/u)?.[1];
   return year ? Number(year) : new Date().getFullYear();
@@ -436,6 +454,18 @@ export function extractWorkbookWeeks(text: string): string[] {
     .map((page) => {
       const lines = page.split(/\r?\n/).map(cleanLine).filter(Boolean);
       return isStandalonePageNumber(lines[0]) ? null : parseWeekHeader(lines.slice(0, 8).join('\n'), year);
+    })
+    .filter((week): week is string => Boolean(week));
+  return [...new Set(pageWeeks)];
+}
+
+export function extractWeekendWeeks(text: string): string[] {
+  const year = getYear(text);
+  const pageWeeks = text.split(/\f/)
+    .map((page) => {
+      const firstLine = page.split(/\r?\n/).map(cleanLine).find((line) => line && !isStandalonePageNumber(line));
+      if (!firstLine) return null;
+      return parseWeekendDateBanner(firstLine, year);
     })
     .filter((week): week is string => Boolean(week));
   return [...new Set(pageWeeks)];

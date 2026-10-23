@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractWorkbookWeeks, getWorkbookSectionColor, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
+import { extractWeekendWeeks, extractWorkbookWeeks, getWorkbookSectionColor, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
 
 describe('workbook PDF parsing', () => {
   it('parses Tagalog headings and minute durations into the expected colored sections', () => {
@@ -225,6 +225,30 @@ describe('workbook PDF parsing', () => {
     ];
     expect(extractWorkbookWeeks(text)).toEqual(expectedWeeks);
     expect(parseWorkbookSchedules(text).map((schedule) => schedule.week)).toEqual(expectedWeeks);
+  });
+
+  it('reads only printed Weekend date banners and ignores the cover date range and article text', () => {
+    const text = [
+      'AGOSTO 2026\n34567\nMGA ARALING ARTIKULO PARA SA:\nOKTUBRE 5–NOBYEMBRE 1, 2026',
+      '2\nOKTUBRE 5 -11, 2026\nLabanan si Satanas —Magtiwala kay Jehova',
+      'At sinabi ni Jehova na maglilingkod tayo sa kaniya sa 2026.',
+      'OKTUBRE 12-18, 2026\nKaya Mong Manalo!',
+      'OKTUBRE 19-25, 2026\nIsang Pakiusap Salig sa Pag-ibig',
+      'OKTUBRE 26–NOBYEMBRE 1, 2026\nPahalagahan ang Pribilehiyo',
+      'Mauubos lang ang oras at lakas natin at sa mga demonyo. (Sant. 4:7; 1 Juan 5:4, 5)',
+      'pangyarihang tagapagligtas mula sa sambahayan. (Roma 3:20; Gal. 3:10, 13) Kaya',
+      'Semana del 2 al 8 de noviembre de 2026\nArtículo de estudio',
+      '2026年11月9日-15日\n研究記事',
+    ].join('\f');
+
+    expect(extractWeekendWeeks(text)).toEqual([
+      'Week of OKTUBRE 5 -11, 2026',
+      'Week of OKTUBRE 12-18, 2026',
+      'Week of OKTUBRE 19-25, 2026',
+      'Week of OKTUBRE 26–NOBYEMBRE 1, 2026',
+      'Week of Semana del 2 al 8 de noviembre de 2026',
+      'Week of 2026-11-09 – 2026-11-15',
+    ]);
   });
 
   it('extracts all split week headings and keeps wrapped parts in their own weekly schedule', () => {

@@ -12,15 +12,17 @@ export interface SavedWorkbookPdf extends SavedWorkbookPdfInfo {
 }
 
 interface WorkbookPdfRecord extends SavedWorkbookPdfInfo {
-  id: 'active-workbook';
+  id: SavedWorkbookMeetingType | 'active-workbook';
   type: string;
   data: Blob;
 }
 
 const DB_NAME = 'stage-timer-local-workbooks';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'workbooks';
-const ACTIVE_KEY = 'active-workbook';
+const LEGACY_KEY = 'active-workbook';
+
+const isMeetingType = (value: unknown): value is SavedWorkbookMeetingType => value === 'Midweek' || value === 'Weekend';
 
 const openWorkbookDb = (): Promise<IDBDatabase> => new Promise((resolve, reject) => {
   if (typeof indexedDB === 'undefined') {
@@ -29,10 +31,22 @@ const openWorkbookDb = (): Promise<IDBDatabase> => new Promise((resolve, reject)
   }
 
   const request = indexedDB.open(DB_NAME, DB_VERSION);
-  request.onupgradeneeded = () => {
+  request.onupgradeneeded = (event) => {
     const database = request.result;
-    if (!database.objectStoreNames.contains(STORE_NAME)) {
-      database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+    const transaction = request.transaction;
+    const store = database.objectStoreNames.contains(STORE_NAME)
+      ? transaction?.objectStore(STORE_NAME)
+      : database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+
+    if (event.oldVersion > 0 && event.oldVersion < 2 && store) {
+      const legacyRequest = store.get(LEGACY_KEY) as IDBRequest<WorkbookPdfRecord | undefined>;
+      legacyRequest.onsuccess = () => {
+        const legacyRecord = legacyRequest.result;
+        if (legacyRecord && isMeetingType(legacyRecord.meetingType)) {
+          store.put({ ...legacyRecord, id: legacyRecord.meetingType });
+        }
+        store.delete(LEGACY_KEY);
+      };
     }
   };
   request.onsuccess = () => resolve(request.result);
@@ -57,7 +71,7 @@ export async function saveWorkbookPdfLocally(file: File, meetingType: SavedWorkb
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const done = transactionDone(transaction);
     const record: WorkbookPdfRecord = {
-      id: ACTIVE_KEY,
+      id: meetingType,
       name: file.name,
       size: file.size,
       lastModified: file.lastModified,
@@ -74,33 +88,45 @@ export async function saveWorkbookPdfLocally(file: File, meetingType: SavedWorkb
   }
 }
 
-export async function loadWorkbookPdfLocally(): Promise<SavedWorkbookPdf | null> {
+export async function loadWorkbookPdfsLocally(): Promise<SavedWorkbookPdf[]> {
   const database = await openWorkbookDb();
   try {
     const transaction = database.transaction(STORE_NAME, 'readonly');
     const done = transactionDone(transaction);
-    const record = await requestResult(transaction.objectStore(STORE_NAME).get(ACTIVE_KEY) as IDBRequest<WorkbookPdfRecord | undefined>);
+    const records = await requestResult(transaction.objectStore(STORE_NAME).getAll() as IDBRequest<WorkbookPdfRecord[]>);
     await done;
-    if (!record) return null;
-    const file = new File([record.data], record.name, { type: record.type, lastModified: record.lastModified });
-    return {
+
+    const recordsByMeeting = new Map<SavedWorkbookMeetingType, WorkbookPdfRecord>();
+    for (const record of records) {
+      const meetingType = record.id === LEGACY_KEY ? record.meetingType : record.id;
+      if (!isMeetingType(meetingType)) continue;
+      const existing = recordsByMeeting.get(meetingType);
+      if (!existing || record.id === meetingType) recordsByMeeting.set(meetingType, record);
+    }
+
+    return [...recordsByMeeting.values()].map((record) => ({
       name: record.name,
       size: record.size,
       lastModified: record.lastModified,
       meetingType: record.meetingType,
-      file,
-    };
+      file: new File([record.data], record.name, { type: record.type, lastModified: record.lastModified }),
+    }));
   } finally {
     database.close();
   }
 }
 
-export async function deleteWorkbookPdfLocally(): Promise<void> {
+export async function deleteWorkbookPdfLocally(meetingType: SavedWorkbookMeetingType): Promise<void> {
   const database = await openWorkbookDb();
   try {
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const done = transactionDone(transaction);
-    transaction.objectStore(STORE_NAME).delete(ACTIVE_KEY);
+    const store = transaction.objectStore(STORE_NAME);
+    store.delete(meetingType);
+    const legacyRequest = store.get(LEGACY_KEY) as IDBRequest<WorkbookPdfRecord | undefined>;
+    legacyRequest.onsuccess = () => {
+      if (legacyRequest.result?.meetingType === meetingType) store.delete(LEGACY_KEY);
+    };
     await done;
   } finally {
     database.close();
