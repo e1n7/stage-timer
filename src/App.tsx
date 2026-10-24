@@ -1761,7 +1761,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
       }}
       data-timer-id={id}
       style={{ ...style, ...(isTitleEditOpen ? { zIndex: 200 } : {}) }}
-      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a] ring-1 ring-[#22c55e]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isTitleEditOpen ? 'z-[200]' : 'z-0'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`timer-row group relative isolate flex min-w-0 overflow-visible items-center gap-4 rounded-lg px-6 py-4 text-white shadow-lg transition-all min-h-28 max-[639px]:min-h-0 max-[639px]:gap-2 max-[639px]:px-2 ${isSelected ? 'bg-[#245c3a]' : isRunning ? 'bg-[#b91c1c]' : isActive ? 'bg-[#2546c9] cursor-pointer' : 'bg-[#262626]'} ${isTitleEditOpen ? 'z-[200]' : 'z-0'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <div
         aria-hidden="true"
@@ -4359,8 +4359,8 @@ function App() {
           <div className="mb-4 flex shrink-0 items-center justify-between">
             {isTimerSelectMode ? (
               <div className="flex min-w-0 items-center gap-2">
-                <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); setSelectedSectionIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
-                <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 w-8 items-center justify-center gap-1 rounded border border-[#444] bg-[#2d2d2d] px-0 text-[13px] text-white hover:bg-[#383838] sm:w-auto sm:justify-start sm:px-2"><IconCheckbox checked={allTimersSelected} size={13} /><span className="hidden sm:inline">{allTimersSelected ? 'Deselect All' : 'Select All'}</span></button>
+                <button type="button" onClick={() => { setIsTimerSelectMode(false); setSelectedTimerIds([]); setSelectedSectionIds([]); }} title="Exit timer selection mode" aria-label="Exit timer selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
+                <button type="button" onClick={toggleAllTimers} title={allTimersSelected ? 'Deselect all timers' : 'Select all timers'} className="flex h-8 w-8 items-center justify-center gap-1 rounded bg-[#2d2d2d] px-0 text-[13px] text-white hover:bg-[#383838] sm:w-auto sm:justify-start sm:px-2"><IconCheckbox checked={allTimersSelected} size={13} /><span className="hidden sm:inline">{allTimersSelected ? 'Deselect All' : 'Select All'}</span></button>
                 <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedItemsCount} of {allItemsCount} selected</span>
               </div>
             ) : (
@@ -4420,8 +4420,8 @@ function App() {
                 )}
               </div>
               {isTimerSelectMode && <>
-                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconDuplicate size={15} /><span className="hidden sm:inline">Duplicate</span></button>
-                <button type="button" disabled={selectedItemsCount === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg border border-[#444] bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
+                <button type="button" disabled={selectedTimerIds.length === 0} onClick={duplicateSelectedTimers} title="Duplicate selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg bg-[#2d2d2d] px-0 text-[12px] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconDuplicate size={15} /><span className="hidden sm:inline">Duplicate</span></button>
+                <button type="button" disabled={selectedItemsCount === 0} onClick={deleteSelectedTimers} title="Delete selected timers" className="flex h-8 w-8 items-center justify-center gap-0 rounded-lg bg-[#2d2d2d] px-0 text-[12px] text-[#ff8b8b] hover:bg-[#3a2020] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:gap-1.5 sm:px-2.5"><IconTrash size={15} /><span className="hidden sm:inline">Delete</span></button>
               </>}
               </div></div>
           <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
