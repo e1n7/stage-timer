@@ -40,7 +40,61 @@ const EAST_ASIAN_NUMERIC_WEEK_PATTERN = /(?:(20\p{Nd}{2})年)?(\p{Nd}{1,2})月(\
 const UNIVERSAL_DAY_RANGE_PATTERN = /(?<!\p{N})(\p{Nd}{1,2})([\p{L}\p{M}\p{P}\s]{0,48}?)(\p{Nd}{1,2})(?!\p{N})/u;
 
 function normalizeSplitDateHeader(value: string): string {
-  let normalized = normalizeDecimalDigits(value).replace(/(\p{Nd})\s+(?=\p{Nd})/gu, '$1');
+  const connectorWords = new Set(['A', 'AL', 'DE', 'DEL', 'OF', 'THE', 'WEEK']);
+  const joinUppercaseFragments = (line: string) => line.replace(/\b[A-Z]+\b(?:\s+\b[A-Z]+\b)+/g, (run) => {
+    const sourceWords = run.split(/\s+/);
+    const words: string[] = [];
+    for (let index = 0; index < sourceWords.length;) {
+      if (sourceWords[index].length === 1) {
+        let end = index;
+        while (end < sourceWords.length && sourceWords[end].length === 1) end += 1;
+        const combined = sourceWords.slice(index, end).join('');
+        const connectorPrefix = [...connectorWords]
+          .filter((word) => combined.startsWith(word))
+          .sort((left, right) => right.length - left.length)[0];
+        if (connectorPrefix) {
+          words.push(connectorPrefix);
+          const remainder = combined.slice(connectorPrefix.length);
+          if (remainder && end < sourceWords.length && sourceWords[end].length >= 3) {
+            words.push(`${remainder}${sourceWords[end]}`);
+            index = end + 1;
+          } else if (remainder) {
+            words.push(remainder);
+            index = end;
+          } else {
+            index = end;
+          }
+          continue;
+        }
+        if (end < sourceWords.length && sourceWords[end].length >= 3) {
+          words.push(`${combined}${sourceWords[end]}`);
+          index = end + 1;
+          continue;
+        }
+        words.push(combined);
+        index = end;
+        continue;
+      }
+      words.push(sourceWords[index]);
+      index += 1;
+    }
+    const joined: string[] = [];
+    for (const word of words) {
+      const previous = joined[joined.length - 1];
+      const joinsPrevious = Boolean(previous && (
+        (word.length <= 2 && previous.length >= 3 && !connectorWords.has(word))
+        || (previous.length <= 2 && word.length >= 3 && !connectorWords.has(previous))
+      ));
+      if (joinsPrevious) joined[joined.length - 1] = `${previous}${word}`;
+      else joined.push(word);
+    }
+    return joined.join(' ');
+  });
+  let normalized = normalizeDecimalDigits(value)
+    .replace(/(\p{Nd})\s+(?=\p{Nd})/gu, '$1')
+    .split(/\r?\n/)
+    .map(joinUppercaseFragments)
+    .join('\n');
   let previous = '';
   while (previous !== normalized) {
     previous = normalized;

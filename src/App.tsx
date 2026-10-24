@@ -2029,6 +2029,54 @@ function App() {
     setWorkbookWeeksByType((current) => ({ ...current, [type]: weeks }));
     if (!weeks.length) setMeetingWeekByType((current) => ({ ...current, [type]: getCurrentWorkbookWeek() }));
   }, [setMeetingWeekByType, setWorkbookWeeksByType]);
+  const createDefaultPreviewTimer = useCallback((type: MeetingType) => {
+    const created = readJsonStorage<Partial<Record<MeetingType, boolean>>>('stage-timer-default-preview-created', {});
+    const previewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
+    if (created[type]) {
+      const existingId = previewIds[type] || getStorageKeys()
+        .filter((key) => key.startsWith('timerSettings_'))
+        .map((key) => ({ id: key.slice('timerSettings_'.length), settings: readJsonStorage<Record<string, any> | null>(key, null) }))
+        .find(({ settings }) => settings?.title === `${type} Preview`)
+        ?.id;
+      if (existingId && readJsonStorage<Record<string, any> | null>(`timerSettings_${existingId}`, null)) {
+        if (!previewIds[type]) writeStorageItem('stage-timer-default-preview-ids', JSON.stringify({ ...previewIds, [type]: existingId }));
+        return existingId;
+      }
+      return null;
+    }
+    const id = createId('timer');
+    const targetDuration = 10 * 60;
+    const settings = {
+      title: `${type} Preview`, speaker: '', notes: '', audioVolume: 0.5,
+      beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
+      warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
+      targetDuration, mode: 'countdown', fontHeight: 1.6, fontWidth: 1,
+      scheduledStart: null,
+      segments: [{ threshold: 60, color: '#f08c00' }, { threshold: 10, color: '#fa5252' }],
+    };
+    writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
+    writeStorageItem(`timerSeconds_${id}`, JSON.stringify(targetDuration));
+    writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: targetDuration, isRunning: false, mode: 'countdown', lastUpdated: Date.now() }));
+    writeStorageItem('stage-timer-default-preview-created', JSON.stringify({ ...created, [type]: true }));
+    writeStorageItem('stage-timer-default-preview-ids', JSON.stringify({ ...previewIds, [type]: id }));
+    return id;
+  }, []);
+  const removeDefaultPreviewTimer = useCallback((type: MeetingType) => {
+    const previewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
+    const configuredId = previewIds[type];
+    const configuredSettings = configuredId ? readJsonStorage<Record<string, any> | null>(`timerSettings_${configuredId}`, null) : null;
+    const id = configuredSettings?.title === `${type} Preview` ? configuredId : getStorageKeys()
+      .filter((key) => key.startsWith('timerSettings_'))
+      .map((key) => ({ id: key.slice('timerSettings_'.length), settings: readJsonStorage<Record<string, any> | null>(key, null) }))
+      .find(({ settings }) => settings?.title === `${type} Preview`)
+      ?.id;
+    if (!id) return;
+    removeStorageItem(`timerSettings_${id}`);
+    removeStorageItem(`timerSeconds_${id}`);
+    removeStorageItem(`timerSync_${id}`);
+    removeStorageItem(`timerLog_${id}`);
+    try { postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }); } catch { /* ignore */ }
+  }, []);
   const topLevelItems = useMemo(() => [
     ...timerTopLevelItems.filter((item, index, items) => {
       if (items.indexOf(item) !== index) return false;
@@ -3071,6 +3119,14 @@ function App() {
     if (initialRoomRestoredRef.current) return;
     if (rooms.length === 0 && !currentRoomId) {
       initialRoomRestoredRef.current = true;
+      const previewTimerId = workbookWeeksByType[meetingType]?.length ? null : createDefaultPreviewTimer(meetingType);
+      if (previewTimerId) {
+        setTimerIds([previewTimerId]);
+        setTimerTopLevelItems([previewTimerId]);
+        setActiveTimerId(previewTimerId);
+        setCurrentRoomName(`${meetingType} Meeting`);
+        setIsNewRoomDraft(true);
+      }
       return;
     }
     const savedRoomAtStartup = currentRoomId ? rooms.find(room => room.id === currentRoomId) : undefined;
@@ -3094,7 +3150,7 @@ function App() {
       setMessages([{ id: '1', text: '', color: '#ffffff' }]);
       setTimerChangesNeedSave(false);
     }
-  }, [rooms, currentRoomId, loadRoom, setCurrentRoomName, setTimerIds, setTimerHeaders, setLinkedTimerIds, setIsFollowEnabled, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
+  }, [rooms, currentRoomId, loadRoom, workbookWeeksByType, meetingType, createDefaultPreviewTimer, setCurrentRoomName, setTimerIds, setTimerHeaders, setLinkedTimerIds, setIsFollowEnabled, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
 
   const saveRoom = useCallback(() => {
     if (!timerChangesNeedSave) {
@@ -3141,17 +3197,11 @@ function App() {
     });
   }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, setMeetingWeekByType, createUndoSnapshot, restoreUndoSnapshot]);
 
-  const getMeetingScheduleWeeks = (type: MeetingType, map = scheduleRoomMap) => {
-    const workbookWeeks = workbookWeeksByType[type];
-    if (workbookWeeks) return workbookWeeks;
-    return Object.keys(map)
-      .filter((key) => key.startsWith(`${type}|`))
-      .map((key) => key.slice(type.length + 1));
-  };
+  const getMeetingScheduleWeeks = (type: MeetingType) => workbookWeeksByType[type] || [];
 
-  const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string) => {
+  const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
     const key = `${nextMeeting}|${nextWeek}`;
-    if (currentRoomId) {
+    if (currentRoomId && getMeetingScheduleWeeks(meetingType).length > 0) {
       const map = { ...scheduleRoomMap, [`${meetingType}|${meetingWeek}`]: currentRoomId };
       writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(map));
       setScheduleRoomMap(map);
@@ -3166,23 +3216,29 @@ function App() {
     if (existing) {
       loadRoom(existing);
       setCurrentRoomName(`${nextMeeting} Meeting`);
+      setIsRoomMenuOpen(keepRoomMenuOpen);
       return;
     }
     const draftId = createId('schedule');
+    const previewTimerId = getMeetingScheduleWeeks(nextMeeting).length === 0
+      ? createDefaultPreviewTimer(nextMeeting)
+      : null;
     setCurrentRoomId(draftId);
     setIsNewRoomDraft(true);
     setCurrentRoomName(`${nextMeeting} Meeting`);
-    setTimerIds([]);
+    setTimerIds(previewTimerId ? [previewTimerId] : []);
     setTimerHeaders([]);
-    setTimerTopLevelItems([]);
-    setActiveTimerId('');
+    setTimerTopLevelItems(previewTimerId ? [previewTimerId] : []);
+    setActiveTimerId(previewTimerId || '');
     setActiveTimerState(null);
     setMessages([{ id: '1', text: '', color: '#ffffff' }]);
     setLinkedTimerIds([]);
     setIsFollowEnabled(false);
+    setIsRoomMenuOpen(keepRoomMenuOpen);
   };
 
   const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string, workbookWeeks: string[]) => {
+    removeDefaultPreviewTimer(meeting);
     const nextScheduleMap = { ...readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap) };
     let nextRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
     const importedRooms = new Map<string, Room>();
@@ -3267,7 +3323,7 @@ function App() {
     const scheduleKeys = new Set(weeks.map((week) => `${meeting}|${week}`));
     const mappedRoomIds = new Set([...scheduleKeys].map((key) => nextScheduleMap[key]).filter((id): id is string => Boolean(id)));
     scheduleKeys.forEach((key) => { delete nextScheduleMap[key]; });
-    const remainingWeeks = getMeetingScheduleWeeks(meeting, nextScheduleMap);
+    const remainingWeeks = (workbookWeeksByType[meeting] || []).filter((week) => !weeks.includes(week));
     const storedWeek = meetingWeekByType[meeting];
     const nextPreferredWeek = storedWeek && remainingWeeks.includes(storedWeek)
       ? storedWeek
@@ -3832,10 +3888,8 @@ function App() {
     ? timerHeaders.find(header => `header:${header.id}` === activeDragId) || null
     : null;
   const importedMeetingWeeks = getMeetingScheduleWeeks(meetingType);
-  const roomWeekOptions = importedMeetingWeeks.length
-    ? importedMeetingWeeks
-    : [meetingWeekByType[meetingType] || meetingWeek];
-  const displayedMeetingWeek = roomWeekOptions.includes(meetingWeek) ? meetingWeek : roomWeekOptions[0];
+  const roomWeekOptions = importedMeetingWeeks;
+  const displayedMeetingWeek = roomWeekOptions.includes(meetingWeek) ? meetingWeek : roomWeekOptions[0] || '';
 
   return (
     <div className="app-shell flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
@@ -3870,15 +3924,15 @@ function App() {
                     const preferredWeek = meetingWeekByType[type] || (type === meetingType ? meetingWeek : '');
                     const nextWeek = availableWeeks.length
                       ? availableWeeks.includes(preferredWeek) ? preferredWeek : availableWeeks[0]
-                      : preferredWeek || getCurrentWorkbookWeek();
-                    return <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, nextWeek)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
+                      : preferredWeek || '';
+                    return <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, nextWeek, availableWeeks.length > 0)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
                   })}
                 </div>
-                <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
+                {roomWeekOptions.length > 0 && <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
                   <select value={displayedMeetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
                     {roomWeekOptions.map((week) => <option key={week}>{week}</option>)}
                   </select>
-                </label>
+                </label>}
               </div>
             </ModalPortal>}
           </div>

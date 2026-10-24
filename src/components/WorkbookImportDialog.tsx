@@ -60,7 +60,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       setDateFallbackNotice(!extractedWeeks.length);
       const parsed = fileMeeting === 'Midweek' ? parseWorkbookSchedules(text) : [];
       const availableWeeks = extractedWeeks.length
-        ? extractedWeeks
+        ? [...new Set(extractedWeeks)]
         : parsed.length ? parsed.map((schedule) => schedule.week) : ['Week 1'];
 
       if (persist) {
@@ -266,7 +266,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
               <option>Midweek</option><option>Weekend</option>
             </select>
           </label>
-          <label className="text-xs text-[#aaa]">Workbook week to preview
+          <label className="text-xs text-[#aaa]">Workbook week
             <select value={week} disabled={!workbookSchedules.length || loading} onChange={(event) => {
               const nextWeek = event.target.value;
               setWeek(nextWeek);

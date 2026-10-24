@@ -227,6 +227,11 @@ describe('workbook PDF parsing', () => {
     expect(parseWorkbookSchedules(text).map((schedule) => schedule.week)).toEqual(expectedWeeks);
   });
 
+  it('joins multi-letter month fragments without merging date connector words', () => {
+    const text = '2026\f[L] 26 D E N OVIEMB RE A 1 D E D ICIEMB RE | [R] 16\nTREASURES FROM GOD\'S WORD\n1. Spiritual Gems (10 min.)';
+    expect(extractWorkbookWeeks(text)).toEqual(['Week of 26 DE NOVIEMBRE A 1 DE DICIEMBRE, 2026']);
+  });
+
   it('reads only printed Weekend date banners and ignores the cover date range and article text', () => {
     const text = [
       'AGOSTO 2026\n34567\nMGA ARALING ARTIKULO PARA SA:\nOKTUBRE 5–NOBYEMBRE 1, 2026',
