@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gooeyToast } from 'goey-toast';
 import { extractWeekendWeeks, extractWorkbookWeeks, makeWeekendSections, parseWorkbookSchedules, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
+import { addDefaultMidweekCounseling } from '../lib/workbookPdfDefaults';
 import { deleteWorkbookPdfLocally, loadWorkbookPdfsLocally, saveWorkbookPdfLocally, type SavedWorkbookPdf } from '../lib/workbookPdfStorage';
 
 interface Props {
@@ -57,7 +58,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       try {
         const text = await readWorkbookPdf(file);
       const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(text) : extractWorkbookWeeks(text);
-      const parsed = fileMeeting === 'Midweek' ? parseWorkbookSchedules(text) : [];
+      const parsed = fileMeeting === 'Midweek' ? addDefaultMidweekCounseling(parseWorkbookSchedules(text)) : [];
       const looksLikeMidweekWorkbook = /treasures from god['’]?s word|apply yourself to the field ministry|living as christians|kayamanan mula sa salita|maging mahusay sa minist|pamumuhay bilang kristiyano|tesoros de la palabra|seamos mejores|nuestra vida cristiana|tesori della parola|efficaci nel ministero|vita cristiana/iu.test(text);
       const looksLikeWeekendWorkbook = /watchtower|araling artikulo|article de estudio|artículo de estudio|estudio de la atalaya|study article|estudio bíblico/iu.test(text);
       const hasWorkbookContent = fileMeeting === 'Midweek'
@@ -231,10 +232,11 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   };
 
   const importSchedule = () => {
-    const schedules = workbookSchedules.map((schedule) => ({
+    const reviewedSchedules = workbookSchedules.map((schedule) => ({
       week: schedule.week,
       sections: editedSectionsByWeek[schedule.week] || (meeting === 'Weekend' ? makeWeekendSections() : schedule.sections),
     })).filter((schedule) => meeting === 'Weekend' || schedule.sections.length > 0);
+    const schedules = meeting === 'Midweek' ? addDefaultMidweekCounseling(reviewedSchedules) : reviewedSchedules;
 
     if (!schedules.length) {
       setError('No timer parts are ready to import yet. Review the PDF or try a text-based workbook.');

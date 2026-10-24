@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage, writeJsonStorage } from '../lib/storage';
+import { getDefaultTimerSegments } from '../lib/timerDefaults';
 import { useLocalStorage } from './useLocalStorage';
 
 const DEFAULT_TIME = 0;
@@ -16,14 +17,11 @@ const DEFAULT_SETTINGS: TimerSettings = {
   dangerThreshold: 0,
   historyLimit: 10,
   targetDuration: 0, // Default to 0:00 as requested
-  mode: 'countdown',
+  mode: 'countup',
   fontHeight: 1.6,
   fontWidth: 1.0,
   scheduledStart: null,
-  segments: [
-    { threshold: 60, color: '#f08c00' },
-    { threshold: 10, color: '#fa5252' }
-  ]
+  segments: getDefaultTimerSegments()
 };
 
 export type TimerMode = 'countdown' | 'countup';
@@ -95,7 +93,7 @@ export const useTimer = (id: string = 'default') => {
     startTime: null,
     initialSeconds: settings.mode === 'countdown' ? settings.targetDuration : DEFAULT_TIME,
     isRunning: false,
-    mode: settings.mode || 'countdown',
+    mode: settings.mode || 'countup',
     lastUpdated: Date.now(),
     manualResetAt: null
   }));
@@ -110,7 +108,7 @@ export const useTimer = (id: string = 'default') => {
 
   useEffect(() => {
     if (settings.mode !== 'countdown' && settings.mode !== 'countup') {
-      setSettings(previous => ({ ...previous, mode: 'countdown' }));
+      setSettings(previous => ({ ...previous, mode: 'countup' }));
       return;
     }
     const nextMode = settings.mode;
@@ -290,7 +288,7 @@ export const useTimer = (id: string = 'default') => {
       startTime: Date.now(),
       initialSeconds: secondsRef.current,
       isRunning: true,
-      mode: settingsRef.current.mode === 'countup' ? 'countup' : 'countdown',
+      mode: settingsRef.current.mode === 'countdown' ? 'countdown' : 'countup',
       lastUpdated: Date.now()
     });
   }, []);
@@ -308,7 +306,7 @@ export const useTimer = (id: string = 'default') => {
 
   const resetTimer = useCallback(() => {
     recordLog();
-    const mode = settingsRef.current.mode === 'countup' ? 'countup' : 'countdown';
+    const mode = settingsRef.current.mode === 'countdown' ? 'countdown' : 'countup';
     setSyncState(prev => ({
       ...prev,
       startTime: null,
@@ -333,7 +331,7 @@ export const useTimer = (id: string = 'default') => {
     setSettings(prev => ({ ...prev, ...newSettings }));
     if (newSettings.mode && newSettings.mode !== syncStateRef.current?.mode) {
       const nextMode = newSettings.mode;
-      const currentMode = syncStateRef.current?.mode || settingsRef.current.mode || 'countdown';
+      const currentMode = syncStateRef.current?.mode || settingsRef.current.mode || 'countup';
       const currentDuration = Number(settingsRef.current.targetDuration) || 0;
       const nextDuration = Number(newSettings.targetDuration ?? currentDuration) || 0;
       const currentSeconds = Number(secondsRef.current) || 0;

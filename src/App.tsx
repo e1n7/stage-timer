@@ -10,6 +10,9 @@ import { readJsonStorage } from './lib/storage';
 import { mergeItemById } from './lib/roomStorage';
 import { getCanonicalTimerOrder } from './lib/timerOrder';
 import { getUndoBaselineTimerIds } from './lib/undoSnapshot';
+import { getCurrentOrNextWorkbookWeek } from './lib/workbookWeek';
+import { addDefaultMidweekCounseling } from './lib/workbookPdfDefaults';
+import { getDefaultTimerSegments, withCountUpTimerDefaults } from './lib/timerDefaults';
 import WorkbookImportDialog from './components/WorkbookImportDialog';
 import { getWorkbookSectionColor, type MeetingType, type WorkbookSchedule } from './lib/workbookPdf';
 import {
@@ -926,8 +929,9 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
   if (!isOpen) return null;
 
   const segments = Array.isArray(localSettings.segments) ? localSettings.segments : [];
-  const yellowSegment = segments.find((s: any) => s.color === '#f08c00') || { threshold: 60, color: '#f08c00' };
-  const redSegment = segments.find((s: any) => s.color === '#fa5252') || { threshold: 10, color: '#fa5252' };
+  const defaultSegments = getDefaultTimerSegments(localSettings.targetDuration);
+  const yellowSegment = segments.find((s: any) => s.color === '#f08c00') || defaultSegments[0];
+  const redSegment = segments.find((s: any) => s.color === '#fa5252') || defaultSegments[1];
   const previewTotalSeconds = Math.max(1, Number(localSettings.targetDuration) || 0);
   const previewRedWidth = Math.min(100, (Math.max(0, Number(redSegment.threshold) || 0) / previewTotalSeconds) * 100);
   const previewYellowWidth = Math.min(100 - previewRedWidth, (Math.max(0, Number(yellowSegment.threshold) - Number(redSegment.threshold)) / previewTotalSeconds) * 100);
@@ -1002,7 +1006,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
             <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2">
               <span className="text-[11px] text-[#999]">Appearance</span>
               <select
-                value={localSettings.mode || 'countdown'}
+                value={localSettings.mode || 'countup'}
                 onChange={(e) => setLocalSettings({ ...localSettings, mode: e.target.value as any })}
                 className="h-10 w-[220px] max-w-full translate-x-2 justify-self-end rounded border border-[#333] bg-[#141414] px-2.5 text-[12px] text-white focus:outline-none"
               >
@@ -1207,7 +1211,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
               <span className="text-[12px] text-[#999]">Appearance</span>
               <select
-                value={localSettings.mode || 'countdown'}
+                value={localSettings.mode || 'countup'}
                 onChange={(event) => setLocalSettings({ ...localSettings, mode: event.target.value as any })}
                 className="h-8 w-full rounded-md border border-[#333] bg-[#171717] px-2.5 text-[12px] text-white outline-none focus:border-[#555]"
               >
@@ -1242,7 +1246,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
             <button
               type="button"
               onClick={() => {
-                onConfirm?.({ ...localSettings, targetDuration: totalSeconds, mode: localSettings.mode || 'countdown' });
+                onConfirm?.({ ...localSettings, targetDuration: totalSeconds, mode: localSettings.mode || 'countup' });
                 onClose();
               }}
               className="h-7 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[11px] text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44]"
@@ -1292,7 +1296,7 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
                 onConfirm?.({
                   ...localSettings,
                   targetDuration: Math.max(0, Number(localSettings.targetDuration) || 0),
-                  mode: localSettings.mode || 'countdown',
+                  mode: localSettings.mode || 'countup',
                 });
                 onClose();
               }}
@@ -1801,7 +1805,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         </div>
         <div className="absolute left-1/2 top-full flex h-4 min-w-[92px] -translate-x-1/2 items-center justify-center pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <select
-            value={settings.mode || 'countdown'}
+            value={settings.mode || 'countup'}
             onChange={(e) => {
               e.stopPropagation();
               updateSettings({ mode: e.target.value as 'countdown' | 'countup' });
@@ -2109,17 +2113,16 @@ function App() {
     }
     const id = createId('timer');
     const targetDuration = 10 * 60;
-    const settings = {
+    const settings = withCountUpTimerDefaults({
       title: 'Timer 1', speaker: '', notes: '', audioVolume: 0.5,
       beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
       warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
-      targetDuration, mode: 'countdown', fontHeight: 1.6, fontWidth: 1,
+      targetDuration, fontHeight: 1.6, fontWidth: 1,
       scheduledStart: null,
-      segments: [{ threshold: 60, color: '#f08c00' }, { threshold: 10, color: '#fa5252' }],
-    };
+    });
     writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
-    writeStorageItem(`timerSeconds_${id}`, JSON.stringify(targetDuration));
-    writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: targetDuration, isRunning: false, mode: 'countdown', lastUpdated: Date.now() }));
+    writeStorageItem(`timerSeconds_${id}`, JSON.stringify(0));
+    writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: 0, isRunning: false, mode: 'countup', lastUpdated: Date.now() }));
     writeStorageItem('stage-timer-default-preview-created', JSON.stringify({ ...created, [type]: true }));
     writeStorageItem('stage-timer-default-preview-ids', JSON.stringify({ ...previewIds, [type]: id }));
     return id;
@@ -2434,7 +2437,7 @@ function App() {
   const overUnder = useMemo(() => {
     if (!activeTimerState) return '--:--';
     const s = activeTimerState.seconds;
-    const mode = activeTimerState.syncState?.mode || activeTimerState.settings?.mode || 'countdown';
+    const mode = activeTimerState.syncState?.mode || activeTimerState.settings?.mode || 'countup';
     if (mode === 'countup') {
       const delta = s - Math.max(0, Number(activeTimerState.settings?.targetDuration ?? 0));
       return delta >= 0 ? `+${formatClock(delta, true)}` : `-${formatClock(Math.abs(delta), true)}`;
@@ -2531,7 +2534,7 @@ function App() {
       const scheduledSettings = activeTimerState.settings;
       const scheduledSeconds = Number(activeTimerState.seconds);
       const scheduledTarget = Number(scheduledSettings?.targetDuration ?? 0);
-      const scheduledMode = scheduledSettings?.mode || 'countdown';
+      const scheduledMode = scheduledSettings?.mode || 'countup';
       const hasScheduledStart = scheduledSettings?.scheduledStart !== null
         && Number.isFinite(Number(scheduledSettings?.scheduledStart));
       const scheduledDate = scheduledSettings?.scheduledStartDate || scheduledDateForToday;
@@ -2643,7 +2646,7 @@ function App() {
 
     const seconds = activeTimerState?.seconds;
     const previousSeconds = prevSecondsRef.current;
-    const mode = activeTimerState?.settings.mode || 'countdown';
+    const mode = activeTimerState?.settings.mode || 'countup';
     const modeChanged = prevModeRef.current !== null && prevModeRef.current !== mode;
     const targetDuration = Math.max(0, Number(activeTimerState?.settings.targetDuration ?? 0));
     const ownerSection = timerHeaders.find(header => header.timerIds.includes(activeTimerId));
@@ -2938,23 +2941,20 @@ function App() {
         dangerThreshold: 0,
         historyLimit: 10,
         targetDuration: 600,
-        mode: 'countdown',
+        mode: 'countup',
         fontHeight: 1.6,
         fontWidth: 1.0,
         scheduledStart: null,
-        segments: [
-          { threshold: 60, color: '#f08c00' },
-          { threshold: 10, color: '#fa5252' }
-        ]
+        segments: getDefaultTimerSegments(600)
       };
-      const merged = { ...defaults, ...shared };
+      const merged = { ...defaults, ...shared, mode: 'countup' };
       writeStorageItem(`timerSettings_${newId}`, JSON.stringify(merged));
-      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(600));
+      writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(0));
       writeStorageItem(`timerSync_${newId}`, JSON.stringify({
         startTime: null,
-        initialSeconds: 600,
+        initialSeconds: 0,
         isRunning: false,
-        mode: merged.mode || 'countdown',
+        mode: 'countup',
         lastUpdated: Date.now()
       }));
     } catch { /* fall back to built-in defaults */ }
@@ -3006,18 +3006,15 @@ function App() {
     if (currentRoomId) {
       writeStorageItem(
         `timerSharedDefaults_${currentRoomId}`,
-        JSON.stringify({ mode: mode || 'countdown', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
+        JSON.stringify({ mode: mode || 'countup', fontHeight: fontHeight ?? 1.6, fontWidth: fontWidth ?? 1.0 })
       );
     }
     timerIds.forEach(id => {
       const settings = readJsonStorage(`timerSettings_${id}`, {
         title: 'Timer 1',
         targetDuration: 0,
-        mode: 'countdown',
-        segments: [
-          { threshold: 60, color: '#f08c00' },
-          { threshold: 10, color: '#fa5252' }
-        ]
+        mode: 'countup',
+        segments: getDefaultTimerSegments(0),
       });
       writeStorageItem(`timerSettings_${id}`, JSON.stringify({ ...settings, ...visualOnly }));
     });
@@ -3050,7 +3047,7 @@ function App() {
       startTime: null,
       initialSeconds: originalSeconds,
       isRunning: false,
-      mode: originalSettings?.mode || 'countdown',
+      mode: originalSettings?.mode || 'countup',
       lastUpdated: Date.now(),
     }));
 
@@ -3070,7 +3067,7 @@ function App() {
       const originalSync = readJsonStorage<any | null>(`timerSync_${id}`, null);
       if (originalSettings) writeStorageItem(`timerSettings_${newId}`, JSON.stringify(originalSettings));
       writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(originalSeconds));
-      writeStorageItem(`timerSync_${newId}`, JSON.stringify(originalSync || { startTime: null, initialSeconds: originalSeconds, isRunning: false, mode: originalSettings?.mode || 'countdown', lastUpdated: Date.now() }));
+      writeStorageItem(`timerSync_${newId}`, JSON.stringify(originalSync || { startTime: null, initialSeconds: originalSeconds, isRunning: false, mode: originalSettings?.mode || 'countup', lastUpdated: Date.now() }));
       const insertAt = Math.min(nextIds.length, nextIds.indexOf(id) + 1);
       nextIds.splice(insertAt, 0, newId);
     });
@@ -3153,7 +3150,7 @@ function App() {
         const settings = room.timerSettings![id];
         writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
         const target = settings?.targetDuration ?? 0;
-        const mode = settings?.mode || 'countdown';
+        const mode = settings?.mode || 'countup';
         const initialSeconds = mode === 'countup' ? 0 : target;
         writeStorageItem(`timerSync_${id}`, JSON.stringify({
           startTime: null,
@@ -3232,6 +3229,52 @@ function App() {
     }
   }, [rooms, currentRoomId, loadRoom, workbookWeeksByType, meetingType, createDefaultPreviewTimer, setCurrentRoomName, setTimerIds, setTimerHeaders, setLinkedTimerIds, setIsFollowEnabled, setTimerTopLevelItems, setActiveTimerId, setActiveTimerState, setMessages]);
 
+  useEffect(() => {
+    if (!initialRoomRestoredRef.current) return;
+    const migrationKey = 'stage-timer-countup-wrapup-defaults-v1';
+    if (readJsonStorage<boolean>(migrationKey, false)) return;
+
+    const latestScheduleMap = readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap);
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
+    const scheduleRoomIds = new Set(Object.entries(latestScheduleMap)
+      .filter(([key]) => key.startsWith('Midweek|') || key.startsWith('Weekend|'))
+      .map(([, roomId]) => roomId));
+    const isMeetingTimerRoom = (room: Room) => scheduleRoomIds.has(room.id) || /\b(midweek|weekend)\b/iu.test(room.name);
+    const timerIdsToUpdate = new Set(latestRooms
+      .filter(isMeetingTimerRoom)
+      .flatMap((room) => room.timerIds || []));
+    const previewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
+    Object.values(previewIds).forEach((id) => { if (id) timerIdsToUpdate.add(id); });
+
+    timerIdsToUpdate.forEach((id) => {
+      const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+      if (!settings) return;
+      writeStorageItem(`timerSettings_${id}`, JSON.stringify(withCountUpTimerDefaults(settings)));
+      const refresh = { targetId: id, command: 'REFRESH_SETTINGS' };
+      try { postSharedMessage(CONTROL_CHANNEL, refresh); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: refresh }));
+    });
+
+    const migratedRooms = latestRooms.map((room) => {
+      if (!isMeetingTimerRoom(room)) return room;
+      const timerSettings = { ...(room.timerSettings || {}) };
+      (room.timerIds || []).forEach((id) => {
+        const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, timerSettings[id] || null);
+        if (settings) timerSettings[id] = withCountUpTimerDefaults(settings);
+      });
+      return { ...room, timerSettings };
+    });
+    writeStorageItem('stage-timer-rooms', JSON.stringify(migratedRooms));
+    setRooms(migratedRooms);
+
+    migratedRooms.filter(isMeetingTimerRoom).forEach((room) => {
+      const sharedDefaultsKey = `timerSharedDefaults_${room.id}`;
+      const sharedDefaults = readJsonStorage<Record<string, any>>(sharedDefaultsKey, {});
+      writeStorageItem(sharedDefaultsKey, JSON.stringify({ ...sharedDefaults, mode: 'countup' }));
+    });
+    writeStorageItem(migrationKey, JSON.stringify(true));
+  }, [rooms, scheduleRoomMap, setRooms]);
+
   const saveRoom = useCallback(() => {
     if (!timerChangesNeedSave) {
       gooeyToast.info('No changes made', {
@@ -3277,13 +3320,13 @@ function App() {
     });
   }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, setMeetingWeekByType, createUndoSnapshot, restoreUndoSnapshot]);
 
-  const getMeetingScheduleWeeks = (type: MeetingType) => {
+  const getMeetingScheduleWeeks = useCallback((type: MeetingType) => {
     const weeks = workbookWeeksByType[type] || [];
     const hasImportedSchedule = weeks.some((week) => Boolean(scheduleRoomMap[`${type}|${week}`]));
     return hasImportedSchedule ? weeks : [];
-  };
+  }, [scheduleRoomMap, workbookWeeksByType]);
 
-  const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
+  const selectMeetingSchedule = useCallback((nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
     const key = `${nextMeeting}|${nextWeek}`;
     if (currentRoomId && getMeetingScheduleWeeks(meetingType).length > 0) {
       const map = { ...scheduleRoomMap, [`${meetingType}|${meetingWeek}`]: currentRoomId };
@@ -3319,16 +3362,33 @@ function App() {
     setLinkedTimerIds([]);
     setIsFollowEnabled(false);
     setIsRoomMenuOpen(keepRoomMenuOpen);
-  };
+  }, [currentRoomId, createDefaultPreviewTimer, getMeetingScheduleWeeks, loadRoom, meetingType, meetingWeek, rooms, saveRoom, scheduleRoomMap, setActiveTimerId, setActiveTimerState, setCurrentRoomId, setCurrentRoomName, setIsFollowEnabled, setIsNewRoomDraft, setIsRoomMenuOpen, setLinkedTimerIds, setMeetingType, setMeetingWeek, setMeetingWeekByType, setMessages, setScheduleRoomMap, setTimerHeaders, setTimerIds, setTimerTopLevelItems, timerChangesNeedSave]);
+
+  useEffect(() => {
+    if (!initialRoomRestoredRef.current) return undefined;
+
+    const advanceExpiredWeek = () => {
+      const availableWeeks = getMeetingScheduleWeeks(meetingType);
+      if (!availableWeeks.length) return;
+      const preferredWeek = meetingWeekByType[meetingType] || meetingWeek;
+      const nextWeek = getCurrentOrNextWorkbookWeek(availableWeeks, preferredWeek, new Date());
+      if (nextWeek && nextWeek !== meetingWeek) selectMeetingSchedule(meetingType, nextWeek);
+    };
+
+    advanceExpiredWeek();
+    const intervalId = window.setInterval(advanceExpiredWeek, 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [meetingType, meetingWeek, meetingWeekByType, workbookWeeksByType, scheduleRoomMap, getMeetingScheduleWeeks, selectMeetingSchedule]);
 
   const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string, workbookWeeks: string[]) => {
     removeDefaultPreviewTimer(meeting);
+    const normalizedSchedules = meeting === 'Midweek' ? addDefaultMidweekCounseling(schedules) : schedules;
     const nextScheduleMap = { ...readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap) };
     let nextRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
     const importedRooms = new Map<string, Room>();
     let totalTimerCount = 0;
 
-    for (const schedule of schedules) {
+    for (const schedule of normalizedSchedules) {
       const newTimerIds: string[] = [];
       const newHeaders: TimerHeader[] = [];
       const timerSettings: Record<string, any> = {};
@@ -3337,17 +3397,16 @@ function App() {
         for (const part of section.parts) {
           const id = createId('timer');
           const targetDuration = Math.max(1, part.minutes) * 60;
-          const settings = {
+          const settings = withCountUpTimerDefaults({
             title: part.title.trim(), speaker: '', notes: '', audioVolume: 0.5,
             beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
             warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
-            targetDuration, mode: 'countdown', fontHeight: 1.6, fontWidth: 1,
+            targetDuration, fontHeight: 1.6, fontWidth: 1,
             scheduledStart: null,
-            segments: [{ threshold: 60, color: '#f08c00' }, { threshold: 10, color: '#fa5252' }],
-          };
+          });
           writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
-          writeStorageItem(`timerSeconds_${id}`, JSON.stringify(targetDuration));
-          writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: targetDuration, isRunning: false, mode: 'countdown', lastUpdated: Date.now() }));
+          writeStorageItem(`timerSeconds_${id}`, JSON.stringify(0));
+          writeStorageItem(`timerSync_${id}`, JSON.stringify({ startTime: null, initialSeconds: 0, isRunning: false, mode: 'countup', lastUpdated: Date.now() }));
           newTimerIds.push(id);
           sectionTimerIds.push(id);
           timerSettings[id] = settings;
@@ -3380,8 +3439,8 @@ function App() {
     const activeRoom = importedRooms.get(activeWeek) || importedRooms.values().next().value as Room | undefined;
     if (!activeRoom) return;
     setMeetingType(meeting);
-    setMeetingWeek(activeWeek || schedules[0].week);
-    setMeetingWeekByType((current) => ({ ...current, [meeting]: activeWeek || schedules[0].week }));
+    setMeetingWeek(activeWeek || normalizedSchedules[0].week);
+    setMeetingWeekByType((current) => ({ ...current, [meeting]: activeWeek || normalizedSchedules[0].week }));
     updateWorkbookWeeks(meeting, workbookWeeks.length ? workbookWeeks : schedules.map((schedule) => schedule.week));
     setCurrentRoomId(activeRoom.id);
     setIsNewRoomDraft(false);
@@ -3399,7 +3458,7 @@ function App() {
     writeStorageItem('stage-timer-rooms', JSON.stringify(nextRooms));
     setRooms(nextRooms);
     setTimerChangesNeedSave(false);
-    gooeyToast.info('Workbook schedules imported', { description: `${totalTimerCount} timers saved for ${schedules.length} ${meeting} week${schedules.length === 1 ? '' : 's'}.`, showTimestamp: false });
+    gooeyToast.info('Workbook schedules imported', { description: `${totalTimerCount} timers saved for ${normalizedSchedules.length} ${meeting} week${normalizedSchedules.length === 1 ? '' : 's'}.`, showTimestamp: false });
   };
 
   const deleteWorkbookSchedules = (meeting: MeetingType, weeks: string[]) => {
@@ -3510,7 +3569,7 @@ function App() {
 
     // The scrubber always uses the countdown mapping - left is the target duration and right is zero.
     const targetCountdownSeconds = targetDuration * (1 - percentage);
-    const mode = settings?.mode || 'countdown';
+    const mode = settings?.mode || 'countup';
     const targetTimerSeconds = mode === 'countup'
       ? targetDuration - targetCountdownSeconds
       : targetCountdownSeconds;
@@ -3825,7 +3884,7 @@ function App() {
   const displaySettings = activeTimerState ? activeTimerState.settings : { title: 'No Active Timer', segments: [] };
 
   const activeTotalTime = Math.max(0, Number(activeTimerState?.settings?.targetDuration ?? 0));
-  const activeMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countdown';
+  const activeMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countup';
   const activeProgressTotal = activeTotalTime || 1;
   const rawCountdownSeconds = activeMode === 'countup'
     ? activeTotalTime - displaySeconds
@@ -4460,7 +4519,7 @@ function App() {
           let elapsed = 0;
           for (let i = 0; i < Math.min(activeIdx, timerIds.length); i++) elapsed += durations[i];
           const activeDuration = activeIdx >= 0 ? (durations[activeIdx] || 0) : 0;
-          const timelineMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countdown';
+          const timelineMode = activeTimerState?.syncState?.mode || activeTimerState?.settings?.mode || 'countup';
           if (activeIdx >= 0 && total > 0) {
             const activeProgress = timelineMode === 'countup'
               ? Math.max(0, Math.min(activeDuration, displaySeconds))

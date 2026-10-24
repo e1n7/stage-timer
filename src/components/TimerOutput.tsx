@@ -3,6 +3,7 @@ import { ProgressBar, ProgressSegment } from './ProgressBar';
 import { MessageStage } from './MessageStage';
 import { postSharedMessage, subscribeSharedChannel } from '../lib/sharedChannel';
 import { readJsonStorage } from '../lib/storage';
+import { getDefaultTimerSegments } from '../lib/timerDefaults';
 
 const CHANNEL_NAME = 'stage-timer-sync';
 const DEFAULT_TIME = 0;
@@ -81,15 +82,12 @@ export const TimerOutput = () => {
   const [messageSize, setMessageSize] = useState<number>(1.0);
   const [messageFontHeight, setMessageFontHeight] = useState<number>(1.0);
   const [messageFontWidth, setMessageFontWidth] = useState<number>(1.0);
-  const [segments, setSegments] = useState<ProgressSegment[]>([
-    { threshold: 60, color: '#f08c00' },
-    { threshold: 10, color: '#fa5252' }
-  ]);
+  const [segments, setSegments] = useState<ProgressSegment[]>(getDefaultTimerSegments);
 
   const syncStateRef = useRef({
     startTime: null as number | null,
     initialSeconds: DEFAULT_TIME,
-    mode: 'countdown' as 'countdown' | 'countup',
+    mode: 'countup' as 'countdown' | 'countup',
     lastUpdated: 0,
     isRunning: false,
     isEmpty: false
@@ -150,24 +148,25 @@ export const TimerOutput = () => {
       if ('startTime' in data || 'initialSeconds' in data || 'isRunning' in data) {
         if (data.type === 'force-sync' || (data.lastUpdated || 0) >= syncStateRef.current.lastUpdated) {
           const newIsRunning = !!data.isRunning;
+          const nextMode = data.mode === 'countdown' ? 'countdown' : 'countup';
           setIsRunning(newIsRunning);
           syncStateRef.current = {
             ...syncStateRef.current,
             startTime: data.startTime,
             initialSeconds: data.initialSeconds ?? DEFAULT_TIME,
-            mode: data.mode === 'countup' ? 'countup' : 'countdown',
+            mode: nextMode,
             lastUpdated: data.lastUpdated || Date.now(),
             isRunning: newIsRunning
           };
 
-          const normalizedInitialSeconds = data.mode === 'countup'
+          const normalizedInitialSeconds = nextMode === 'countup'
             ? Math.max(0, Number(data.initialSeconds) || 0)
             : (data.initialSeconds ?? DEFAULT_TIME);
           syncStateRef.current.initialSeconds = normalizedInitialSeconds;
 
           if (newIsRunning && data.startTime) {
             const elapsed = (Date.now() - data.startTime) / 1000;
-          const next = data.mode === 'countdown'
+          const next = nextMode === 'countdown'
             ? normalizedInitialSeconds - elapsed
             : normalizedInitialSeconds + elapsed;
             setSeconds(Math.round(next * 10) / 10);
