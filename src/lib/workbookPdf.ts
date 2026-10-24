@@ -448,15 +448,19 @@ export function makeWeekendSections(talkTitle = 'Public Talk', studyTitle = 'Wat
   ] satisfies WorkbookSection[];
 }
 
-export function extractWorkbookWeeks(text: string): string[] {
+export function extractWorkbookWeekPageNumbers(text: string): Array<{ week: string; pageNumber: number }> {
   const year = getYear(text);
-  const pageWeeks = text.split(/\f/)
-    .map((page) => {
+  return text.split(/\f/)
+    .map((page, pageIndex) => {
       const lines = page.split(/\r?\n/).map(cleanLine).filter(Boolean);
-      return isStandalonePageNumber(lines[0]) ? null : parseWeekHeader(lines.slice(0, 8).join('\n'), year);
+      const week = isStandalonePageNumber(lines[0]) ? null : parseWeekHeader(lines.slice(0, 8).join('\n'), year);
+      return week ? { week, pageNumber: pageIndex + 1 } : null;
     })
-    .filter((week): week is string => Boolean(week));
-  return [...new Set(pageWeeks)];
+    .filter((entry): entry is { week: string; pageNumber: number } => Boolean(entry));
+}
+
+export function extractWorkbookWeeks(text: string): string[] {
+  return [...new Set(extractWorkbookWeekPageNumbers(text).map(({ week }) => week))];
 }
 
 export function extractWeekendWeeks(text: string): string[] {

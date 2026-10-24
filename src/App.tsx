@@ -74,20 +74,6 @@ const getCurrentWorkbookWeek = () => {
   return `Week of ${monthDay(monday)} – ${monthDay(sunday)}, ${sunday.getFullYear()}`;
 };
 
-const getWorkbookWeekOptions = () => {
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  return Array.from({ length: 53 }, (_, index) => {
-    const start = new Date(monday);
-    start.setDate(monday.getDate() + (index - 26) * 7);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    const monthDay = (date: Date) => date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    return `Week of ${monthDay(start)} – ${monthDay(end)}, ${end.getFullYear()}`;
-  });
-};
-
 const InfoHint = ({ text }: { text: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -2035,8 +2021,14 @@ function App() {
   const [messageShownId, setMessageShownId] = useLocalStorage<string | null>('stage-timer-message-shown-id', null);
   const [meetingType, setMeetingType] = useLocalStorage<MeetingType>('stage-timer-meeting-type', 'Midweek');
   const [meetingWeek, setMeetingWeek] = useLocalStorage<string>('stage-timer-meeting-week', getCurrentWorkbookWeek);
+  const [meetingWeekByType, setMeetingWeekByType] = useLocalStorage<Partial<Record<MeetingType, string>>>('stage-timer-meeting-weeks', {});
+  const [workbookWeeksByType, setWorkbookWeeksByType] = useLocalStorage<Partial<Record<MeetingType, string[]>>>('stage-timer-workbook-weeks', {});
   const [scheduleRoomMap, setScheduleRoomMap] = useLocalStorage<Record<string, string>>('stage-timer-schedule-rooms', {});
   const [isWorkbookImportOpen, setIsWorkbookImportOpen] = useState(false);
+  const updateWorkbookWeeks = useCallback((type: MeetingType, weeks: string[]) => {
+    setWorkbookWeeksByType((current) => ({ ...current, [type]: weeks }));
+    if (!weeks.length) setMeetingWeekByType((current) => ({ ...current, [type]: getCurrentWorkbookWeek() }));
+  }, [setMeetingWeekByType, setWorkbookWeeksByType]);
   const topLevelItems = useMemo(() => [
     ...timerTopLevelItems.filter((item, index, items) => {
       if (items.indexOf(item) !== index) return false;
@@ -3129,6 +3121,7 @@ function App() {
     const nextScheduleMap = { ...scheduleRoomMap, [`${meetingType}|${meetingWeek}`]: roomId };
     writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(nextScheduleMap));
     setScheduleRoomMap(nextScheduleMap);
+    setMeetingWeekByType((current) => ({ ...current, [meetingType]: meetingWeek }));
     // Re-read the latest room list before saving so a stale tab cannot replace
     // rooms created or updated by another tab since this tab last rendered.
     const nextRooms = mergeItemById(latestRooms, roomData);
@@ -3146,7 +3139,15 @@ function App() {
       fillColor: '#ffffff',
       showTimestamp: false,
     });
-  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, createUndoSnapshot, restoreUndoSnapshot]);
+  }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, setMeetingWeekByType, createUndoSnapshot, restoreUndoSnapshot]);
+
+  const getMeetingScheduleWeeks = (type: MeetingType, map = scheduleRoomMap) => {
+    const workbookWeeks = workbookWeeksByType[type];
+    if (workbookWeeks) return workbookWeeks;
+    return Object.keys(map)
+      .filter((key) => key.startsWith(`${type}|`))
+      .map((key) => key.slice(type.length + 1));
+  };
 
   const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string) => {
     const key = `${nextMeeting}|${nextWeek}`;
@@ -3158,6 +3159,7 @@ function App() {
     if (currentRoomId && timerChangesNeedSave) saveRoom();
     setMeetingType(nextMeeting);
     setMeetingWeek(nextWeek);
+    setMeetingWeekByType((current) => ({ ...current, [nextMeeting]: nextWeek }));
     const mappedRoomId = scheduleRoomMap[key];
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
     const existing = mappedRoomId ? latestRooms.find((room) => room.id === mappedRoomId) : undefined;
@@ -3180,7 +3182,7 @@ function App() {
     setIsFollowEnabled(false);
   };
 
-  const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string) => {
+  const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string, workbookWeeks: string[]) => {
     const nextScheduleMap = { ...readJsonStorage<Record<string, string>>('stage-timer-schedule-rooms', scheduleRoomMap) };
     let nextRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
     const importedRooms = new Map<string, Room>();
@@ -3239,6 +3241,8 @@ function App() {
     if (!activeRoom) return;
     setMeetingType(meeting);
     setMeetingWeek(activeWeek || schedules[0].week);
+    setMeetingWeekByType((current) => ({ ...current, [meeting]: activeWeek || schedules[0].week }));
+    updateWorkbookWeeks(meeting, workbookWeeks.length ? workbookWeeks : schedules.map((schedule) => schedule.week));
     setCurrentRoomId(activeRoom.id);
     setIsNewRoomDraft(false);
     setCurrentRoomName(activeRoom.name);
@@ -3263,6 +3267,12 @@ function App() {
     const scheduleKeys = new Set(weeks.map((week) => `${meeting}|${week}`));
     const mappedRoomIds = new Set([...scheduleKeys].map((key) => nextScheduleMap[key]).filter((id): id is string => Boolean(id)));
     scheduleKeys.forEach((key) => { delete nextScheduleMap[key]; });
+    const remainingWeeks = getMeetingScheduleWeeks(meeting, nextScheduleMap);
+    const storedWeek = meetingWeekByType[meeting];
+    const nextPreferredWeek = storedWeek && remainingWeeks.includes(storedWeek)
+      ? storedWeek
+      : remainingWeeks[0] || getCurrentWorkbookWeek();
+    setMeetingWeekByType((current) => ({ ...current, [meeting]: nextPreferredWeek }));
     const roomIdsStillScheduled = new Set(Object.values(nextScheduleMap));
     const roomIdsToDelete = new Set([...mappedRoomIds].filter((id) => !roomIdsStillScheduled.has(id)));
     const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', rooms);
@@ -3292,9 +3302,11 @@ function App() {
       setTimerChangesNeedSave(false);
       if (fallbackEntry && fallbackRoom) {
         setMeetingWeek(fallbackEntry[0].slice(prefix.length));
+        setMeetingWeekByType((current) => ({ ...current, [meeting]: fallbackEntry[0].slice(prefix.length) }));
         loadRoom(fallbackRoom);
       } else {
         setMeetingWeek(getCurrentWorkbookWeek());
+        setMeetingWeekByType((current) => ({ ...current, [meeting]: getCurrentWorkbookWeek() }));
         setCurrentRoomId(null);
         setCurrentRoomName(`${meeting} Meeting`);
         setIsNewRoomDraft(true);
@@ -3819,14 +3831,16 @@ function App() {
   const activeDragHeader = activeDragId?.startsWith('header:')
     ? timerHeaders.find(header => `header:${header.id}` === activeDragId) || null
     : null;
-  const importedMeetingWeeks = Object.keys(scheduleRoomMap)
-    .filter((key) => key.startsWith(`${meetingType}|`))
-    .map((key) => key.slice(meetingType.length + 1));
+  const importedMeetingWeeks = getMeetingScheduleWeeks(meetingType);
+  const roomWeekOptions = importedMeetingWeeks.length
+    ? importedMeetingWeeks
+    : [meetingWeekByType[meetingType] || meetingWeek];
+  const displayedMeetingWeek = roomWeekOptions.includes(meetingWeek) ? meetingWeek : roomWeekOptions[0];
 
   return (
     <div className="app-shell flex h-screen flex-col bg-[#1a1a1a] text-white antialiased overflow-hidden">
       <GooeyToaster position="top-center" closeOnEscape={false} />
-      <WorkbookImportDialog open={isWorkbookImportOpen} onClose={() => setIsWorkbookImportOpen(false)} onImport={importWorkbookSchedule} onDeleteSchedules={deleteWorkbookSchedules} />
+      <WorkbookImportDialog open={isWorkbookImportOpen} currentMeeting={meetingType} currentWeek={meetingWeek} preferredWeekByType={meetingWeekByType} onClose={() => setIsWorkbookImportOpen(false)} onImport={importWorkbookSchedule} onDeleteSchedules={deleteWorkbookSchedules} onWorkbookWeeksChange={updateWorkbookWeeks} />
       {bulkDeleteOpen && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title">
         <div className="relative w-full max-w-md rounded-xl border border-[#444] bg-[#242424] px-5 pb-5 pt-5 shadow-2xl">
           <button type="button" onClick={() => setBulkDeleteOpen(false)} className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded text-[#999] transition-colors hover:bg-[#383838] hover:text-white" aria-label="Close bulk delete dialog" title="Close"><IconClose size={16} /></button>
@@ -3851,11 +3865,18 @@ function App() {
               <div ref={roomMenuRef} role="menu" onClick={(event) => event.stopPropagation()} className="fixed z-[1300] w-64 max-w-[calc(100vw-1rem)] rounded-md border border-[#444] bg-[#242424] p-2 shadow-xl" style={{ left: roomMenuPosition?.left ?? 8, top: roomMenuPosition?.top ?? 8, visibility: roomMenuPosition ? 'visible' : 'hidden' }}>
                 <div className="mb-1 px-1 text-xs text-[#aaa]">Room</div>
                 <div className="flex flex-col gap-1">
-                  {(['Midweek', 'Weekend'] as MeetingType[]).map((type) => <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, meetingWeek)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>)}
+                  {(['Midweek', 'Weekend'] as MeetingType[]).map((type) => {
+                    const availableWeeks = getMeetingScheduleWeeks(type);
+                    const preferredWeek = meetingWeekByType[type] || (type === meetingType ? meetingWeek : '');
+                    const nextWeek = availableWeeks.length
+                      ? availableWeeks.includes(preferredWeek) ? preferredWeek : availableWeeks[0]
+                      : preferredWeek || getCurrentWorkbookWeek();
+                    return <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, nextWeek)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
+                  })}
                 </div>
                 <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
-                  <select value={meetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
-                    {[...new Set([...getWorkbookWeekOptions(), ...importedMeetingWeeks, meetingWeek])].map((week) => <option key={week}>{week}</option>)}
+                  <select value={displayedMeetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
+                    {roomWeekOptions.map((week) => <option key={week}>{week}</option>)}
                   </select>
                 </label>
               </div>
