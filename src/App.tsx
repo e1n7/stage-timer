@@ -9,6 +9,7 @@ import { postSharedMessage, subscribeSharedChannel } from './lib/sharedChannel';
 import { readJsonStorage } from './lib/storage';
 import { mergeItemById } from './lib/roomStorage';
 import { getCanonicalTimerOrder } from './lib/timerOrder';
+import { getUndoBaselineTimerIds } from './lib/undoSnapshot';
 import WorkbookImportDialog from './components/WorkbookImportDialog';
 import { getWorkbookSectionColor, type MeetingType, type WorkbookSchedule } from './lib/workbookPdf';
 import {
@@ -2024,6 +2025,59 @@ function App() {
   const [meetingWeekByType, setMeetingWeekByType] = useLocalStorage<Partial<Record<MeetingType, string>>>('stage-timer-meeting-weeks', {});
   const [workbookWeeksByType, setWorkbookWeeksByType] = useLocalStorage<Partial<Record<MeetingType, string[]>>>('stage-timer-workbook-weeks', {});
   const [scheduleRoomMap, setScheduleRoomMap] = useLocalStorage<Record<string, string>>('stage-timer-schedule-rooms', {});
+  useEffect(() => {
+    const previewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
+    const latestRooms = readJsonStorage<Room[]>('stage-timer-rooms', []);
+    const migratedIds: Partial<Record<MeetingType, string>> = { ...previewIds };
+    const changedIds: string[] = [];
+
+    (['Midweek', 'Weekend'] as MeetingType[]).forEach((type) => {
+      const id = previewIds[type] || getStorageKeys()
+        .filter((key) => key.startsWith('timerSettings_'))
+        .map((key) => ({ id: key.slice('timerSettings_'.length), settings: readJsonStorage<Record<string, any> | null>(key, null) }))
+        .find(({ settings }) => settings?.title === `${type} Preview`)
+        ?.id;
+      if (!id) return;
+
+      const settings = readJsonStorage<Record<string, any> | null>(`timerSettings_${id}`, null);
+      if (!settings) return;
+      migratedIds[type] = id;
+      if (settings.title !== `${type} Preview`) return;
+
+      writeStorageItem(`timerSettings_${id}`, JSON.stringify({ ...settings, title: 'Timer 1' }));
+      changedIds.push(id);
+    });
+
+    if (!changedIds.length) {
+      if (JSON.stringify(migratedIds) !== JSON.stringify(previewIds)) {
+        writeStorageItem('stage-timer-default-preview-ids', JSON.stringify(migratedIds));
+      }
+      return;
+    }
+
+    const changedIdSet = new Set(changedIds);
+    const nextRooms = latestRooms.map((room) => {
+      let changed = false;
+      const timerSettings = { ...(room.timerSettings || {}) };
+      changedIds.forEach((id) => {
+        const settings = timerSettings[id];
+        const type = (['Midweek', 'Weekend'] as MeetingType[]).find((meeting) => migratedIds[meeting] === id);
+        if (settings && type && settings.title === `${type} Preview`) {
+          timerSettings[id] = { ...settings, title: 'Timer 1' };
+          changed = true;
+        }
+      });
+      return changed ? { ...room, timerSettings } : room;
+    });
+    writeStorageItem('stage-timer-default-preview-ids', JSON.stringify(migratedIds));
+    writeStorageItem('stage-timer-rooms', JSON.stringify(nextRooms));
+    setRooms(nextRooms);
+    changedIdSet.forEach((id) => {
+      const refresh = { targetId: id, command: 'REFRESH_SETTINGS' };
+      try { postSharedMessage(CONTROL_CHANNEL, refresh); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: refresh }));
+    });
+  }, [setRooms]);
   const [isWorkbookImportOpen, setIsWorkbookImportOpen] = useState(false);
   const updateWorkbookWeeks = useCallback((type: MeetingType, weeks: string[]) => {
     setWorkbookWeeksByType((current) => ({ ...current, [type]: weeks }));
@@ -2038,7 +2092,16 @@ function App() {
         .map((key) => ({ id: key.slice('timerSettings_'.length), settings: readJsonStorage<Record<string, any> | null>(key, null) }))
         .find(({ settings }) => settings?.title === `${type} Preview`)
         ?.id;
-      if (existingId && readJsonStorage<Record<string, any> | null>(`timerSettings_${existingId}`, null)) {
+      const existingSettings = existingId
+        ? readJsonStorage<Record<string, any> | null>(`timerSettings_${existingId}`, null)
+        : null;
+      if (existingId && existingSettings) {
+        if (existingSettings.title === `${type} Preview`) {
+          writeStorageItem(`timerSettings_${existingId}`, JSON.stringify({ ...existingSettings, title: 'Timer 1' }));
+          const refresh = { targetId: existingId, command: 'REFRESH_SETTINGS' };
+          try { postSharedMessage(CONTROL_CHANNEL, refresh); } catch { /* ignore */ }
+          window.dispatchEvent(new CustomEvent('stage-timer-control', { detail: refresh }));
+        }
         if (!previewIds[type]) writeStorageItem('stage-timer-default-preview-ids', JSON.stringify({ ...previewIds, [type]: existingId }));
         return existingId;
       }
@@ -2047,7 +2110,7 @@ function App() {
     const id = createId('timer');
     const targetDuration = 10 * 60;
     const settings = {
-      title: `${type} Preview`, speaker: '', notes: '', audioVolume: 0.5,
+      title: 'Timer 1', speaker: '', notes: '', audioVolume: 0.5,
       beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
       warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
       targetDuration, mode: 'countdown', fontHeight: 1.6, fontWidth: 1,
@@ -2065,7 +2128,7 @@ function App() {
     const previewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
     const configuredId = previewIds[type];
     const configuredSettings = configuredId ? readJsonStorage<Record<string, any> | null>(`timerSettings_${configuredId}`, null) : null;
-    const id = configuredSettings?.title === `${type} Preview` ? configuredId : getStorageKeys()
+    const id = configuredSettings ? configuredId : getStorageKeys()
       .filter((key) => key.startsWith('timerSettings_'))
       .map((key) => ({ id: key.slice('timerSettings_'.length), settings: readJsonStorage<Record<string, any> | null>(key, null) }))
       .find(({ settings }) => settings?.title === `${type} Preview`)
@@ -2076,6 +2139,13 @@ function App() {
     removeStorageItem(`timerSync_${id}`);
     removeStorageItem(`timerLog_${id}`);
     try { postSharedMessage(CONTROL_CHANNEL, { targetId: id, command: 'DESTROY' }); } catch { /* ignore */ }
+    const nextPreviewIds = { ...previewIds };
+    delete nextPreviewIds[type];
+    const created = readJsonStorage<Partial<Record<MeetingType, boolean>>>('stage-timer-default-preview-created', {});
+    const nextCreated = { ...created };
+    delete nextCreated[type];
+    writeStorageItem('stage-timer-default-preview-ids', JSON.stringify(nextPreviewIds));
+    writeStorageItem('stage-timer-default-preview-created', JSON.stringify(nextCreated));
   }, []);
   const topLevelItems = useMemo(() => [
     ...timerTopLevelItems.filter((item, index, items) => {
@@ -2198,7 +2268,9 @@ function App() {
   const hasUnsavedChanges = timerChangesNeedSave;
 
   const createUndoSnapshot = useCallback((roomsBeforeSave: Room[], roomBeforeSave?: Room): UndoSnapshot => {
-    const baselineTimerIds = roomBeforeSave?.timerIds || [];
+    const defaultPreviewIds = readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {});
+    const defaultPreviewTimerIds = new Set(Object.values(defaultPreviewIds).filter((id): id is string => Boolean(id)));
+    const baselineTimerIds = getUndoBaselineTimerIds(timerIds, roomBeforeSave?.timerIds, defaultPreviewIds);
     const affectedTimerIds = new Set([...baselineTimerIds, ...timerIds]);
     const timerStorage: Record<string, string | null> = {};
     const timerStateSuffixes = ['timerSeconds_', 'timerSync_', 'timerLog_'];
@@ -2206,7 +2278,9 @@ function App() {
     affectedTimerIds.forEach((id) => {
       const baselineSettings = roomBeforeSave?.timerSettings?.[id];
       timerStorage[`timerSettings_${id}`] = baselineSettings === undefined
-        ? null
+        ? defaultPreviewTimerIds.has(id) && typeof window !== 'undefined'
+          ? window.localStorage.getItem(`timerSettings_${id}`)
+          : null
         : JSON.stringify(baselineSettings);
       timerStateSuffixes.forEach((prefix) => {
         timerStorage[`${prefix}${id}`] = typeof window === 'undefined'
@@ -2231,17 +2305,17 @@ function App() {
         linkedTimerIds: room.linkedTimerIds ? [...room.linkedTimerIds] : [],
       })),
       currentRoomId: roomBeforeSave?.id || null,
-      currentRoomName: roomBeforeSave?.name || 'Unnamed',
+      currentRoomName: roomBeforeSave?.name || (baselineTimerIds.length ? currentRoomName : 'Unnamed'),
       timerIds: [...baselineTimerIds],
       timerHeaders: roomBeforeSave?.timerHeaders ? roomBeforeSave.timerHeaders.map(header => ({ ...header, timerIds: [...header.timerIds] })) : [],
-      timerTopLevelItems: roomBeforeSave?.timerTopLevelItems ? [...roomBeforeSave.timerTopLevelItems] : [],
+      timerTopLevelItems: roomBeforeSave?.timerTopLevelItems ? [...roomBeforeSave.timerTopLevelItems] : [...baselineTimerIds],
       activeTimerId: roomBeforeSave?.activeTimerId || baselineTimerIds[0] || '',
       messages: (roomBeforeSave?.messages || [{ id: '1', text: '', color: '#ffffff' }]).map(message => ({ ...message })),
       followActiveTimer: Boolean(roomBeforeSave?.followActiveTimer),
       linkedTimerIds: (roomBeforeSave?.linkedTimerIds || []).filter(id => baselineTimerIds.includes(id)),
       timerStorage,
     };
-  }, [timerIds]);
+  }, [timerIds, currentRoomName]);
 
   const restoreUndoSnapshot = useCallback(() => {
     const snapshot = undoSnapshotRef.current;
@@ -2294,6 +2368,9 @@ function App() {
     ];
     const knownTimerIds = new Set(rooms.flatMap(room => room.timerIds || []));
     savedTimerIds.forEach(id => knownTimerIds.add(id));
+    Object.values(readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {}))
+      .filter((id): id is string => Boolean(id))
+      .forEach(id => knownTimerIds.add(id));
 
     // Remove timer state created by an unsaved add/duplicate. Never remove a
     // timer that belongs to another saved room because IDs may be shared.
@@ -3059,6 +3136,9 @@ function App() {
     // legacy rooms, so loading one room must not erase another room's state.
     const knownTimerIds = new Set(rooms.flatMap(candidate => candidate.timerIds || []));
     (room.timerIds || []).forEach(id => knownTimerIds.add(id));
+    Object.values(readJsonStorage<Partial<Record<MeetingType, string>>>('stage-timer-default-preview-ids', {}))
+      .filter((id): id is string => Boolean(id))
+      .forEach(id => knownTimerIds.add(id));
     getStorageKeys().forEach(key => {
       if (key.startsWith('timerSettings_') || key.startsWith('timerSync_') || key.startsWith('timerSeconds_') || key.startsWith('timerLog_')) {
         const tid = key.substring(key.indexOf('_') + 1);
