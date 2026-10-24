@@ -53,13 +53,18 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     setDateFallbackNotice(false);
     setWorkbookSchedules([]);
     setWeek('');
-    setEditedSectionsByWeek({});
-    try {
-      const text = await readWorkbookPdf(file);
+      setEditedSectionsByWeek({});
+      try {
+        const text = await readWorkbookPdf(file);
       const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(text) : extractWorkbookWeeks(text);
-      setDateFallbackNotice(!extractedWeeks.length);
       const parsed = fileMeeting === 'Midweek' ? parseWorkbookSchedules(text) : [];
-      const availableWeeks = [...new Set(extractedWeeks)];
+      const looksLikeMidweekWorkbook = /treasures from god['’]?s word|apply yourself to the field ministry|living as christians|kayamanan mula sa salita|maging mahusay sa minist|pamumuhay bilang kristiyano|tesoros de la palabra|seamos mejores|nuestra vida cristiana|tesori della parola|efficaci nel ministero|vita cristiana/iu.test(text);
+      const looksLikeWeekendWorkbook = /watchtower|araling artikulo|article de estudio|artículo de estudio|estudio de la atalaya|study article|estudio bíblico/iu.test(text);
+      const hasWorkbookContent = fileMeeting === 'Midweek'
+        ? parsed.length > 0 && looksLikeMidweekWorkbook
+        : looksLikeWeekendWorkbook;
+      const availableWeeks = hasWorkbookContent ? [...new Set(extractedWeeks)] : [];
+      setDateFallbackNotice(!availableWeeks.length);
 
       if (persist) {
         const info = await saveWorkbookPdfLocally(file, fileMeeting);
