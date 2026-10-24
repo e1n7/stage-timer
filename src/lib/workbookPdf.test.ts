@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractWeekendWeeks, extractWorkbookWeeks, getWorkbookSectionColor, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
+import { extractWeekendWeeks, extractWorkbookWeeks, getWorkbookSectionColor, inspectMidweekWorkbook, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
 
 describe('workbook PDF parsing', () => {
   it('parses Tagalog headings and minute durations into the expected colored sections', () => {
@@ -316,5 +316,50 @@ describe('workbook PDF parsing', () => {
       ['Opening Comments', 1],
       ['Spiritual Gems', 10],
     ]);
+  });
+
+  it('accepts structurally parsed Midweek agendas without matching fixed heading phrases', () => {
+    const result = inspectMidweekWorkbook(`
+      A less familiar heading for the first section
+      1. First assignment (10 min.)
+      Practical communication skills
+      4. Second assignment (3 min.)
+      Community life and congregation study
+      7. Third assignment (15 min.)
+    `);
+
+    expect(result.issue).toBe('none');
+    expect(result.schedules[0]?.sections.flatMap((section) => section.parts.map((part) => part.minutes))).toEqual([10, 3, 15]);
+  });
+
+  it('reports unreadable text, missing agenda items, and headings that could not be extracted separately', () => {
+    expect(inspectMidweekWorkbook(' \n\t ').issue).toBe('no-text');
+    expect(inspectMidweekWorkbook('Week of October 26 – November 1, 2026\nOther document text').issue).toBe('no-agenda');
+
+    const missingHeading = inspectMidweekWorkbook('1. First assignment (10 min.)');
+    expect(missingHeading.issue).toBe('missing-headings');
+    expect(missingHeading.schedules[0]?.sections[0]?.title).toBe('Section 1');
+    expect(missingHeading.schedules[0]?.sections[0]?.parts[0]?.minutes).toBe(10);
+  });
+
+  it('parses French Midweek headings, date ranges, and minute labels without language-specific heading checks', () => {
+    const result = inspectMidweekWorkbook(`
+      Semaine du 7 au 13 septembre 2026
+      TRÉSORS DE LA PAROLE DE DIEU
+      1. Perles spirituelles (10 min)
+      APPLIQUE-TOI AU MINISTÈRE
+      4. Première visite (3 min)
+      VIE CHRÉTIENNE
+      7. Étude biblique de l’assemblée (30 min)
+    `);
+
+    expect(result.issue).toBe('none');
+    expect(result.schedules[0]?.week).toContain('7 au 13 septembre 2026');
+    expect(result.schedules[0]?.sections.map((section) => section.title)).toEqual([
+      'TRÉSORS DE LA PAROLE DE DIEU',
+      'APPLIQUE-TOI AU MINISTÈRE',
+      'VIE CHRÉTIENNE',
+    ]);
+    expect(result.schedules[0]?.sections.flatMap((section) => section.parts.map((part) => part.minutes))).toEqual([10, 3, 30]);
   });
 });

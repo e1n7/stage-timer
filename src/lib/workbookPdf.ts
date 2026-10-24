@@ -491,6 +491,20 @@ export function parseWorkbookSchedules(text: string): WorkbookSchedule[] {
   return parseSectionsFromPages(pages, getYear(text));
 }
 
+export type MidweekWorkbookIssue = 'none' | 'no-text' | 'no-agenda' | 'missing-headings';
+
+export function inspectMidweekWorkbook(text: string): { schedules: WorkbookSchedule[]; issue: MidweekWorkbookIssue } {
+  if (!text.trim()) return { schedules: [], issue: 'no-text' };
+
+  const schedules = parseWorkbookSchedules(text);
+  if (!schedules.some((schedule) => schedule.sections.some((section) => section.parts.length > 0))) {
+    return { schedules, issue: 'no-agenda' };
+  }
+
+  const hasMissingHeadings = schedules.some((schedule) => schedule.sections.some((section) => /^Section [1-3]$/iu.test(section.title.trim())));
+  return { schedules, issue: hasMissingHeadings ? 'missing-headings' : 'none' };
+}
+
 export function parseMidweekWorkbook(text: string): WorkbookSection[] {
   return parseWorkbookSchedules(text)[0]?.sections || [];
 }

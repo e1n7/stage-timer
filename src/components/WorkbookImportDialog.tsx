@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gooeyToast } from 'goey-toast';
-import { extractWeekendWeeks, extractWorkbookWeeks, makeWeekendSections, parseWorkbookSchedules, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
+import { extractWeekendWeeks, extractWorkbookWeeks, inspectMidweekWorkbook, makeWeekendSections, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
 import { addDefaultMidweekCounseling } from '../lib/workbookPdfDefaults';
 import { deleteWorkbookPdfLocally, loadWorkbookPdfsLocally, saveWorkbookPdfLocally, type SavedWorkbookPdf } from '../lib/workbookPdfStorage';
 
@@ -24,6 +24,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   const [editedSectionsByWeek, setEditedSectionsByWeek] = useState<Record<string, WorkbookSection[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [parseNotice, setParseNotice] = useState('');
   const [dateFallbackNotice, setDateFallbackNotice] = useState(false);
   const [savedPdfs, setSavedPdfs] = useState<Partial<Record<MeetingType, SavedWorkbookPdf>>>({});
   const [savedPdfChecked, setSavedPdfChecked] = useState(false);
@@ -51,32 +52,56 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     uploadLockRef.current = true;
     setLoading(true);
     setError('');
+    setParseNotice('');
     setDateFallbackNotice(false);
     setWorkbookSchedules([]);
     setWeek('');
-      setEditedSectionsByWeek({});
-      try {
-        const text = await readWorkbookPdf(file);
-      const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(text) : extractWorkbookWeeks(text);
-      const parsed = fileMeeting === 'Midweek' ? addDefaultMidweekCounseling(parseWorkbookSchedules(text)) : [];
-      const looksLikeMidweekWorkbook = /treasures from god['’]?s word|apply yourself to the field ministry|living as christians|kayamanan mula sa salita|maging mahusay sa minist|pamumuhay bilang kristiyano|tesoros de la palabra|seamos mejores|nuestra vida cristiana|tesori della parola|efficaci nel ministero|vita cristiana/iu.test(text);
-      const looksLikeWeekendWorkbook = /watchtower|araling artikulo|article de estudio|artículo de estudio|estudio de la atalaya|study article|estudio bíblico/iu.test(text);
-      const hasWorkbookContent = fileMeeting === 'Midweek'
-        ? parsed.length > 0 && looksLikeMidweekWorkbook
-        : looksLikeWeekendWorkbook;
-      const availableWeeks = hasWorkbookContent ? [...new Set(extractedWeeks)] : [];
-      setDateFallbackNotice(!availableWeeks.length);
-
-      if (persist) {
-        const info = await saveWorkbookPdfLocally(file, fileMeeting);
-        const saved = { ...info, file };
-        const nextSavedPdfs = { ...savedPdfsRef.current, [fileMeeting]: saved };
-        savedPdfsRef.current = nextSavedPdfs;
-        setSavedPdfs(nextSavedPdfs);
+    setEditedSectionsByWeek({});
+    let extractedText = '';
+    try {
+      extractedText = await readWorkbookPdf(file);
+      if (!extractedText.trim()) {
+        setError('No readable text could be extracted from this PDF. It may be scanned, image-only, or password-protected; use a text-based workbook PDF.');
+        return;
       }
 
+      const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(extractedText) : extractWorkbookWeeks(extractedText);
+      let parsed: WorkbookSchedule[] = [];
+      let midweekIssue: 'none' | 'no-text' | 'no-agenda' | 'missing-headings' = 'none';
+      if (fileMeeting === 'Midweek') {
+        const inspection = inspectMidweekWorkbook(extractedText);
+        midweekIssue = inspection.issue;
+        parsed = addDefaultMidweekCounseling(inspection.schedules);
+        if (inspection.issue === 'no-agenda') {
+          setError('Text was extracted, but no timed Midweek agenda items could be recognized. Confirm this is a Life and Ministry workbook PDF with selectable text.');
+        } else if (inspection.issue === 'missing-headings') {
+          setParseNotice('Agenda items were recognized, but one or more section headings could not be read. Generic section labels were assigned; review them before importing.');
+        }
+      }
+
+      const looksLikeWeekendWorkbook = /watchtower|araling artikulo|article de estudio|artículo de estudio|estudio de la atalaya|study article|estudio bíblico/iu.test(extractedText);
+      const availableWeeks = fileMeeting === 'Midweek'
+        ? [...new Set([...extractedWeeks, ...parsed.map((schedule) => schedule.week)])]
+        : looksLikeWeekendWorkbook ? [...new Set(extractedWeeks)] : [];
       const parsedByWeek = new Map(parsed.map((schedule) => [schedule.week, schedule.sections]));
       const schedules = availableWeeks.map((item) => ({ week: item, sections: parsedByWeek.get(item) || [] }));
+      setDateFallbackNotice(fileMeeting === 'Midweek' ? parsed.length > 0 && !extractedWeeks.length : !availableWeeks.length);
+
+      if (persist && !(fileMeeting === 'Midweek' && midweekIssue === 'no-agenda')) {
+        try {
+          const info = await saveWorkbookPdfLocally(file, fileMeeting);
+          const saved = { ...info, file };
+          const nextSavedPdfs = { ...savedPdfsRef.current, [fileMeeting]: saved };
+          savedPdfsRef.current = nextSavedPdfs;
+          setSavedPdfs(nextSavedPdfs);
+        } catch (cause) {
+          console.error(cause);
+          const message = 'The PDF was read, but could not be saved in local browser storage. Check the browser storage quota and try again.';
+          setError(message);
+          gooeyToast.info('Workbook PDF was not saved', { description: message, showTimestamp: false });
+        }
+      }
+
       setWorkbookSchedules(schedules);
       const roomPreferredWeek = preferredWeekByTypeRef.current[fileMeeting]
         || (currentMeetingRef.current === fileMeeting ? currentWeekRef.current : '');
@@ -87,14 +112,13 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         || '';
       previewWeekByMeetingRef.current[fileMeeting] = selectedWeek;
       setWeek(selectedWeek);
-      if (fileMeeting === 'Midweek' && schedules.length > 0 && schedules.every((schedule) => !schedule.sections.length)) {
-        setError('Invalid workbook PDF. Upload the correct file.');
-      }
     } catch (cause) {
       console.error(cause);
-      const message = persist
-        ? 'Could not read or save this PDF in local browser storage. Try another PDF or check the browser storage quota.'
-        : 'Could not read the saved workbook PDF. Delete it and upload the PDF again.';
+      const message = extractedText.trim()
+        ? 'PDF text was extracted, but schedule parsing failed. Try another text-based workbook PDF or re-upload the file.'
+        : persist
+          ? 'Could not extract text from this PDF. Make sure it is a valid, unlocked PDF with selectable text.'
+          : 'Could not read the saved workbook PDF. Delete it and upload the PDF again.';
       setError(message);
       if (persist) gooeyToast.info('Workbook PDF was not saved', { description: message, showTimestamp: false });
     } finally {
@@ -123,6 +147,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         setWeek('');
         setEditedSectionsByWeek({});
         setDateFallbackNotice(false);
+        setParseNotice('');
         onWorkbookWeeksChange(selectedMeeting, []);
       }
       if (active) setSavedPdfChecked(true);
@@ -171,6 +196,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       setWeek('');
       setEditedSectionsByWeek({});
       setError('');
+      setParseNotice('');
       setDateFallbackNotice(false);
       delete previewWeekByMeetingRef.current[meeting];
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -222,6 +248,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     setMeeting(value);
     meetingRef.current = value;
     setError('');
+    setParseNotice('');
     setWorkbookSchedules([]);
     setWeek('');
     setEditedSectionsByWeek({});
@@ -280,8 +307,9 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
             </select>
           </label>
         </div>
-        {dateFallbackNotice && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Invalid workbook PDF. Upload the correct file.</p>}
-        {missingWeeks.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Invalid workbook PDF. Upload the correct file.</p>}
+        {dateFallbackNotice && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">{meeting === 'Midweek' ? 'No week dates were detected. Parsed agendas are labeled sequentially (Week 1, Week 2, and so on); review them before importing.' : 'No week dates were detected. Check that this is the correct Watchtower PDF.'}</p>}
+        {missingWeeks.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Some dated weeks have no readable agenda items: {missingWeeks.join(', ')}. Only weeks with parsed timers can be imported.</p>}
+        {parseNotice && <p role="status" className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">{parseNotice}</p>}
         <label className="mt-4 block text-xs text-[#aaa]">{meeting === 'Midweek' ? 'Life and Ministry Meeting Workbook PDF' : 'The Watchtower PDF'}
           {savedPdf ? <span className="mt-1 flex h-10 items-center gap-2 rounded border border-[#444] bg-[#151515] px-2">
             <button type="button" title="Delete the saved PDF before uploading another" onClick={() => gooeyToast.info('A workbook PDF is already saved', { description: 'Delete the saved PDF before uploading another one.', showTimestamp: false })} className="min-w-0 flex-1 truncate text-left text-sm text-white hover:text-[#9fc7ff]">{savedPdf.name}</button>
