@@ -346,9 +346,9 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
             </div>)}
           </div>)}
         </div>}
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded border border-[#444] px-4 py-2 text-sm text-white hover:bg-[#333]">Cancel</button>
-          <button type="button" onClick={importSchedule} disabled={loading || !savedPdf || !workbookSchedules.length || (meeting === 'Midweek' && !workbookSchedules.some((schedule) => schedule.sections.length > 0))} className="rounded bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50">Import {workbookSchedules.length > 1 ? `${workbookSchedules.length} weeks` : 'schedule'}</button>
+        <div className="mt-5 flex gap-2">
+          <button type="button" onClick={onClose} className="flex-1 rounded border border-[#444] px-4 py-2 text-sm text-white hover:bg-[#333]">Cancel</button>
+          <button type="button" onClick={importSchedule} disabled={loading || !savedPdf || !workbookSchedules.length || (meeting === 'Midweek' && !workbookSchedules.some((schedule) => schedule.sections.length > 0))} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#4a9eff] transition-colors hover:border-[#2563eb] hover:bg-[#2563eb] hover:text-white focus-visible:border-[#2563eb] focus-visible:bg-[#2563eb] focus-visible:text-white active:bg-[#1d4ed8] active:text-white max-[639px]:text-[13px] disabled:cursor-not-allowed disabled:opacity-50">Import {workbookSchedules.length > 1 ? `${workbookSchedules.length} weeks` : 'schedule'}</button>
         </div>
       </div>
     </div>

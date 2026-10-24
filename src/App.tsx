@@ -1489,7 +1489,7 @@ const MessageRow = ({
         if (target.closest('button, textarea, input, select')) return;
         onSelect();
       }}
-      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'border border-[#22c55e] bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
+      className={`group relative w-full rounded-lg px-3 py-3 shadow-md transition-colors ${isSelected ? 'bg-[#245c3a]' : cardActive ? 'bg-[#b02a2a] border border-[#c43c3c]' : 'border border-[#333] bg-[#2d2d2d]'} ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'shadow-2xl ring-2 ring-white/20 opacity-60' : ''} ${isSelectMode ? 'cursor-pointer' : ''}`}
     >
       <button
         type="button"
@@ -1875,7 +1875,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
             onCloseActions();
             setIsTitleEditOpen(true);
           }}
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded transition-opacity hover:bg-white/10 group-hover:opacity-100 focus-visible:opacity-100 ${isHovered || isTitleEditOpen ? 'opacity-100' : 'opacity-0'}`}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded opacity-0 transition-opacity hover:bg-white/10 group-hover:opacity-100 focus-visible:opacity-100"
           title="Edit timer title"
           aria-label="Edit timer title"
         >
@@ -4374,7 +4374,7 @@ function App() {
                 type="button"
                 onClick={() => setIsBlackout(!isBlackout)}
                 title="Toggle blackout mode"
-                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold text-white transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isBlackout ? 'border-[#555] bg-[#383838]' : ''}`}
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg bg-transparent px-2 text-[13px] font-bold text-white transition-all hover:bg-[#2d2d2d] focus-visible:bg-[#2d2d2d] ${isBlackout ? 'bg-[#383838]' : ''}`}
               >
                 <span className={`inline-block h-2 w-2 rounded-full ${isBlackout ? 'bg-[#fa5252] shadow-[0_0_8px_rgba(250,82,82,0.8)]' : 'bg-[#555]'}`} /> Blackout
               </button>
@@ -4382,7 +4382,7 @@ function App() {
                 type="button"
                 onClick={handleFlash}
                 title="Flash active timer"
-                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2 text-[13px] font-bold transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isFlashing && isFlash ? 'border-[#555] bg-[#383838] text-[#ffd43b]' : 'text-white'}`}
+                className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 items-center gap-1.5 rounded-lg bg-transparent px-2 text-[13px] font-bold transition-all hover:bg-[#2d2d2d] focus-visible:bg-[#2d2d2d] ${isFlashing && isFlash ? 'bg-[#383838] text-[#ffd43b]' : 'text-white'}`}
               >
                 <IconFlash /> Flash
               </button>
@@ -4396,7 +4396,7 @@ function App() {
                     setIsTimersMenuOpen(!isTimersMenuOpen);
                   }}
                   title="Open timer options"
-                  className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 w-9 items-center justify-center rounded-lg border border-transparent bg-transparent text-white transition-all hover:border-[#444] hover:bg-[#2d2d2d] focus-visible:border-[#555] focus-visible:bg-[#2d2d2d] ${isTimersMenuOpen ? 'bg-[#383838] border-[#555]' : ''}`}
+                  className={`${isTimerSelectMode ? 'hidden' : 'flex'} h-8 w-9 items-center justify-center rounded-lg bg-transparent text-white transition-all hover:bg-[#2d2d2d] focus-visible:bg-[#2d2d2d] ${isTimersMenuOpen ? 'bg-[#383838]' : ''}`}
                 >
                   <IconMore size={20} />
                 </button>
@@ -4491,13 +4491,13 @@ function App() {
         <aside className={`min-w-0 flex-1 min-[1400px]:w-[340px] min-[1400px]:flex-none 2xl:w-[380px] shrink-0 flex-col border-t lg:border-t-0 lg:border-l border-[#333] px-4 py-3 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar ${mobileSection === 'messages' ? 'flex bg-[#141414] min-[1400px]:bg-transparent' : 'hidden'} max-lg:!flex min-[1400px]:flex`}>
           <div className="mb-4 flex items-center justify-between">{isMessageSelectMode ? (
             <div className="flex min-w-0 items-center gap-2">
-              <button type="button" onClick={() => { setIsMessageSelectMode(false); setSelectedMessageIds([]); }} title="Exit message selection mode" aria-label="Exit message selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
-              <button type="button" onClick={toggleAllMessages} title={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} aria-label={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconCheckbox checked={allMessagesSelected} size={13} /></button>
+              <button type="button" onClick={() => { setIsMessageSelectMode(false); setSelectedMessageIds([]); }} title="Exit message selection mode" aria-label="Exit message selection mode" className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconClose size={15} /></button>
+              <button type="button" onClick={toggleAllMessages} title={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} aria-label={allMessagesSelected ? 'Deselect all messages' : 'Select all messages'} className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#2d2d2d] text-white hover:bg-[#383838]"><IconCheckbox checked={allMessagesSelected} size={13} /></button>
               <span className="whitespace-nowrap text-[13px] text-[#8a8a8a]">{selectedMessageIds.length} of {messages.length} selected</span>
             </div>
           ) : (
             <div className="flex items-center gap-3"><h2 className="text-[17px] font-bold text-white">Messages</h2><button type="button" onClick={() => { setIsMessageSelectMode(true); setSelectedMessageIds([]); }} title="Select a message" className="group relative rounded px-1 py-1 text-[13px] font-normal text-[#666] transition-colors hover:bg-[#2d2d2d] hover:text-[#aaa]">Select<span className="pointer-events-none absolute left-0 top-full z-50 mt-1 whitespace-nowrap rounded border border-[#444] bg-[#242424] px-2 py-1 text-[11px] font-normal text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">Choose a message</span></button></div>
-          )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#444] bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} aria-label="Flash message" className={`flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded border border-transparent bg-transparent px-3 text-[13px] font-bold transition-colors hover:border-[#555] hover:bg-[#333] focus-visible:border-[#666] focus-visible:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'border-[#555] bg-[#333] text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash /><span>Flash</span></button>}</div>
+          )}{isMessageSelectMode ? <div className="flex items-center gap-2"><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => selectedMessageIds.forEach(id => duplicateMessage(id))} title="Duplicate selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2d2d2d] text-white hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconDuplicate size={15} /></button><button type="button" disabled={selectedMessageIds.length === 0} onClick={() => { selectedMessageIds.forEach(id => deleteMessage(id)); setSelectedMessageIds([]); }} title="Delete selected messages" className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2d2d2d] text-[#ff8b8b] hover:bg-[#383838] disabled:cursor-not-allowed disabled:opacity-40"><IconTrash size={15} /></button></div> : <button type="button" onClick={() => { if (messageShownId) { flashMessage(messageShownId); } }} aria-label="Flash message" className={`flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded bg-transparent px-3 text-[13px] font-bold transition-colors hover:bg-[#333] focus-visible:bg-[#333] ${isMessageFlashing && isMessageFlash ? 'bg-[#333] text-[#ffd43b]' : 'text-white'}`} title="Flash the currently shown message on Output"><IconFlash /><span>Flash</span></button>}</div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(event) => setActiveMessageDragId(String(event.active.id))} onDragCancel={() => setActiveMessageDragId(null)} onDragOver={handleMessageDragOver} onDragEnd={(event) => { handleMessageDragEnd(event); setActiveMessageDragId(null); }} modifiers={[restrictToVerticalAxis]}>
             <SortableContext items={messages.map(m => m.id)} strategy={verticalListSortingStrategy}>
               <div className="w-full space-y-2">
