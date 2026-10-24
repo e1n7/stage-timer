@@ -12,7 +12,12 @@ import { getCanonicalTimerOrder } from './lib/timerOrder';
 import { getUndoBaselineTimerIds } from './lib/undoSnapshot';
 import { getCurrentOrNextWorkbookWeek } from './lib/workbookWeek';
 import { addDefaultMidweekCounseling } from './lib/workbookPdfDefaults';
-import { getDefaultTimerSegments, withCountUpTimerDefaults } from './lib/timerDefaults';
+import {
+  getDefaultTimerSegments,
+  getDisplayedTimerThreshold,
+  getStoredTimerThreshold,
+  withCountUpTimerDefaults,
+} from './lib/timerDefaults';
 import WorkbookImportDialog from './components/WorkbookImportDialog';
 import { getWorkbookSectionColor, type MeetingType, type WorkbookSchedule } from './lib/workbookPdf';
 import {
@@ -618,7 +623,7 @@ const clampDigits = (val: string, max: number) => {
   return num;
 };
 
-const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: number) => void }) => {
+const ThresholdInput = ({ value, onChange, ariaLabel = 'Threshold', readOnly = false }: { value: number, onChange: (val: number) => void, ariaLabel?: string, readOnly?: boolean }) => {
   const m = Math.floor(value / 60);
   const s = value % 60;
   const secRef = useRef<HTMLInputElement>(null);
@@ -634,8 +639,9 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
-          aria-label="Threshold minutes"
+          aria-label={`${ariaLabel} minutes`}
           value={pad(m)}
+          readOnly={readOnly}
           onChange={(e) => {
             const val = e.target.value;
             update(clampDigits(val, 99), s);
@@ -653,8 +659,9 @@ const ThresholdInput = ({ value, onChange }: { value: number, onChange: (val: nu
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
-          aria-label="Threshold seconds"
+          aria-label={`${ariaLabel} seconds`}
           value={pad(s)}
+          readOnly={readOnly}
           onChange={(e) => update(m, clampDigits(e.target.value, 59))}
           onBlur={(e) => e.target.value = pad(clampDigits(e.target.value, 59))}
           onKeyDown={(e) => { if (e.key === 'Backspace' && e.currentTarget.value === '') { /* handle if needed */ } if (e.key === 'Enter') e.currentTarget.blur(); }}
@@ -921,26 +928,46 @@ interface TimerSettingsModalProps {
 
 const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm, onSettingsUpdate, selectedTimeZone }: TimerSettingsModalProps) => {
   const [localSettings, setLocalSettings] = useState(settings);
+  const [orangeThresholdEdited, setOrangeThresholdEdited] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setLocalSettings(settings);
+    if (isOpen) {
+      setLocalSettings(settings);
+      setOrangeThresholdEdited(false);
+    }
   }, [isOpen, settings]);
 
   if (!isOpen) return null;
 
   const segments = Array.isArray(localSettings.segments) ? localSettings.segments : [];
-  const defaultSegments = getDefaultTimerSegments(localSettings.targetDuration);
-  const yellowSegment = segments.find((s: any) => s.color === '#f08c00') || defaultSegments[0];
-  const redSegment = segments.find((s: any) => s.color === '#fa5252') || defaultSegments[1];
-  const previewTotalSeconds = Math.max(1, Number(localSettings.targetDuration) || 0);
-  const previewRedWidth = Math.min(100, (Math.max(0, Number(redSegment.threshold) || 0) / previewTotalSeconds) * 100);
-  const previewYellowWidth = Math.min(100 - previewRedWidth, (Math.max(0, Number(yellowSegment.threshold) - Number(redSegment.threshold)) / previewTotalSeconds) * 100);
-  const previewGreenWidth = Math.max(0, 100 - previewYellowWidth - previewRedWidth);
-  const updateWarningSegment = (color: string, threshold: number) => {
-    const index = segments.findIndex((segment: any) => segment.color === color);
+  const targetDuration = Math.max(0, Number(localSettings.targetDuration) || 0);
+  const warningMode = localSettings.mode === 'countup' ? 'countup' : 'countdown';
+  const defaultSegments = getDefaultTimerSegments(targetDuration);
+  const configuredOrangeSegment = segments.find((s: any) => s.color === '#f08c00');
+  const legacyDefaultThreshold = targetDuration > 0 && targetDuration <= 120
+    ? Math.floor(targetDuration / 2)
+    : 120;
+  const usesLegacyDefault = !orangeThresholdEdited
+    && configuredOrangeSegment
+    && Number(configuredOrangeSegment.threshold) === legacyDefaultThreshold;
+  const orangeSegment = usesLegacyDefault
+    ? { ...configuredOrangeSegment, threshold: defaultSegments[0].threshold }
+    : configuredOrangeSegment || defaultSegments[0];
+  const redSegment = { threshold: 0, color: '#fa5252' };
+  const orangeThreshold = getDisplayedTimerThreshold(orangeSegment.threshold, targetDuration, warningMode);
+  const redThreshold = getDisplayedTimerThreshold(redSegment.threshold, targetDuration, warningMode);
+  const previewTotalSeconds = Math.max(1, targetDuration);
+  const previewWarningRemaining = targetDuration > 0
+    ? Math.max(0, Math.min(targetDuration, Number(orangeSegment.threshold) || 0))
+    : 0;
+  const previewRedWidth = 0;
+  const previewOrangeWidth = Math.min(100, (previewWarningRemaining / previewTotalSeconds) * 100);
+  const previewGreenWidth = Math.max(0, 100 - previewOrangeWidth - previewRedWidth);
+  const updateOrangeWarningSegment = (threshold: number) => {
+    const index = segments.findIndex((segment: any) => segment.color === '#f08c00');
     const nextSegments = index >= 0
       ? segments.map((segment: any, segmentIndex: number) => segmentIndex === index ? { ...segment, threshold } : segment)
-      : [...segments, { color, threshold }];
+      : [...segments, { color: '#f08c00', threshold }];
     setLocalSettings({ ...localSettings, segments: nextSegments });
   };
   const startTimeDescription = 'Adjust the time or date to schedule it directly.';
@@ -1040,7 +1067,7 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           <div className="h-2 w-full overflow-hidden rounded-full bg-[#333]">
             <div className="flex h-full w-full" aria-label="Configured timer color preview">
               <div className="h-full" style={{ width: `${previewGreenWidth}%`, backgroundColor: '#22c55e' }} />
-              <div className="h-full" style={{ width: `${previewYellowWidth}%`, backgroundColor: yellowSegment.color }} />
+              <div className="h-full" style={{ width: `${previewOrangeWidth}%`, backgroundColor: orangeSegment.color }} />
               <div className="h-full" style={{ width: `${previewRedWidth}%`, backgroundColor: redSegment.color }} />
             </div>
           </div>
@@ -1053,16 +1080,22 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
               <div className="h-3 w-3 rounded-full bg-[#f08c00]" />
               <span className="w-16 text-[13px] text-white">Yellow</span>
               <ThresholdInput
-                value={yellowSegment.threshold}
-                onChange={(val) => updateWarningSegment('#f08c00', val)}
+                value={orangeThreshold}
+                ariaLabel="Warning threshold"
+                onChange={(val) => {
+                  setOrangeThresholdEdited(true);
+                  updateOrangeWarningSegment(getStoredTimerThreshold(val, targetDuration, warningMode));
+                }}
               />
             </div>
             <div className="flex items-center gap-3 py-1.5 border-b border-[#333]/30">
               <div className="h-3 w-3 rounded-full bg-[#fa5252]" />
               <span className="w-16 text-[13px] text-white">Red</span>
               <ThresholdInput
-                value={redSegment.threshold}
-                onChange={(val) => updateWarningSegment('#fa5252', val)}
+                value={redThreshold}
+                ariaLabel="Red threshold"
+                onChange={() => {}}
+                readOnly
               />
             </div>
             <div className="flex items-center gap-3 py-1.5">
@@ -1072,7 +1105,16 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
           </div>
         </div>
 
-        <div className="mt-4 flex flex-row gap-2 sm:gap-3"><button type="button" onClick={onClose} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#383838] max-[639px]:text-[13px]">Cancel</button><button type="button" onClick={() => { onConfirm?.(localSettings); onClose(); }} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] focus-visible:text-white active:bg-[#2f9e44] active:text-white max-[639px]:text-[13px]"><span className="sm:hidden">Confirm</span><span className="hidden sm:inline">Confirm</span></button></div>
+        <div className="mt-4 flex flex-row gap-2 sm:gap-3"><button type="button" onClick={onClose} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#383838] max-[639px]:text-[13px]">Cancel</button><button type="button" onClick={() => {
+          const orangeThresholdForStorage = getStoredTimerThreshold(orangeThreshold, targetDuration, warningMode);
+          const confirmedSegments = [
+            ...segments.filter((segment: any) => segment.color !== '#f08c00' && segment.color !== '#fa5252'),
+            { ...orangeSegment, threshold: orangeThresholdForStorage, color: '#f08c00' },
+            { ...redSegment, threshold: 0 },
+          ];
+          onConfirm?.({ ...localSettings, segments: confirmedSegments });
+          onClose();
+        }} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#22c55e] transition-colors hover:border-[#2f9e44] hover:bg-[#2f9e44] hover:text-white focus-visible:border-[#2f9e44] focus-visible:bg-[#2f9e44] focus-visible:text-white active:bg-[#2f9e44] active:text-white max-[639px]:text-[13px]"><span className="sm:hidden">Confirm</span><span className="hidden sm:inline">Confirm</span></button></div>
             </div>
       </div>
     </ModalPortal>
@@ -2947,7 +2989,12 @@ function App() {
         scheduledStart: null,
         segments: getDefaultTimerSegments(600)
       };
-      const merged = { ...defaults, ...shared, mode: 'countup' };
+      const merged = {
+        ...defaults,
+        ...shared,
+        mode: 'countup',
+        segments: getDefaultTimerSegments(Number(shared.targetDuration ?? defaults.targetDuration)),
+      };
       writeStorageItem(`timerSettings_${newId}`, JSON.stringify(merged));
       writeStorageItem(`timerSeconds_${newId}`, JSON.stringify(0));
       writeStorageItem(`timerSync_${newId}`, JSON.stringify({
