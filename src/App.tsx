@@ -3197,7 +3197,11 @@ function App() {
     });
   }, [currentRoomId, currentRoomName, rooms, timerIds, timerHeaders, topLevelItems, activeTimerId, messages, isFollowEnabled, linkedTimerIds, timerChangesNeedSave, meetingType, meetingWeek, scheduleRoomMap, setCurrentRoomId, setRooms, setScheduleRoomMap, setMeetingWeekByType, createUndoSnapshot, restoreUndoSnapshot]);
 
-  const getMeetingScheduleWeeks = (type: MeetingType) => workbookWeeksByType[type] || [];
+  const getMeetingScheduleWeeks = (type: MeetingType) => {
+    const weeks = workbookWeeksByType[type] || [];
+    const hasImportedSchedule = weeks.some((week) => Boolean(scheduleRoomMap[`${type}|${week}`]));
+    return hasImportedSchedule ? weeks : [];
+  };
 
   const selectMeetingSchedule = (nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
     const key = `${nextMeeting}|${nextWeek}`;

@@ -59,9 +59,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(text) : extractWorkbookWeeks(text);
       setDateFallbackNotice(!extractedWeeks.length);
       const parsed = fileMeeting === 'Midweek' ? parseWorkbookSchedules(text) : [];
-      const availableWeeks = extractedWeeks.length
-        ? [...new Set(extractedWeeks)]
-        : parsed.length ? parsed.map((schedule) => schedule.week) : ['Week 1'];
+      const availableWeeks = [...new Set(extractedWeeks)];
 
       if (persist) {
         const info = await saveWorkbookPdfLocally(file, fileMeeting);
@@ -73,7 +71,6 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
 
       const parsedByWeek = new Map(parsed.map((schedule) => [schedule.week, schedule.sections]));
       const schedules = availableWeeks.map((item) => ({ week: item, sections: parsedByWeek.get(item) || [] }));
-      onWorkbookWeeksChange(fileMeeting, availableWeeks);
       setWorkbookSchedules(schedules);
       const roomPreferredWeek = preferredWeekByTypeRef.current[fileMeeting]
         || (currentMeetingRef.current === fileMeeting ? currentWeekRef.current : '');
@@ -84,8 +81,8 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         || '';
       previewWeekByMeetingRef.current[fileMeeting] = selectedWeek;
       setWeek(selectedWeek);
-      if (fileMeeting === 'Midweek' && schedules.every((schedule) => !schedule.sections.length)) {
-        setError('No timed Midweek parts were recognized. Review the file or try a text-based workbook.');
+      if (fileMeeting === 'Midweek' && schedules.length > 0 && schedules.every((schedule) => !schedule.sections.length)) {
+        setError('Invalid workbook PDF. Upload the correct file.');
       }
     } catch (cause) {
       console.error(cause);
@@ -98,7 +95,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       uploadLockRef.current = false;
       setLoading(false);
     }
-  }, [onWorkbookWeeksChange]);
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -276,8 +273,8 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
             </select>
           </label>
         </div>
-        {dateFallbackNotice && workbookSchedules.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Printed week dates were not recognized, so sequential week labels were created for this PDF.</p>}
-        {missingWeeks.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">No timers were recognized for {missingWeeks.join('; ')}. Those weeks are skipped so existing schedules are not replaced with blank ones.</p>}
+        {dateFallbackNotice && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Invalid workbook PDF. Upload the correct file.</p>}
+        {missingWeeks.length > 0 && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Invalid workbook PDF. Upload the correct file.</p>}
         <label className="mt-4 block text-xs text-[#aaa]">{meeting === 'Midweek' ? 'Life and Ministry Meeting Workbook PDF' : 'The Watchtower PDF'}
           {savedPdf ? <span className="mt-1 flex h-10 items-center gap-2 rounded border border-[#444] bg-[#151515] px-2">
             <button type="button" title="Delete the saved PDF before uploading another" onClick={() => gooeyToast.info('A workbook PDF is already saved', { description: 'Delete the saved PDF before uploading another one.', showTimestamp: false })} className="min-w-0 flex-1 truncate text-left text-sm text-white hover:text-[#9fc7ff]">{savedPdf.name}</button>
