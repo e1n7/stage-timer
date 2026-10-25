@@ -32,8 +32,8 @@ export const TimerOutput = () => {
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const [blackout, setBlackout] = useState<boolean>(false);
   const [isEmpty, setIsEmpty] = useState<boolean>(false);
-  const [fontHeight, setFontHeight] = useState<number>(1.6);
-  const [fontWidth, setFontWidth] = useState<number>(1.0);
+  const [fontHeight, setFontHeight] = useState<number>(2.4);
+  const [fontWidth, setFontWidth] = useState<number>(1.4);
   const [messageText, setMessageText] = useState<string>('');
   const [messageColor, setMessageColor] = useState<string>('#ffffff');
   const [messageBold, setMessageBold] = useState<boolean>(false);
@@ -109,8 +109,8 @@ export const TimerOutput = () => {
 
       if ('totalTime' in data) setTotalTime(Math.max(0, Number(data.totalTime) || 0));
       if ('segments' in data) setSegments(Array.isArray(data.segments) ? data.segments : []);
-      if ('fontHeight' in data) setFontHeight(data.fontHeight || 1.6);
-      if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.0);
+      if ('fontHeight' in data) setFontHeight(data.fontHeight || 2.4);
+      if ('fontWidth' in data) setFontWidth(data.fontWidth || 1.4);
       if ('messageText' in data) {
         setMessageText(data.messageText || '');
         setMessageColor(data.messageColor || '#ffffff');
@@ -196,6 +196,7 @@ export const TimerOutput = () => {
 
   useEffect(() => {
     const tick = () => {
+      if (document.visibilityState === 'hidden') return;
       const { isRunning: syncIsRunning, startTime, initialSeconds, mode, isEmpty: syncIsEmpty } = syncStateRef.current;
       if (syncIsEmpty) {
         setSeconds(0);
@@ -213,13 +214,25 @@ export const TimerOutput = () => {
       }
     };
 
-    const interval = setInterval(tick, 100);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(tick, 250);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('pageshow', tick);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('pageshow', tick);
+    };
   }, [isRunning]);
 
   const progressSeconds = syncStateRef.current.mode === 'countup'
     ? Math.max(0, totalTime - seconds)
     : seconds;
+  const displayedTime = isEmpty
+    ? '00:00'
+    : syncStateRef.current.mode === 'countup'
+      ? formatClock(Math.max(0, seconds))
+      : (seconds < 0 ? `+${formatClock(Math.abs(seconds))}` : formatClock(seconds));
+  const displayFontWidth = displayedTime.split(':').length >= 3 ? 1.1 : fontWidth;
 
   const getTextColor = () => {
     if (isEmpty) return '#000000';
@@ -275,13 +288,11 @@ export const TimerOutput = () => {
                   textShadow: isFlashing && flash
                     ? `0 0 8px ${getTextColor()}`
                     : 'none',
-                  transform: `scale(${fontWidth}, ${fontHeight})`,
+                  transform: `scale(${displayFontWidth}, ${fontHeight})`,
                   transformOrigin: 'center center'
                 }}
               >
-                {isEmpty
-                  ? '00:00'
-                  : (syncStateRef.current.mode === 'countup' ? formatClock(Math.max(0, seconds)) : (seconds < 0 ? '+' + formatClock(Math.abs(seconds)) : formatClock(seconds)))}
+                {displayedTime}
               </div>
             </div>
           </div>

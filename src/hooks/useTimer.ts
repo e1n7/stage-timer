@@ -18,8 +18,8 @@ const DEFAULT_SETTINGS: TimerSettings = {
   historyLimit: 10,
   targetDuration: 0, // Default to 0:00 as requested
   mode: 'countup',
-  fontHeight: 1.6,
-  fontWidth: 1.0,
+  fontHeight: 2.4,
+  fontWidth: 1.4,
   scheduledStart: null,
   segments: getDefaultTimerSegments()
 };
@@ -238,6 +238,7 @@ export const useTimer = (id: string = 'default') => {
 
   useEffect(() => {
     const tick = () => {
+      if (document.visibilityState === 'hidden') return;
       const { isRunning, startTime, initialSeconds, mode } = syncState;
       let currentSeconds: number;
       if (!isRunning || startTime === null) {
@@ -260,8 +261,14 @@ export const useTimer = (id: string = 'default') => {
       checkWarnings(currentSeconds);
     };
     tick();
-    const interval = setInterval(tick, 100);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(tick, 250);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('pageshow', tick);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('pageshow', tick);
+    };
   }, [syncState, secondsKey, checkWarnings]);
 
   const recordLog = useCallback(() => {

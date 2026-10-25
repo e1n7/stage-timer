@@ -1043,13 +1043,13 @@ const TimerSettingsModal = ({ isOpen, onClose, settings, onApplyToAll, onConfirm
             </div>
             <div className="flex items-center gap-3">
               <span className="w-16 shrink-0 text-[11px] text-[#999]">Font Height</span>
-              <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
-              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+              <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 2.4} onChange={(e) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
+              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontHeight || 2.4).toFixed(1)}x</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-16 shrink-0 text-[11px] text-[#999]">Font Width</span>
-              <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
-              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
+              <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.4} onChange={(e) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(e.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
+              <span className="w-8 text-right font-mono text-[11px] text-white">{(localSettings.fontWidth || 1.4).toFixed(1)}x</span>
             </div>
             <div className="flex justify-end">
               <button type="button" onClick={() => { onApplyToAll?.({ mode: localSettings.mode, fontHeight: localSettings.fontHeight, fontWidth: localSettings.fontWidth }); onSettingsUpdate(); }} className="text-[11px] text-[#777] transition-colors hover:text-white hover:underline">Apply to all</button>
@@ -1264,15 +1264,15 @@ const QuickSettingsModal = ({ isOpen, onClose, settings, anchorRef, onApplyToAll
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
               <span className="text-[12px] text-[#999]">Font Height</span>
               <div className="flex items-center gap-3">
-                <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 1.6} onChange={(event) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 1.6).toFixed(1)}x</span>
+                <input type="range" min="0.5" max="3.0" step="0.1" value={localSettings.fontHeight || 2.4} onChange={(event) => setLocalSettings({ ...localSettings, fontHeight: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Height" />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontHeight || 2.4).toFixed(1)}x</span>
               </div>
             </div>
             <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-2">
               <span className="text-[12px] text-[#999]">Font Width</span>
               <div className="flex items-center gap-3">
-                <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.0} onChange={(event) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
-                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.0).toFixed(1)}x</span>
+                <input type="range" min="0.5" max="2.0" step="0.1" value={localSettings.fontWidth || 1.4} onChange={(event) => setLocalSettings({ ...localSettings, fontWidth: parseFloat(event.target.value) })} className="min-w-0 flex-1 accent-[#4a9eff]" aria-label="Font Width" />
+                <span className="w-10 text-right font-mono text-[12px] text-white">{(localSettings.fontWidth || 1.4).toFixed(1)}x</span>
               </div>
             </div>
             <div className="flex justify-end pt-0.5">
@@ -1392,8 +1392,9 @@ interface TimerHeader {
   color?: string;
 }
 
-const TimerHeaderRow = ({ header, canDrag = true, isDragOverlay = false }: {
+const TimerHeaderRow = ({ header, canDrag = true, isDragOverlay = false, colorOverride }: {
   header: TimerHeader;
+  colorOverride?: string;
   onToggle: () => void;
   onRename: (title: string) => void;
   onDelete: (deleteTimers: boolean) => void;
@@ -1413,7 +1414,7 @@ const TimerHeaderRow = ({ header, canDrag = true, isDragOverlay = false }: {
       ref={setNodeRef}
       {...(!isDragOverlay && canDrag ? attributes : {})}
       {...(!isDragOverlay && canDrag ? listeners : {})}
-      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 2 : 1, backgroundColor: header.color || getWorkbookSectionColor(header.title) }}
+      style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 2 : 1, backgroundColor: colorOverride || header.color || getWorkbookSectionColor(header.title) }}
       className={`mb-2 flex min-h-10 items-center rounded-md px-3 py-2 text-white ${isDragging && !isDragOverlay ? 'opacity-50' : ''} ${isDragOverlay ? 'opacity-60 shadow-2xl ring-2 ring-white/20' : ''}`}
       aria-label={header.title}
     >
@@ -1559,7 +1560,7 @@ const MessageRow = ({
                 <span className="mr-1 text-[10px] uppercase text-[#666]">Size</span>
                 <div className="flex items-center overflow-hidden rounded border border-[#444] bg-[#1c1c1c]">
                   <button type="button" onClick={() => onUpdateSize(msg.id, Math.max(0.1, Math.round((mSize - 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center border-r border-[#444] text-[#8a8a8a] hover:bg-[#252525] hover:text-white">-</button>
-                  <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.0)} className="h-7 w-7 bg-transparent text-center font-mono text-[11px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <input type="number" min="0.1" max="10" step="0.1" value={mSize} onChange={(e) => onUpdateSize(msg.id, parseFloat(e.target.value) || 1.4)} className="h-7 w-7 bg-transparent text-center font-mono text-[11px] text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                   <button type="button" onClick={() => onUpdateSize(msg.id, Math.min(10, Math.round((mSize + 0.1) * 10) / 10))} className="flex h-7 w-5 items-center justify-center border-l border-[#444] text-[#8a8a8a] hover:bg-[#252525] hover:text-white">+</button>
                 </div>
               </div>,
@@ -1634,17 +1635,18 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   const adjustTimer = useCallback((adjustment: number) => {
     const currentTargetDuration = Math.max(0, Number(settings.targetDuration) || 0);
     const nextTargetDuration = Math.max(0, currentTargetDuration + adjustment);
-    // Count-up keeps its live elapsed value. Countdown shifts its remaining
-    // value by the same amount as the total, preserving elapsed progress.
+    // While count-up is running, adjust only its target so live progress is
+    // preserved. When paused or idle, adjust the set value as well. Countdown
+    // shifts its remaining value by the same amount as its total in either state.
     const nextLiveSeconds = settings.mode === 'countup'
-      ? secondsRef.current
+      ? (isRunning ? secondsRef.current : Math.max(0, secondsRef.current + adjustment))
       : secondsRef.current + adjustment;
     updateSettings({ targetDuration: nextTargetDuration });
-    if (settings.mode !== 'countup') {
+    if (settings.mode !== 'countup' || !isRunning) {
       setTime(nextLiveSeconds);
     }
     onSettingsUpdate();
-  }, [onSettingsUpdate, settings.mode, settings.targetDuration, setTime, updateSettings]);
+  }, [isRunning, onSettingsUpdate, settings.mode, settings.targetDuration, setTime, updateSettings]);
 
   useEffect(() => {
     const handleInWindowResetAll = (event: Event) => {
@@ -2159,7 +2161,7 @@ function App() {
       title: 'Timer 1', speaker: '', notes: '', audioVolume: 0.5,
       beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
       warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
-      targetDuration, fontHeight: 1.6, fontWidth: 1,
+      targetDuration, fontHeight: 2.4, fontWidth: 1.4,
       scheduledStart: null,
     });
     writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
@@ -2258,6 +2260,7 @@ function App() {
   const [isMessageFlash, setIsMessageFlash] = useState(false);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
+  const roomNavigationConfirmedRef = useRef(false);
   const roomMenuAnchorRef = useRef<HTMLButtonElement>(null);
   const roomMenuRef = useRef<HTMLDivElement>(null);
   const roomMenuPosition = useAnchoredPopoverPosition(isRoomMenuOpen, roomMenuAnchorRef, roomMenuRef, 256, 'center', () => setIsRoomMenuOpen(false));
@@ -2984,8 +2987,8 @@ function App() {
         historyLimit: 10,
         targetDuration: 600,
         mode: 'countup',
-        fontHeight: 1.6,
-        fontWidth: 1.0,
+        fontHeight: 2.4,
+        fontWidth: 1.4,
         scheduledStart: null,
         segments: getDefaultTimerSegments(600)
       };
@@ -3411,6 +3414,22 @@ function App() {
     setIsRoomMenuOpen(keepRoomMenuOpen);
   }, [currentRoomId, createDefaultPreviewTimer, getMeetingScheduleWeeks, loadRoom, meetingType, meetingWeek, rooms, saveRoom, scheduleRoomMap, setActiveTimerId, setActiveTimerState, setCurrentRoomId, setCurrentRoomName, setIsFollowEnabled, setIsNewRoomDraft, setIsRoomMenuOpen, setLinkedTimerIds, setMeetingType, setMeetingWeek, setMeetingWeekByType, setMessages, setScheduleRoomMap, setTimerHeaders, setTimerIds, setTimerTopLevelItems, timerChangesNeedSave]);
 
+  const requestMeetingSchedule = useCallback((nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
+    const switchMeeting = () => {
+      roomNavigationConfirmedRef.current = false;
+      selectMeetingSchedule(nextMeeting, nextWeek, keepRoomMenuOpen);
+    };
+    if (activeTimerState?.isRunning && !roomNavigationConfirmedRef.current) {
+      gooeyToast.warning('Timer is running', {
+        description: 'Confirm before switching the meeting room. The timer will keep running in its current room.',
+        action: { label: 'Switch room', successLabel: 'Switching', onClick: switchMeeting },
+        showTimestamp: false,
+      });
+      return;
+    }
+    switchMeeting();
+  }, [activeTimerState?.isRunning, selectMeetingSchedule]);
+
   useEffect(() => {
     if (!initialRoomRestoredRef.current) return undefined;
 
@@ -3448,7 +3467,7 @@ function App() {
             title: part.title.trim(), speaker: '', notes: '', audioVolume: 0.5,
             beepOnReach: true, beepOnHalfTime: true, beepOnOneMinute: true,
             warningThreshold: 60, dangerThreshold: 0, historyLimit: 10,
-            targetDuration, fontHeight: 1.6, fontWidth: 1,
+            targetDuration, fontHeight: 2.4, fontWidth: 1.4,
             scheduledStart: null,
           });
           writeStorageItem(`timerSettings_${id}`, JSON.stringify(settings));
@@ -3699,8 +3718,8 @@ function App() {
         mode: activeTimerState.syncState.mode,
         timeZone: selectedTimeZone,
         segments: activeTimerState.settings.segments,
-        fontHeight: activeTimerState.settings.fontHeight || 1.6,
-        fontWidth: activeTimerState.settings.fontWidth || 1.0,
+        fontHeight: activeTimerState.settings.fontHeight || 2.4,
+        fontWidth: activeTimerState.settings.fontWidth || 1.4,
         title: activeTimerState.settings.title || '',
         blackout: isBlackout,
         // Only send the flash signal via explicit flash triggers, not continuous sync
@@ -3726,8 +3745,8 @@ function App() {
         mode: activeTimerState.syncState.mode,
         timeZone: selectedTimeZone,
         segments: activeTimerState.settings.segments,
-        fontHeight: activeTimerState.settings.fontHeight || 1.6,
-        fontWidth: activeTimerState.settings.fontWidth || 1.0,
+        fontHeight: activeTimerState.settings.fontHeight || 2.4,
+        fontWidth: activeTimerState.settings.fontWidth || 1.4,
         title: activeTimerState.settings.title || '',
         blackout: isBlackout,
         flash: isFlash,
@@ -4077,6 +4096,13 @@ function App() {
   const activeDragHeader = activeDragId?.startsWith('header:')
     ? timerHeaders.find(header => `header:${header.id}` === activeDragId) || null
     : null;
+  const getHeaderColorOverride = (headerId: string) => {
+    if (meetingType !== 'Weekend') return undefined;
+    const index = timerHeaders.findIndex((header) => header.id === headerId);
+    if (index === 0) return '#5d719e';
+    if (index === 1) return '#8e8e92';
+    return undefined;
+  };
   const importedMeetingWeeks = getMeetingScheduleWeeks(meetingType);
   const roomWeekOptions = importedMeetingWeeks;
   const displayedMeetingWeek = roomWeekOptions.includes(meetingWeek) ? meetingWeek : roomWeekOptions[0] || '';
@@ -4104,7 +4130,31 @@ function App() {
         <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto">
           <button type="button" onClick={saveRoom} title="Save room" className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${hasUnsavedChanges ? 'bg-[#4a3415]' : ''}`}><IconSave /> Save</button>
           <div className="relative">
-            <button ref={roomMenuAnchorRef} type="button" onClick={(event) => { event.stopPropagation(); setIsRoomMenuOpen((open) => !open); }} title="Choose meeting type and week" aria-label="Choose meeting type and week" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${isRoomMenuOpen ? 'bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
+            <button ref={roomMenuAnchorRef} type="button" onClick={(event) => {
+              event.stopPropagation();
+              if (isRoomMenuOpen) {
+                roomNavigationConfirmedRef.current = false;
+                setIsRoomMenuOpen(false);
+                return;
+              }
+              if (activeTimerState?.isRunning) {
+                gooeyToast.warning('Timer is running', {
+                  description: 'Confirm to open the Room menu before switching meetings.',
+                  action: {
+                    label: 'Continue',
+                    successLabel: 'Room menu opened',
+                    onClick: () => {
+                      roomNavigationConfirmedRef.current = true;
+                      setIsRoomMenuOpen(true);
+                    },
+                  },
+                  showTimestamp: false,
+                });
+                return;
+              }
+              roomNavigationConfirmedRef.current = false;
+              setIsRoomMenuOpen(true);
+            }} title="Choose meeting type and week" aria-label="Choose meeting type and week" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${isRoomMenuOpen ? 'bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && <ModalPortal>
               <div ref={roomMenuRef} role="menu" onClick={(event) => event.stopPropagation()} className="fixed z-[1300] w-64 max-w-[calc(100vw-1rem)] rounded-md border border-[#444] bg-[#242424] p-2 shadow-xl" style={{ left: roomMenuPosition?.left ?? 8, top: roomMenuPosition?.top ?? 8, visibility: roomMenuPosition ? 'visible' : 'hidden' }}>
                 <div className="mb-1 px-1 text-xs text-[#aaa]">Room</div>
@@ -4115,11 +4165,11 @@ function App() {
                     const nextWeek = availableWeeks.length
                       ? availableWeeks.includes(preferredWeek) ? preferredWeek : availableWeeks[0]
                       : preferredWeek || '';
-                    return <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, nextWeek, availableWeeks.length > 0)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
+                    return <button key={type} type="button" role="menuitem" onClick={() => requestMeetingSchedule(type, nextWeek, availableWeeks.length > 0)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
                   })}
                 </div>
                 {roomWeekOptions.length > 0 && <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
-                  <select value={displayedMeetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
+                  <select value={displayedMeetingWeek} onChange={(event) => requestMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
                     {roomWeekOptions.map((week) => <option key={week}>{week}</option>)}
                   </select>
                 </label>}
@@ -4435,6 +4485,7 @@ function App() {
                     const sectionTimerIds = header.timerIds.filter(id => timerIds.includes(id));
                     return <div key={header.id} className="space-y-0"><TimerHeaderRow
                       header={header}
+                      colorOverride={getHeaderColorOverride(header.id)}
                       canDrag
                       isSelectMode={isTimerSelectMode}
                       isSelected={selectedSectionIds.includes(header.id)}
@@ -4461,6 +4512,7 @@ function App() {
               {activeDragHeader ? (
                 <TimerHeaderRow
                   header={activeDragHeader}
+                  colorOverride={getHeaderColorOverride(activeDragHeader.id)}
                   canDrag
                   isSelectMode={isTimerSelectMode}
                   isSelected={selectedSectionIds.includes(activeDragHeader.id)}
