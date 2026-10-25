@@ -232,7 +232,9 @@ export const TimerOutput = () => {
     : syncStateRef.current.mode === 'countup'
       ? formatClock(Math.max(0, seconds))
       : (seconds < 0 ? `+${formatClock(Math.abs(seconds))}` : formatClock(seconds));
-  const displayFontWidth = displayedTime.split(':').length >= 3 ? 1.1 : fontWidth;
+  const displayFontWidth = displayedTime.split(':').length >= 3
+    ? Math.max(0.5, fontWidth - 0.3)
+    : fontWidth;
 
   const getTextColor = () => {
     if (isEmpty) return '#000000';
