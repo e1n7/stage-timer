@@ -396,7 +396,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         {sections.length > 0 && <div className="mt-4 space-y-3">
           <p className="text-xs text-[#aaa]">{partsCount} timer{partsCount === 1 ? '' : 's'} for {week || 'this week'}. Review or edit titles and durations before importing.</p>
           {sections.map((section, sectionIndex) => <div key={`${section.title}-${sectionIndex}`} className="rounded border border-[#393939] p-3">
-            <div className="mb-2 rounded px-3 py-2" style={{ backgroundColor: section.color }}>
+            <div className="mb-2 rounded px-3 py-2" style={{ backgroundColor: meeting === 'Weekend' && sectionIndex === 0 ? '#5d719e' : meeting === 'Weekend' && sectionIndex === 1 ? '#8e8e92' : section.color }}>
               <input aria-label="Section heading" value={section.title} onChange={(event) => updateSectionTitle(sectionIndex, event.target.value)} className="w-full border-0 bg-transparent p-0 text-sm font-semibold text-white outline-none focus:ring-0" />
             </div>
             {section.parts.map((part, partIndex) => <div key={`${part.title}-${partIndex}`} className="mb-2 flex gap-2 last:mb-0">
