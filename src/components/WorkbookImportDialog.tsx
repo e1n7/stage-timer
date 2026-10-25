@@ -31,6 +31,8 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   const [savedPdfChecked, setSavedPdfChecked] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
   const uploadLockRef = useRef(false);
   const savedPdfsRef = useRef<Partial<Record<MeetingType, SavedWorkbookPdf>>>({});
   const meetingRef = useRef(meeting);
@@ -42,7 +44,53 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   currentMeetingRef.current = currentMeeting;
   currentWeekRef.current = currentWeek;
   preferredWeekByTypeRef.current = preferredWeekByType;
+  onCloseRef.current = onClose;
   const savedPdf = savedPdfs[meeting] || null;
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const getFocusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => element.getClientRects().length > 0);
+    const focusable = getFocusable();
+    (focusable[0] || dialog).focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const currentFocusable = getFocusable();
+      if (!currentFocusable.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = currentFocusable[0];
+      const last = currentFocusable[currentFocusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    };
+  }, [open]);
 
   const processFile = useCallback(async (file: File, persist: boolean, fileMeeting: MeetingType) => {
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
@@ -237,7 +285,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       ...section,
       parts: section.parts.map((part, itemIndex) => itemIndex !== partIndex ? part : {
         ...part,
-        [field]: field === 'minutes' ? Math.max(1, Number(value) || 1) : value,
+        [field]: field === 'minutes' ? Math.min(60, Math.max(1, Number(value) || 1)) : value,
       }),
     });
     setEditedSectionsByWeek((current) => ({ ...current, [week]: updated }));
@@ -284,7 +332,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       setError('This week has no recognized timers. Select a week with parsed timers before importing.');
       return;
     }
-    if (hasNoParsedMidweekSchedules || schedules.some((schedule) => schedule.sections.some((section) => section.parts.some((part) => !part.title.trim() || part.minutes < 1)))) {
+    if (hasNoParsedMidweekSchedules || schedules.some((schedule) => schedule.sections.some((section) => section.parts.some((part) => !part.title.trim() || !Number.isFinite(part.minutes) || part.minutes < 1 || part.minutes > 60)))) {
       setError('Add or confirm a valid title and duration for every part before importing.');
       return;
     }
@@ -296,7 +344,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="workbook-import-title">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="workbook-import-title">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#444] bg-[#202020] p-5 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div><h2 id="workbook-import-title" className="text-lg font-semibold">Import PDF workbook</h2></div>

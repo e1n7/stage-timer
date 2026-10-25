@@ -5,7 +5,3 @@ export const mergeItemById = <T extends { id: string }>(items: T[], nextItem: T)
   else nextItems.push(nextItem);
   return nextItems;
 };
-
-export const mergeItemsById = <T extends { id: string }>(items: T[], nextItems: T[]): T[] => {
-  return nextItems.reduce(mergeItemById, items);
-};

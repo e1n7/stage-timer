@@ -51,18 +51,15 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     .sort((a, b) => b.threshold - a.threshold); // Descending (e.g., 60s, then 10s)
 
   const zones: { width: number; color: string }[] = [];
-  let lastThreshold = safeTotal;
 
   // 1. Green Zone (from total down to first threshold)
-  if (normalizedSegments.length > 0 && lastThreshold > normalizedSegments[0].threshold) {
+  if (normalizedSegments.length > 0 && safeTotal > normalizedSegments[0].threshold) {
     zones.push({
-      width: ((lastThreshold - normalizedSegments[0].threshold) / safeTotal) * 100,
+      width: ((safeTotal - normalizedSegments[0].threshold) / safeTotal) * 100,
       color: '#22c55e',
     });
-    lastThreshold = normalizedSegments[0].threshold;
   } else if (normalizedSegments.length === 0) {
     zones.push({ width: 100, color: '#22c55e' });
-    lastThreshold = 0;
   }
 
   // 2. Middle Zones (e.g., Orange)
@@ -75,19 +72,21 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         width: ((currentSeg.threshold - nextThreshold) / safeTotal) * 100,
         color: currentSeg.color
       });
-      lastThreshold = nextThreshold;
     }
   }
 
-  // 3. Final Zone if any (should already be covered by loop above, but for safety)
-  if (lastThreshold > 0 && zones.length > 0) {
-     // This part is actually handled by the loop (last segment to 0)
-  }
-
   return (
-    <div className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}>
+    <div
+      role="progressbar"
+      aria-label="Timer progress"
+      aria-valuemin={0}
+      aria-valuemax={safeTotal}
+      aria-valuenow={clampedCurrent}
+      aria-valuetext={`${Math.round(clampedCurrent)} of ${Math.round(safeTotal)} seconds`}
+      className={`relative w-full overflow-hidden bg-[#1c1c1c] ${height} ${className}`}
+    >
       {/* Background layer: All colored zones in their fixed positions */}
-      <div className="absolute inset-0 flex h-full w-full">
+      <div aria-hidden="true" className="absolute inset-0 flex h-full w-full">
         {zones.map((zone, index) => (
           <div
             key={`${zone.color}-${index}`}
@@ -99,6 +98,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
       {/* Countdown mask is the single rendering path for every timer mode. */}
       <div
+        aria-hidden="true"
         className="absolute inset-y-0 left-0 bg-[#141414] transition-[width] duration-100 ease-linear z-10"
         style={{ width: `${Math.max(0, Math.min(100, elapsedPercent))}%` }}
       />

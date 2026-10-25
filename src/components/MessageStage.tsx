@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export const MESSAGE_CANVAS = {
+const MESSAGE_CANVAS = {
   width: 1920,
   height: 1080,
 } as const;
@@ -95,6 +95,7 @@ export const MessageStage = ({
     <div
       ref={hostRef}
       className={`pointer-events-none overflow-hidden ${className}`}
+      role="region"
       aria-label="Message preview"
     >
       <div

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeItemById, mergeItemsById } from './roomStorage';
+import { mergeItemById } from './roomStorage';
 
 type TestRoom = {
   id: string;
@@ -51,16 +51,4 @@ describe('room save merge behavior', () => {
     ]);
   });
 
-  it('applies multiple tab operations in order without losing existing rooms', () => {
-    const latestStorageRooms = [room('room-a', 'Room A')];
-    const result = mergeItemsById(latestStorageRooms, [
-      room('room-b', 'Room B'),
-      room('room-a', 'Updated Room A'),
-    ]);
-
-    expect(result).toEqual([
-      room('room-a', 'Updated Room A'),
-      room('room-b', 'Room B'),
-    ]);
-  });
 });

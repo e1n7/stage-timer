@@ -249,7 +249,7 @@ export const TimerOutput = () => {
 
       <button
         onClick={toggleFullscreen}
-        className="absolute right-2 top-2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100"
+        className="absolute right-2 top-2 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white opacity-0 transition-all duration-300 hover:bg-white/20 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-white/80"
         aria-label="Toggle Fullscreen"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
@@ -310,5 +310,3 @@ export const TimerOutput = () => {
     </div>
   );
 };
-
-export { CHANNEL_NAME };

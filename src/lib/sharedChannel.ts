@@ -43,8 +43,3 @@ export const postSharedMessage = (name: string, data: unknown): void => {
     // Ignore unavailable or closed browser channels.
   }
 };
-
-export const closeSharedChannels = (): void => {
-  channels.forEach(({ channel }) => channel.close());
-  channels.clear();
-};
