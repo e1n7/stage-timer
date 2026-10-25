@@ -2260,7 +2260,6 @@ function App() {
   const [isMessageFlash, setIsMessageFlash] = useState(false);
   const [activeTimerState, setActiveTimerState] = useState<any>(null);
   const [isRoomMenuOpen, setIsRoomMenuOpen] = useState(false);
-  const roomNavigationConfirmedRef = useRef(false);
   const roomMenuAnchorRef = useRef<HTMLButtonElement>(null);
   const roomMenuRef = useRef<HTMLDivElement>(null);
   const roomMenuPosition = useAnchoredPopoverPosition(isRoomMenuOpen, roomMenuAnchorRef, roomMenuRef, 256, 'center', () => setIsRoomMenuOpen(false));
@@ -3414,22 +3413,6 @@ function App() {
     setIsRoomMenuOpen(keepRoomMenuOpen);
   }, [currentRoomId, createDefaultPreviewTimer, getMeetingScheduleWeeks, loadRoom, meetingType, meetingWeek, rooms, saveRoom, scheduleRoomMap, setActiveTimerId, setActiveTimerState, setCurrentRoomId, setCurrentRoomName, setIsFollowEnabled, setIsNewRoomDraft, setIsRoomMenuOpen, setLinkedTimerIds, setMeetingType, setMeetingWeek, setMeetingWeekByType, setMessages, setScheduleRoomMap, setTimerHeaders, setTimerIds, setTimerTopLevelItems, timerChangesNeedSave]);
 
-  const requestMeetingSchedule = useCallback((nextMeeting: MeetingType, nextWeek: string, keepRoomMenuOpen = false) => {
-    const switchMeeting = () => {
-      roomNavigationConfirmedRef.current = false;
-      selectMeetingSchedule(nextMeeting, nextWeek, keepRoomMenuOpen);
-    };
-    if (activeTimerState?.isRunning && !roomNavigationConfirmedRef.current) {
-      gooeyToast.warning('Timer is running', {
-        description: 'Confirm before switching the meeting room. The timer will keep running in its current room.',
-        action: { label: 'Switch room', successLabel: 'Switching', onClick: switchMeeting },
-        showTimestamp: false,
-      });
-      return;
-    }
-    switchMeeting();
-  }, [activeTimerState?.isRunning, selectMeetingSchedule]);
-
   useEffect(() => {
     if (!initialRoomRestoredRef.current) return undefined;
 
@@ -4133,26 +4116,15 @@ function App() {
             <button ref={roomMenuAnchorRef} type="button" onClick={(event) => {
               event.stopPropagation();
               if (isRoomMenuOpen) {
-                roomNavigationConfirmedRef.current = false;
                 setIsRoomMenuOpen(false);
                 return;
               }
               if (activeTimerState?.isRunning) {
                 gooeyToast.warning('Timer is running', {
-                  description: 'Confirm to open the Room menu before switching meetings.',
-                  action: {
-                    label: 'Continue',
-                    successLabel: 'Room menu opened',
-                    onClick: () => {
-                      roomNavigationConfirmedRef.current = true;
-                      setIsRoomMenuOpen(true);
-                    },
-                  },
+                  description: 'Changing rooms will stop the running timer.',
                   showTimestamp: false,
                 });
-                return;
               }
-              roomNavigationConfirmedRef.current = false;
               setIsRoomMenuOpen(true);
             }} title="Choose meeting type and week" aria-label="Choose meeting type and week" aria-haspopup="menu" aria-expanded={isRoomMenuOpen} className={`flex h-9 items-center justify-center gap-2 rounded-md border-0 bg-[#2d2d2d] px-4 text-[13px] text-white transition-colors hover:bg-[#383838] ${isRoomMenuOpen ? 'bg-[#383838]' : ''}`}>Room <IconChevronDown size={14} /></button>
             {isRoomMenuOpen && <ModalPortal>
@@ -4165,11 +4137,11 @@ function App() {
                     const nextWeek = availableWeeks.length
                       ? availableWeeks.includes(preferredWeek) ? preferredWeek : availableWeeks[0]
                       : preferredWeek || '';
-                    return <button key={type} type="button" role="menuitem" onClick={() => requestMeetingSchedule(type, nextWeek, availableWeeks.length > 0)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
+                    return <button key={type} type="button" role="menuitem" onClick={() => selectMeetingSchedule(type, nextWeek, availableWeeks.length > 0)} className={`rounded px-2 py-2 text-left text-sm text-white hover:bg-[#383838] ${meetingType === type ? 'bg-[#333]' : ''}`}>{type}</button>;
                   })}
                 </div>
                 {roomWeekOptions.length > 0 && <label className="mt-3 block px-1 text-xs text-[#aaa]">Week
-                  <select value={displayedMeetingWeek} onChange={(event) => requestMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
+                  <select value={displayedMeetingWeek} onChange={(event) => selectMeetingSchedule(meetingType, event.target.value)} className="mt-1 h-9 w-full rounded border border-[#444] bg-[#151515] px-2 text-sm text-white">
                     {roomWeekOptions.map((week) => <option key={week}>{week}</option>)}
                   </select>
                 </label>}
