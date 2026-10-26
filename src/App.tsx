@@ -1592,6 +1592,7 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     pauseTimer,
     resetTimer,
     setTime,
+    adjustTime,
     settings,
     updateSettings,
     syncState,
@@ -1633,20 +1634,33 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
   useEffect(() => { secondsRef.current = seconds; }, [seconds]);
 
   const adjustTimer = useCallback((adjustment: number) => {
-    const currentTargetDuration = Math.max(0, Number(settings.targetDuration) || 0);
-    const nextTargetDuration = Math.max(0, currentTargetDuration + adjustment);
-    // While count-up is running, adjust only its target so live progress is
-    // preserved. When paused or idle, adjust the set value as well. Countdown
-    // shifts its remaining value by the same amount as its total in either state.
-    const nextLiveSeconds = settings.mode === 'countup'
-      ? (isRunning ? secondsRef.current : Math.max(0, secondsRef.current + adjustment))
-      : secondsRef.current + adjustment;
-    updateSettings({ targetDuration: nextTargetDuration });
-    if (settings.mode !== 'countup' || !isRunning) {
-      setTime(nextLiveSeconds);
+    const currentState = syncState;
+    const currentSeconds = currentState.isRunning && currentState.startTime !== null
+      ? currentState.mode === 'countdown'
+        ? currentState.initialSeconds - (Date.now() - currentState.startTime) / 1000
+        : currentState.initialSeconds + (Date.now() - currentState.startTime) / 1000
+      : secondsRef.current;
+
+    // While playing, adjust only the live timer from the hook's freshest
+    // timestamp state. Countdown is capped at its unchanged original preset.
+    if (currentState.isRunning) {
+      adjustTime(
+        adjustment,
+        currentState.mode === 'countup',
+        currentState.mode === 'countdown' ? Math.max(0, Number(settings.targetDuration) || 0) : Number.POSITIVE_INFINITY,
+      );
+    } else {
+      // While paused or idle, adjust the configured base duration by the exact
+      // seconds sent by the selected button, and shift the displayed position
+      // by the same amount to preserve countdown progress.
+      const currentTargetDuration = Math.max(0, Number(settings.targetDuration) || 0);
+      updateSettings({ targetDuration: Math.max(0, currentTargetDuration + adjustment) });
+      setTime(currentState.mode === 'countup'
+        ? Math.max(0, currentSeconds + adjustment)
+        : currentSeconds + adjustment);
     }
     onSettingsUpdate();
-  }, [isRunning, onSettingsUpdate, settings.mode, settings.targetDuration, setTime, updateSettings]);
+  }, [adjustTime, onSettingsUpdate, settings.targetDuration, setTime, syncState, updateSettings]);
 
   useEffect(() => {
     const handleInWindowResetAll = (event: Event) => {

@@ -334,6 +334,26 @@ export const useTimer = (id: string = 'default') => {
     }));
   }, []);
 
+  const adjustTime = useCallback((adjustment: number, clampAtZero = false, maxSeconds = Number.POSITIVE_INFINITY) => {
+    setSyncState(prev => {
+      const now = Date.now();
+      const currentSeconds = prev.isRunning && prev.startTime !== null
+        ? prev.mode === 'countdown'
+          ? prev.initialSeconds - (now - prev.startTime) / 1000
+          : prev.initialSeconds + (now - prev.startTime) / 1000
+        : prev.initialSeconds;
+      let adjustedSeconds = currentSeconds + adjustment;
+      if (clampAtZero) adjustedSeconds = Math.max(0, adjustedSeconds);
+      if (Number.isFinite(maxSeconds)) adjustedSeconds = Math.min(maxSeconds, adjustedSeconds);
+      return {
+        ...prev,
+        startTime: prev.isRunning ? now : null,
+        initialSeconds: adjustedSeconds,
+        lastUpdated: now,
+      };
+    });
+  }, []);
+
   const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
     if (newSettings.mode && newSettings.mode !== syncStateRef.current?.mode) {
@@ -382,6 +402,7 @@ export const useTimer = (id: string = 'default') => {
     cueFinish,
     overUnder,
     setTime,
+    adjustTime,
     startTimer,
     pauseTimer,
     resetTimer,
