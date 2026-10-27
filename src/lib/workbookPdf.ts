@@ -491,7 +491,15 @@ export function parseWorkbookSchedules(text: string): WorkbookSchedule[] {
   return parseSectionsFromPages(pages, getYear(text));
 }
 
-export type MidweekWorkbookIssue = 'none' | 'no-text' | 'no-agenda' | 'missing-headings';
+export type MidweekWorkbookIssue = 'none' | 'no-text' | 'no-agenda' | 'missing-headings' | 'invalid-structure';
+
+function hasCompleteWeeklyAgenda(schedule: WorkbookSchedule): boolean {
+  const populatedSections = schedule.sections.filter((section) => section.parts.length > 0);
+  const partCount = populatedSections.reduce((count, section) => count + section.parts.length, 0);
+  const hasAllAgendaGroups = SECTION_DEFINITIONS.every((definition) =>
+    populatedSections.some((section) => section.color === definition.color));
+  return hasAllAgendaGroups && partCount >= 5;
+}
 
 export function inspectMidweekWorkbook(text: string): { schedules: WorkbookSchedule[]; issue: MidweekWorkbookIssue } {
   if (!text.trim()) return { schedules: [], issue: 'no-text' };
@@ -499,6 +507,18 @@ export function inspectMidweekWorkbook(text: string): { schedules: WorkbookSched
   const schedules = parseWorkbookSchedules(text);
   if (!schedules.some((schedule) => schedule.sections.some((section) => section.parts.length > 0))) {
     return { schedules, issue: 'no-agenda' };
+  }
+
+  const detectedWeeks = extractWorkbookWeeks(text);
+  if (detectedWeeks.length > 0) {
+    const datedSchedules = schedules.filter((schedule) => /^Week of\s/iu.test(schedule.week));
+    const completeSchedules = datedSchedules.filter(hasCompleteWeeklyAgenda).length;
+    const requiredCompleteSchedules = detectedWeeks.length === 1
+      ? 1
+      : Math.max(2, Math.ceil(detectedWeeks.length * 0.6));
+    if (completeSchedules < requiredCompleteSchedules) {
+      return { schedules, issue: 'invalid-structure' };
+    }
   }
 
   const hasMissingHeadings = schedules.some((schedule) => schedule.sections.some((section) => /^Section [1-3]$/iu.test(section.title.trim())));
@@ -531,16 +551,43 @@ export function extractWorkbookWeeks(text: string): string[] {
   return [...new Set(extractWorkbookWeekPageNumbers(text).map(({ week }) => week))];
 }
 
-export function extractWeekendWeeks(text: string): string[] {
+function extractWeekendWeekPages(text: string): Array<{ week: string; pageIndex: number }> {
   const year = getYear(text);
-  const pageWeeks = text.split(/\f/)
-    .map((page) => {
+  return text.split(/\f/)
+    .map((page, pageIndex) => {
       const firstLine = page.split(/\r?\n/).map(cleanLine).find((line) => line && !isStandalonePageNumber(line));
       if (!firstLine) return null;
-      return parseWeekendDateBanner(firstLine, year);
+      const week = parseWeekendDateBanner(firstLine, year);
+      return week ? { week, pageIndex } : null;
     })
-    .filter((week): week is string => Boolean(week));
-  return [...new Set(pageWeeks)];
+    .filter((entry): entry is { week: string; pageIndex: number } => Boolean(entry));
+}
+
+export function extractWeekendWeeks(text: string): string[] {
+  return [...new Set(extractWeekendWeekPages(text).map(({ week }) => week))];
+}
+
+export type WeekendWorkbookIssue = 'none' | 'no-weeks' | 'invalid-structure';
+
+export function inspectWeekendWorkbook(text: string): { weeks: string[]; issue: WeekendWorkbookIssue } {
+  const pages = text.split(/\f/);
+  const weekPages = extractWeekendWeekPages(text);
+  const uniqueWeekPages = weekPages.filter((entry, index) =>
+    weekPages.findIndex((candidate) => candidate.week === entry.week) === index);
+  const weeks = uniqueWeekPages.map(({ week }) => week);
+  if (!weeks.length) return { weeks, issue: 'no-weeks' };
+
+  const articleWeeksWithSubstantialText = uniqueWeekPages.filter((entry, index) => {
+    const nextWeekPage = uniqueWeekPages[index + 1]?.pageIndex ?? pages.length;
+    const articleText = pages.slice(entry.pageIndex, nextWeekPage).join('\n');
+    const letterCount = articleText.match(/\p{L}/gu)?.length || 0;
+    return letterCount >= 1000;
+  }).length;
+
+  if (weeks.length < 3 || articleWeeksWithSubstantialText < 3) {
+    return { weeks, issue: 'invalid-structure' };
+  }
+  return { weeks, issue: 'none' };
 }
 
 export function getWorkbookSectionColor(title: string, sectionIndex = 0): string {

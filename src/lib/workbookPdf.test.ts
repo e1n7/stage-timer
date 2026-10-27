@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractWeekendWeeks, extractWorkbookWeeks, getWorkbookSectionColor, inspectMidweekWorkbook, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
+import { extractWeekendWeeks, extractWorkbookWeeks, getWorkbookSectionColor, inspectMidweekWorkbook, inspectWeekendWorkbook, parseMidweekWorkbook, parseWorkbookSchedules } from './workbookPdf';
 
 describe('workbook PDF parsing', () => {
   it('parses Tagalog headings and minute durations into the expected colored sections', () => {
@@ -256,6 +256,33 @@ describe('workbook PDF parsing', () => {
     ]);
   });
 
+  it('rejects Weekend PDFs with repeated date banners but no substantial article content', () => {
+    const randomPdf = [
+      '2026-10-05 – 2026-10-11\nShort schedule note.',
+      '2026-10-12 – 2026-10-18\nA few unrelated lines.',
+      '2026-10-19 – 2026-10-25\nAnother brief date entry.',
+    ].join('\f');
+    const result = inspectWeekendWorkbook(randomPdf);
+
+    expect(result.weeks).toHaveLength(3);
+    expect(result.issue).toBe('invalid-structure');
+  });
+
+  it('accepts multilingual Weekend week banners with substantial article text', () => {
+    const articleText = `${'Labanan si Satanas at magtiwala kay Jehova. '.repeat(40)}
+      ${'La confiance aide la congrégation à rester unie. '.repeat(40)}
+      ${'A leitura e a reflexão fortalecem a fé. '.repeat(40)}`;
+    const pages = [
+      `OKTUBRE 5–11, 2026\n${articleText}`,
+      `Semana del 12 al 18 de octubre de 2026\n${articleText}`,
+      `2026年10月19日-25日\n${articleText}`,
+    ];
+    const result = inspectWeekendWorkbook(pages.join('\f'));
+
+    expect(result.issue).toBe('none');
+    expect(result.weeks).toHaveLength(3);
+  });
+
   it('extracts all split week headings and keeps wrapped parts in their own weekly schedule', () => {
     const text = `
 2026
@@ -342,15 +369,51 @@ describe('workbook PDF parsing', () => {
     expect(missingHeading.schedules[0]?.sections[0]?.parts[0]?.minutes).toBe(10);
   });
 
+  it('rejects random date-heavy PDFs that do not contain repeated complete agenda structure', () => {
+    const randomPdf = [
+      '2026-10-05 – 2026-10-11\n1. Community activity (10 min.)',
+      '2026-10-12 – 2026-10-18\nTravel event (5 min.)',
+      '2026-10-19 – 2026-10-25\n1. Meeting notice (3 min.)',
+    ].join('\f');
+
+    expect(extractWorkbookWeeks(randomPdf)).toHaveLength(3);
+    expect(inspectMidweekWorkbook(randomPdf).issue).toBe('invalid-structure');
+  });
+
+  it('accepts repeated multilingual week agendas with all three agenda groups', () => {
+    const weekHeaders = [
+      '2026-09-07 – 2026-09-13',
+      '2026-09-14 – 2026-09-20',
+      '2026-09-21 – 2026-09-27',
+    ];
+    const pages = weekHeaders.map((header, index) => `${header}
+      JOYAUX DE LA PAROLE DE DIEU
+      1. Première partie ${index + 1} (10 min)
+      2. Perles spirituelles (5 min)
+      APPLIQUE-TOI AU MINISTÈRE
+      4. Première visite (3 min)
+      5. Deuxième visite (2 min)
+      VIE CHRÉTIENNE
+      7. Étude biblique de l’assemblée (15 min)`);
+    const result = inspectMidweekWorkbook(pages.join('\f'));
+
+    expect(result.issue).toBe('none');
+    expect(result.schedules).toHaveLength(3);
+    expect(result.schedules.every((schedule) => schedule.sections.length === 3)).toBe(true);
+  });
+
   it('parses French Midweek headings, date ranges, and minute labels without language-specific heading checks', () => {
     const result = inspectMidweekWorkbook(`
       Semaine du 7 au 13 septembre 2026
       TRÉSORS DE LA PAROLE DE DIEU
       1. Perles spirituelles (10 min)
+      2. Une autre partie (5 min)
       APPLIQUE-TOI AU MINISTÈRE
       4. Première visite (3 min)
+      5. Deuxième visite (2 min)
       VIE CHRÉTIENNE
       7. Étude biblique de l’assemblée (30 min)
+      8. Une autre partie (10 min)
     `);
 
     expect(result.issue).toBe('none');
@@ -360,6 +423,6 @@ describe('workbook PDF parsing', () => {
       'APPLIQUE-TOI AU MINISTÈRE',
       'VIE CHRÉTIENNE',
     ]);
-    expect(result.schedules[0]?.sections.flatMap((section) => section.parts.map((part) => part.minutes))).toEqual([10, 3, 30]);
+    expect(result.schedules[0]?.sections.flatMap((section) => section.parts.map((part) => part.minutes))).toEqual([10, 5, 3, 2, 30, 10]);
   });
 });

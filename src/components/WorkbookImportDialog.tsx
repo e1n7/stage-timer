@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gooeyToast } from 'goey-toast';
-import { extractWeekendWeeks, extractWorkbookWeeks, inspectMidweekWorkbook, makeWeekendSections, readWorkbookPdf, type MeetingType, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
+import { extractWorkbookWeeks, inspectMidweekWorkbook, inspectWeekendWorkbook, makeWeekendSections, readWorkbookPdf, type MeetingType, type MidweekWorkbookIssue, type WeekendWorkbookIssue, type WorkbookSchedule, type WorkbookSection } from '../lib/workbookPdf';
 import { addDefaultMidweekCounseling } from '../lib/workbookPdfDefaults';
 import { deleteWorkbookPdfLocally, loadWorkbookPdfsLocally, saveWorkbookPdfLocally, type SavedWorkbookPdf } from '../lib/workbookPdfStorage';
+
+const NO_READABLE_PDF_TEXT_ERROR = 'No readable text could be extracted from this PDF. It may be scanned, image-only, or password-protected; use a text-based workbook PDF.';
 
 interface Props {
   open: boolean;
@@ -27,6 +29,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
   const [parseNotice, setParseNotice] = useState('');
   const [dateFallbackNotice, setDateFallbackNotice] = useState(false);
   const [invalidMidweekPdf, setInvalidMidweekPdf] = useState(false);
+  const [invalidWeekendPdf, setInvalidWeekendPdf] = useState(false);
   const [savedPdfs, setSavedPdfs] = useState<Partial<Record<MeetingType, SavedWorkbookPdf>>>({});
   const [savedPdfChecked, setSavedPdfChecked] = useState(false);
   const [deletingPdf, setDeletingPdf] = useState(false);
@@ -104,6 +107,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     setParseNotice('');
     setDateFallbackNotice(false);
     setInvalidMidweekPdf(false);
+    setInvalidWeekendPdf(false);
     setWorkbookSchedules([]);
     setWeek('');
     setEditedSectionsByWeek({});
@@ -111,13 +115,21 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     try {
       extractedText = await readWorkbookPdf(file);
       if (!extractedText.trim()) {
-        setError('No readable text could be extracted from this PDF. It may be scanned, image-only, or password-protected; use a text-based workbook PDF.');
+        setError(NO_READABLE_PDF_TEXT_ERROR);
         return;
       }
 
-      const extractedWeeks = fileMeeting === 'Weekend' ? extractWeekendWeeks(extractedText) : extractWorkbookWeeks(extractedText);
+      let extractedWeeks: string[];
+      let weekendIssue: WeekendWorkbookIssue = 'none';
+      if (fileMeeting === 'Weekend') {
+        const inspection = inspectWeekendWorkbook(extractedText);
+        extractedWeeks = inspection.weeks;
+        weekendIssue = inspection.issue;
+      } else {
+        extractedWeeks = extractWorkbookWeeks(extractedText);
+      }
       let parsed: WorkbookSchedule[] = [];
-      let midweekIssue: 'none' | 'no-text' | 'no-agenda' | 'missing-headings' = 'none';
+      let midweekIssue: MidweekWorkbookIssue = 'none';
       if (fileMeeting === 'Midweek') {
         const inspection = inspectMidweekWorkbook(extractedText);
         midweekIssue = inspection.issue;
@@ -132,18 +144,17 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         : [...new Set(extractedWeeks)];
       const parsedByWeek = new Map(parsed.map((schedule) => [schedule.week, schedule.sections]));
       const candidateSchedules = availableWeeks.map((item) => ({ week: item, sections: parsedByWeek.get(item) || [] }));
-      const missingAgendaCount = candidateSchedules.filter((schedule) => !schedule.sections.length).length;
-      const parsedAgendaCount = candidateSchedules.length - missingAgendaCount;
       const wrongMidweekWorkbook = fileMeeting === 'Midweek' && (
         midweekIssue === 'no-agenda'
-        || (candidateSchedules.length >= 3 && missingAgendaCount > parsedAgendaCount)
+        || midweekIssue === 'invalid-structure'
       );
-      // Use agenda coverage rather than English-only markers; incomplete false-positive parses are not importable.
-      const schedules = wrongMidweekWorkbook ? [] : candidateSchedules;
+      const wrongWeekendWorkbook = fileMeeting === 'Weekend' && weekendIssue !== 'none';
+      const schedules = wrongMidweekWorkbook || wrongWeekendWorkbook ? [] : candidateSchedules;
       setInvalidMidweekPdf(wrongMidweekWorkbook);
-      setDateFallbackNotice(fileMeeting === 'Midweek' ? wrongMidweekWorkbook || (parsed.length > 0 && !extractedWeeks.length) : !availableWeeks.length);
+      setInvalidWeekendPdf(wrongWeekendWorkbook);
+      setDateFallbackNotice(fileMeeting === 'Midweek' ? wrongMidweekWorkbook || (parsed.length > 0 && !extractedWeeks.length) : !availableWeeks.length && !wrongWeekendWorkbook);
 
-      if (persist && !(fileMeeting === 'Midweek' && midweekIssue === 'no-agenda')) {
+      if (persist && !wrongMidweekWorkbook && !wrongWeekendWorkbook) {
         try {
           const info = await saveWorkbookPdfLocally(file, fileMeeting);
           const saved = { ...info, file };
@@ -204,6 +215,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         setEditedSectionsByWeek({});
         setDateFallbackNotice(false);
         setInvalidMidweekPdf(false);
+        setInvalidWeekendPdf(false);
         setParseNotice('');
         onWorkbookWeeksChange(selectedMeeting, []);
       }
@@ -256,6 +268,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
       setParseNotice('');
       setDateFallbackNotice(false);
       setInvalidMidweekPdf(false);
+      setInvalidWeekendPdf(false);
       delete previewWeekByMeetingRef.current[meeting];
       if (fileInputRef.current) fileInputRef.current.value = '';
       const description = deletedTimerCount
@@ -312,6 +325,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
     setEditedSectionsByWeek({});
     setDateFallbackNotice(false);
     setInvalidMidweekPdf(false);
+    setInvalidWeekendPdf(false);
     const storedPdf = savedPdfsRef.current[value];
     if (storedPdf) void processFile(storedPdf.file, false, value);
     else onWorkbookWeeksChange(value, []);
@@ -357,7 +371,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
             </select>
           </label>
           <label className="text-xs text-[#aaa]">Workbook week
-            <select value={week} disabled={!workbookSchedules.length || loading || invalidMidweekPdf} onChange={(event) => {
+            <select value={week} disabled={!workbookSchedules.length || loading || invalidMidweekPdf || invalidWeekendPdf} onChange={(event) => {
               const nextWeek = event.target.value;
               setWeek(nextWeek);
               previewWeekByMeetingRef.current[meeting] = nextWeek;
@@ -366,10 +380,12 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
             </select>
           </label>
         </div>
-        {invalidMidweekPdf && <p role="status" className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">No week dates were detected. Check that this is the correct Life and Ministry Meeting Workbook PDF.</p>}
-        {dateFallbackNotice && !invalidMidweekPdf && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">{meeting === 'Midweek' ? 'No week dates were detected. Parsed agendas are labeled sequentially; review them before importing.' : 'No week dates were detected. Check that this is the correct Watchtower PDF.'}</p>}
+        {invalidMidweekPdf && <p role="status" className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">No verifiable workbook weeks were detected. Check that this is the correct Life and Ministry Meeting Workbook PDF.</p>}
+        {invalidWeekendPdf && <p role="status" className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">No verifiable workbook weeks were detected. Check that this is the correct Life and Ministry Meeting Workbook PDF.</p>}
+        {dateFallbackNotice && !invalidMidweekPdf && !invalidWeekendPdf && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">{meeting === 'Midweek' ? 'No week dates were detected. Parsed agendas are labeled sequentially; review them before importing.' : 'No week dates were detected. Check that this is the correct Watchtower PDF.'}</p>}
         {missingWeeks.length > 0 && !invalidMidweekPdf && <p className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">Some dated weeks could not be read. Only weeks with readable agenda items can be imported.</p>}
         {parseNotice && !invalidMidweekPdf && <p role="status" className="mt-3 rounded bg-[#2a2925] p-3 text-xs text-[#d6c49b]">{parseNotice}</p>}
+        {error === NO_READABLE_PDF_TEXT_ERROR && <p role="alert" className="mt-3 rounded bg-[#351f1f] p-3 text-xs text-[#ffb0b0]">{error}</p>}
         <label className="mt-4 block text-xs text-[#aaa]">{meeting === 'Midweek' ? 'Life and Ministry Meeting Workbook PDF' : 'The Watchtower PDF'}
           {savedPdf ? <span className="mt-1 flex h-10 items-center gap-2 rounded border border-[#444] bg-[#151515] px-2">
             <button type="button" title="Delete the saved PDF before uploading another" onClick={() => gooeyToast.info('A workbook PDF is already saved', { description: 'Delete the saved PDF before uploading another one.', showTimestamp: false })} className="min-w-0 flex-1 truncate text-left text-sm text-white hover:text-[#9fc7ff]">{savedPdf.name}</button>
@@ -392,7 +408,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
           />}
         </label>
         {loading && <p className="mt-4 text-sm text-[#9fc7ff]">Reading PDF…</p>}
-        {error && <p role="alert" className="mt-4 rounded bg-[#351f1f] p-3 text-sm text-[#ffb0b0]">{error}</p>}
+        {error && error !== NO_READABLE_PDF_TEXT_ERROR && <p role="alert" className="mt-4 rounded bg-[#351f1f] p-3 text-sm text-[#ffb0b0]">{error}</p>}
         {sections.length > 0 && <div className="mt-4 space-y-3">
           <p className="text-xs text-[#aaa]">{partsCount} timer{partsCount === 1 ? '' : 's'} for {week || 'this week'}. Review or edit titles and durations before importing.</p>
           {sections.map((section, sectionIndex) => <div key={`${section.title}-${sectionIndex}`} className="rounded border border-[#393939] p-3">
@@ -408,7 +424,7 @@ export default function WorkbookImportDialog({ open, currentMeeting, currentWeek
         </div>}
         <div className="mt-5 flex gap-2">
           <button type="button" onClick={onClose} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-white transition-colors hover:bg-[#383838] max-[639px]:text-[13px]">Cancel</button>
-          <button type="button" onClick={importSchedule} disabled={loading || invalidMidweekPdf || !savedPdf || !workbookSchedules.length || (meeting === 'Midweek' && !workbookSchedules.some((schedule) => schedule.sections.length > 0))} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#4a9eff] transition-colors hover:border-[#2563eb] hover:bg-[#2563eb] hover:text-white focus-visible:border-[#2563eb] focus-visible:bg-[#2563eb] focus-visible:text-white active:bg-[#1d4ed8] active:text-white max-[639px]:text-[13px] disabled:cursor-not-allowed disabled:opacity-50">Import {workbookSchedules.length > 1 ? `${workbookSchedules.length} weeks` : 'schedule'}</button>
+          <button type="button" onClick={importSchedule} disabled={loading || invalidMidweekPdf || invalidWeekendPdf || !savedPdf || !workbookSchedules.length || (meeting === 'Midweek' && !workbookSchedules.some((schedule) => schedule.sections.length > 0))} className="h-9 flex-1 rounded-md border border-[#444] bg-[#2d2d2d] px-3 text-[13px] font-bold text-[#4a9eff] transition-colors hover:border-[#2563eb] hover:bg-[#2563eb] hover:text-white focus-visible:border-[#2563eb] focus-visible:bg-[#2563eb] focus-visible:text-white active:bg-[#1d4ed8] active:text-white max-[639px]:text-[13px] disabled:cursor-not-allowed disabled:opacity-50">Import {workbookSchedules.length > 1 ? `${workbookSchedules.length} weeks` : 'schedule'}</button>
         </div>
       </div>
     </div>
