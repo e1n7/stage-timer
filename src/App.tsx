@@ -1630,16 +1630,8 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
     };
   }, [onCloseActions]);
 
-  const secondsRef = useRef(seconds);
-  useEffect(() => { secondsRef.current = seconds; }, [seconds]);
-
   const adjustTimer = useCallback((adjustment: number) => {
     const currentState = syncState;
-    const currentSeconds = currentState.isRunning && currentState.startTime !== null
-      ? currentState.mode === 'countdown'
-        ? currentState.initialSeconds - (Date.now() - currentState.startTime) / 1000
-        : currentState.initialSeconds + (Date.now() - currentState.startTime) / 1000
-      : secondsRef.current;
 
     // While playing, adjust only the live timer from the hook's freshest
     // timestamp state. Countdown is capped at its unchanged original preset.
@@ -1650,17 +1642,19 @@ const TimerRow = ({ id, index, isActive, scheduledStart, formatTime, selectedTim
         currentState.mode === 'countdown' ? Math.max(0, Number(settings.targetDuration) || 0) : Number.POSITIVE_INFINITY,
       );
     } else {
-      // While paused or idle, adjust the configured base duration by the exact
-      // seconds sent by the selected button, and shift the displayed position
-      // by the same amount to preserve countdown progress.
+      // While paused or idle, adjust only the configured base duration. A
+      // paused timer keeps its current position; an idle Countdown mirrors its
+      // updated preset so its stopped display remains ready to start.
       const currentTargetDuration = Math.max(0, Number(settings.targetDuration) || 0);
-      updateSettings({ targetDuration: Math.max(0, currentTargetDuration + adjustment) });
-      setTime(currentState.mode === 'countup'
-        ? Math.max(0, currentSeconds + adjustment)
-        : currentSeconds + adjustment);
+      const nextTargetDuration = Math.max(0, currentTargetDuration + adjustment);
+      const isAtResetValue = currentState.initialSeconds === (
+        currentState.mode === 'countdown' ? currentTargetDuration : DEFAULT_TIME
+      );
+      updateSettings({ targetDuration: nextTargetDuration });
+      if (currentState.mode === 'countdown' && isAtResetValue) setTime(nextTargetDuration);
     }
     onSettingsUpdate();
-  }, [adjustTime, onSettingsUpdate, settings.targetDuration, setTime, syncState, updateSettings]);
+  }, [DEFAULT_TIME, adjustTime, onSettingsUpdate, settings.targetDuration, setTime, syncState, updateSettings]);
 
   useEffect(() => {
     const handleInWindowResetAll = (event: Event) => {
@@ -3396,7 +3390,6 @@ function App() {
       writeStorageItem('stage-timer-schedule-rooms', JSON.stringify(map));
       setScheduleRoomMap(map);
     }
-    if (currentRoomId && timerChangesNeedSave) saveRoom();
     setMeetingType(nextMeeting);
     setMeetingWeek(nextWeek);
     setMeetingWeekByType((current) => ({ ...current, [nextMeeting]: nextWeek }));
@@ -3425,7 +3418,7 @@ function App() {
     setLinkedTimerIds([]);
     setIsFollowEnabled(false);
     setIsRoomMenuOpen(keepRoomMenuOpen);
-  }, [currentRoomId, createDefaultPreviewTimer, getMeetingScheduleWeeks, loadRoom, meetingType, meetingWeek, rooms, saveRoom, scheduleRoomMap, setActiveTimerId, setActiveTimerState, setCurrentRoomId, setCurrentRoomName, setIsFollowEnabled, setIsNewRoomDraft, setIsRoomMenuOpen, setLinkedTimerIds, setMeetingType, setMeetingWeek, setMeetingWeekByType, setMessages, setScheduleRoomMap, setTimerHeaders, setTimerIds, setTimerTopLevelItems, timerChangesNeedSave]);
+  }, [currentRoomId, createDefaultPreviewTimer, getMeetingScheduleWeeks, loadRoom, meetingType, meetingWeek, rooms, scheduleRoomMap, setActiveTimerId, setActiveTimerState, setCurrentRoomId, setCurrentRoomName, setIsFollowEnabled, setIsNewRoomDraft, setIsRoomMenuOpen, setLinkedTimerIds, setMeetingType, setMeetingWeek, setMeetingWeekByType, setMessages, setScheduleRoomMap, setTimerHeaders, setTimerIds, setTimerTopLevelItems]);
 
   useEffect(() => {
     if (!initialRoomRestoredRef.current) return undefined;
