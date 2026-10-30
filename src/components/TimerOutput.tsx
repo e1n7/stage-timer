@@ -196,7 +196,6 @@ export const TimerOutput = () => {
 
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState === 'hidden') return;
       const { isRunning: syncIsRunning, startTime, initialSeconds, mode, isEmpty: syncIsEmpty } = syncStateRef.current;
       if (syncIsEmpty) {
         setSeconds(0);
@@ -217,10 +216,12 @@ export const TimerOutput = () => {
     const interval = window.setInterval(tick, 250);
     document.addEventListener('visibilitychange', tick);
     window.addEventListener('pageshow', tick);
+    window.addEventListener('focus', tick);
     return () => {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', tick);
       window.removeEventListener('pageshow', tick);
+      window.removeEventListener('focus', tick);
     };
   }, [isRunning]);
 

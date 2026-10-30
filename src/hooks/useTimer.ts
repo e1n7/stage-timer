@@ -238,7 +238,6 @@ export const useTimer = (id: string = 'default') => {
 
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState === 'hidden') return;
       const { isRunning, startTime, initialSeconds, mode } = syncState;
       let currentSeconds: number;
       if (!isRunning || startTime === null) {
@@ -264,10 +263,12 @@ export const useTimer = (id: string = 'default') => {
     const interval = window.setInterval(tick, 250);
     document.addEventListener('visibilitychange', tick);
     window.addEventListener('pageshow', tick);
+    window.addEventListener('focus', tick);
     return () => {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', tick);
       window.removeEventListener('pageshow', tick);
+      window.removeEventListener('focus', tick);
     };
   }, [syncState, secondsKey, checkWarnings]);
 

@@ -104,15 +104,14 @@ export function getWorkbookWeekDateRange(week: string): WorkbookWeekDateRange | 
 export function getCurrentOrNextWorkbookWeek(weeks: string[], selectedWeek: string, now = new Date()): string {
   if (!weeks.length) return selectedWeek;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const selectedRange = getWorkbookWeekDateRange(selectedWeek);
-  if (weeks.includes(selectedWeek) && (!selectedRange || selectedRange.end >= today)) return selectedWeek;
-
   const datedWeeks = weeks
     .map((week) => ({ week, range: getWorkbookWeekDateRange(week) }))
     .filter((item): item is { week: string; range: WorkbookWeekDateRange } => item.range !== null)
     .sort((left, right) => left.range.start.getTime() - right.range.start.getTime());
+  const currentWeek = datedWeeks.find((item) => item.range.start <= today && item.range.end >= today);
+  if (currentWeek) return currentWeek.week;
   const currentOrFutureWeek = datedWeeks.find((item) => item.range.end >= today);
   if (currentOrFutureWeek) return currentOrFutureWeek.week;
   if (datedWeeks.length) return datedWeeks[datedWeeks.length - 1].week;
-  return weeks[0];
+  return weeks.includes(selectedWeek) ? selectedWeek : weeks[0];
 }

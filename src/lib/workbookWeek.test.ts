@@ -29,13 +29,23 @@ describe('workbook week rollover', () => {
     expect(getCurrentOrNextWorkbookWeek(weeks, weeks[0], new Date(2026, 9, 26))).toBe(weeks[2]);
   });
 
-  it('keeps a valid current/future selection and keeps the latest imported week if all are past', () => {
+  it('selects the week containing today and keeps the latest imported week if all are past', () => {
     const weeks = [
       'Week of 2026-10-19 – 2026-10-25',
       'Week of 2026-10-26 – 2026-11-01',
     ];
 
-    expect(getCurrentOrNextWorkbookWeek(weeks, weeks[1], new Date(2026, 9, 24))).toBe(weeks[1]);
+    expect(getCurrentOrNextWorkbookWeek(weeks, weeks[1], new Date(2026, 9, 24))).toBe(weeks[0]);
+    expect(getCurrentOrNextWorkbookWeek(weeks, weeks[0], new Date(2026, 9, 26))).toBe(weeks[1]);
     expect(getCurrentOrNextWorkbookWeek(weeks, weeks[0], new Date(2026, 10, 10))).toBe(weeks[1]);
+  });
+
+  it('falls forward to the next imported week when there is a gap in coverage', () => {
+    const weeks = [
+      'Week of 2026-10-19 – 2026-10-25',
+      'Week of 2026-11-02 – 2026-11-08',
+    ];
+
+    expect(getCurrentOrNextWorkbookWeek(weeks, weeks[0], new Date(2026, 9, 28))).toBe(weeks[1]);
   });
 });

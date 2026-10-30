@@ -3433,7 +3433,15 @@ function App() {
 
     advanceExpiredWeek();
     const intervalId = window.setInterval(advanceExpiredWeek, 60_000);
-    return () => window.clearInterval(intervalId);
+    document.addEventListener('visibilitychange', advanceExpiredWeek);
+    window.addEventListener('focus', advanceExpiredWeek);
+    window.addEventListener('pageshow', advanceExpiredWeek);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', advanceExpiredWeek);
+      window.removeEventListener('focus', advanceExpiredWeek);
+      window.removeEventListener('pageshow', advanceExpiredWeek);
+    };
   }, [meetingType, meetingWeek, meetingWeekByType, workbookWeeksByType, scheduleRoomMap, getMeetingScheduleWeeks, selectMeetingSchedule]);
 
   const importWorkbookSchedule = (meeting: MeetingType, schedules: WorkbookSchedule[], activeWeek: string, workbookWeeks: string[]) => {
